@@ -1,0 +1,127 @@
+.courses-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #2d1e41 0%, #16213e 60%, #0f3460 100%);
+  color: #fff;
+}
+
+.courses-main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.courses-header {
+  margin-bottom: 1.5rem;
+}
+
+.courses-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.courses-header p {
+  margin: 0.35rem 0 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.courses-loading,
+.courses-empty,
+.courses-error {
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.courses-error {
+  color: #fca5a5;
+}
+
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.courses-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.courses-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.courses-card-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.courses-card-instructor {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.courses-card-desc {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.5;
+  font-size: 0.9rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.courses-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.courses-price {
+  font-weight: 800;
+  color: #e9d5ff;
+  font-size: 1.05rem;
+}
+
+.courses-chapters {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.courses-btn-buy {
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #ae2070 0%, #7b1fa2 100%);
+  color: #fff;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.courses-btn-buy:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(174, 32, 112, 0.4);
+}
+
+@media (max-width: 640px) {
+  .courses-grid {
+    grid-template-columns: 1fr;
+  }
+}

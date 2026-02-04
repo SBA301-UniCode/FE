@@ -1,0 +1,255 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(45, 30, 65, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.25rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.header-logo:hover {
+  color: #e0d4f7;
+}
+
+.header-logo-icon {
+  font-size: 1.35rem;
+  color: #a78bfa;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.header-nav-link {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+}
+
+.header-nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-role-wrapper {
+  position: relative;
+}
+
+.header-role-badge {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.header-role-badge:hover {
+  opacity: 0.9;
+}
+
+.header-role-badge.learner {
+  background: rgba(96, 165, 250, 0.25);
+  color: #93c5fd;
+}
+
+.header-role-badge.instructor {
+  background: rgba(74, 222, 128, 0.2);
+  color: #86efac;
+}
+
+.header-role-badge.admin {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fde047;
+}
+
+.header-role-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  padding: 0.75rem 1rem;
+}
+
+.header-role-dropdown-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.header-role-dropdown-close {
+  margin-top: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.header-btn:hover {
+  transform: translateY(-1px);
+}
+
+.header-btn-student {
+  background: rgba(147, 197, 253, 0.25);
+  color: #93c5fd;
+}
+
+.header-btn-browse {
+  background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+  color: #fff;
+}
+
+.header-btn-primary {
+  background: rgba(74, 222, 128, 0.25);
+  color: #86efac;
+}
+
+.header-btn-icon {
+  font-size: 1rem;
+}
+
+.header-user-wrapper {
+  position: relative;
+}
+
+.header-user-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.header-user-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.header-user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  padding: 0.75rem 0;
+  overflow: hidden;
+}
+
+.header-user-info {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.header-user-info strong {
+  color: #111;
+  font-size: 0.95rem;
+}
+
+.header-user-info span {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.header-user-role {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.header-user-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  text-align: left;
+  font-size: 0.9rem;
+  color: #374151;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.header-user-dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.header-user-logout {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.header-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+@media (max-width: 768px) {
+  .header-nav {
+    display: none;
+  }
+}

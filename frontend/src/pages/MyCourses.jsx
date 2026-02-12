@@ -148,6 +148,20 @@ const MyCourses = () => {
                     <span className="mycourses-chapters">{c.chapterCount} chương</span>
                   )}
                 </div>
+                <div className="mycourses-card-actions">
+                  <Link
+                    to={`/courses/${getCourseKey(c)}/curriculum`}
+                    className="mycourses-card-link"
+                  >
+                    Chương trình
+                  </Link>
+                  <Link
+                    to={`/courses/${getCourseKey(c)}/progress`}
+                    className="mycourses-card-link"
+                  >
+                    Tiến độ
+                  </Link>
+                </div>
               </article>
             ))}
           </div>

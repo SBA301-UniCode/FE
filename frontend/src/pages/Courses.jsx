@@ -99,13 +99,29 @@ const Courses = () => {
                     <span className="courses-chapters">{c.chapterCount} chương</span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  className="courses-btn-buy"
-                  onClick={() => handleBuy(c)}
-                >
-                  Mua ngay
-                </button>
+                <div className="courses-card-actions">
+                  <Link
+                    to={`/courses/${getCourseKey(c)}/curriculum`}
+                    className="courses-btn courses-btn-ghost"
+                  >
+                    Chương trình
+                  </Link>
+                  {isAuthenticated && (
+                    <Link
+                      to={`/courses/${getCourseKey(c)}/progress`}
+                      className="courses-btn courses-btn-ghost"
+                    >
+                      Tiến độ
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    className="courses-btn-buy"
+                    onClick={() => handleBuy(c)}
+                  >
+                    Mua ngay
+                  </button>
+                </div>
               </article>
             ))}
           </div>

@@ -1,14 +1,27 @@
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, Navigate } from 'react-router-dom'
 import Header from '../components/layout/Header'
 import './PaymentSuccess.css'
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams()
   const courseId = searchParams.get('courseId')
+  const demo = searchParams.get('demo') === '1'
+  const noRedirect = searchParams.get('noRedirect') === '1'
   const status = searchParams.get('status') || searchParams.get('statusPayment') || ''
-  const message = searchParams.get('message') || ''
+  const message = searchParams.get('message') || searchParams.get('msg') || ''
+  const resultCode = searchParams.get('resultCode')
+  const isResultError = resultCode !== null && resultCode !== undefined && String(resultCode) !== '0'
 
-  const isError = status.toUpperCase() === 'ERROR' || message.toLowerCase().includes('declined')
+  const isError = !demo && (
+    status.toUpperCase() === 'ERROR' ||
+    isResultError ||
+    (message && message.toLowerCase().includes('declined'))
+  )
+
+  if (!isError && !noRedirect) {
+    const target = courseId ? `/my-learning?purchased=${encodeURIComponent(courseId)}` : '/my-learning'
+    return <Navigate to={target} replace />
+  }
 
   return (
     <div className="payment-success-page">
@@ -39,26 +52,25 @@ const PaymentSuccess = () => {
                 </Link>
               </div>
             </>
-          ) : (
+          ) : !isError ? (
             <>
               <div className="payment-success-icon">✓</div>
               <h1>Thanh toán thành công</h1>
-              <p>Bạn đã thanh toán qua MoMo. Khóa học đã được kích hoạt trong tài khoản của bạn.</p>
+              {demo ? (
+                <p>Bạn đã dùng chế độ demo Sandbox (coi như đã thanh toán). Khóa học được ghi nhận chỉ trên trình duyệt này để bạn trải nghiệm.</p>
+              ) : (
+                <p>Khóa học đã được kích hoạt. Bạn sẽ được chuyển đến trang Khóa học đã mua.</p>
+              )}
               <div className="payment-success-actions">
-                <Link to="/dashboard" className="payment-success-btn payment-success-btn-primary">
-                  Vào My Learning
+                <Link to={courseId ? `/my-learning?purchased=${encodeURIComponent(courseId)}` : '/my-learning'} className="payment-success-btn payment-success-btn-primary">
+                  {courseId ? 'Vào trang Khóa học đã mua' : 'Xem khóa học đã mua'}
                 </Link>
-                {courseId && (
-                  <Link to={`/courses?highlight=${courseId}`} className="payment-success-btn payment-success-btn-ghost">
-                    Xem khóa học
-                  </Link>
-                )}
                 <Link to="/" className="payment-success-btn payment-success-btn-ghost">
                   Về trang chủ
                 </Link>
               </div>
             </>
-          )}
+          ) : null}
         </div>
       </main>
     </div>

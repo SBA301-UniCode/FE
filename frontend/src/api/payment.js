@@ -1,3 +1,4 @@
+import apiClient from './client'
 import momoClient from './momoClient'
 
 /**
@@ -6,7 +7,8 @@ import momoClient from './momoClient'
  * Response 200: { code: 1000, message: "https://test-payment.momo.vn/v2/gateway/pay?t=...&s=...", success: true }
  * → Link thanh toán MoMo nằm trong field "message".
  */
-const SUBSCRIPTIONS_BUY_PATH = '/api/v1/subscriptions/buy'
+const SUBSCRIPTIONS_BASE = '/api/v1/subscriptions'
+const SUBSCRIPTIONS_BUY_PATH = `${SUBSCRIPTIONS_BASE}/buy`
 
 export const paymentApi = {
   /**
@@ -18,4 +20,10 @@ export const paymentApi = {
     const res = await momoClient.post(`${SUBSCRIPTIONS_BUY_PATH}/${courseId}`, {})
     return res.data
   },
+
+  /**
+   * Lấy danh sách khóa học đã mua (subscriptions) của user hiện tại.
+   * Backend: GET /api/v1/subscriptions/me (nếu có). Response: { data: [ { subcriptionId, courseId, course, statusPayment, ... } ] }
+   */
+  getMySubscriptions: () => apiClient.get(`${SUBSCRIPTIONS_BASE}/me`),
 }

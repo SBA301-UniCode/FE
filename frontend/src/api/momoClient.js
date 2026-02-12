@@ -11,7 +11,7 @@ const momoClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 15000,
 })
 
 // —— Request interceptor: gắn Bearer token cho mọi request MoMo

@@ -8,6 +8,9 @@ import Courses from './pages/Courses'
 import Payment from './pages/Payment'
 import PaymentSuccess from './pages/PaymentSuccess'
 import OAuthCallback from './pages/OAuthCallback'
+import Curriculum from './pages/Curriculum'
+import Progress from './pages/Progress'
+import MyLearning from './pages/MyLearning'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -35,6 +38,23 @@ function App() {
             }
           />
           <Route path="/courses" element={<Courses />} />
+          <Route
+            path="/my-learning"
+            element={
+              <ProtectedRoute>
+                <MyLearning />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/courses/:courseId/curriculum" element={<Curriculum />} />
+          <Route
+            path="/courses/:courseId/progress"
+            element={
+              <ProtectedRoute>
+                <Progress />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/payment"
             element={

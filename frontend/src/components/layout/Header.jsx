@@ -49,16 +49,16 @@ const Header = () => {
               </>
             ) : (
               <>
-                <Link to="/dashboard" className="header-nav-link">My Learning</Link>
+                <Link to="/my-learning" className="header-nav-link">My Learning</Link>
                 <Link to="/dashboard" className="header-nav-link">Exercises</Link>
-                <Link to="/dashboard" className="header-nav-link">Progress</Link>
+                <Link to="/courses" className="header-nav-link">Progress</Link>
               </>
             )
           ) : (
             <>
-              <a href="#learning" className="header-nav-link">My Learning</a>
+              <Link to="/my-learning" className="header-nav-link">My Learning</Link>
               <a href="#exercises" className="header-nav-link">Exercises</a>
-              <a href="#progress" className="header-nav-link">Progress</a>
+              <Link to="/courses" className="header-nav-link">Progress</Link>
             </>
           )}
         </nav>

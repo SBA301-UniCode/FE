@@ -165,6 +165,29 @@
   white-space: nowrap;
 }
 
+.mycourses-card-actions {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mycourses-card-link {
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: background 0.2s;
+}
+
+.mycourses-card-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 @media (max-width: 1000px) {
   .mycourses-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

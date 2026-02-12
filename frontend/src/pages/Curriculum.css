@@ -1,0 +1,175 @@
+.curriculum-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #2d1e41 0%, #16213e 60%, #0f3460 100%);
+  color: #fff;
+}
+
+.curriculum-main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.curriculum-header {
+  margin-bottom: 2rem;
+}
+
+.curriculum-back {
+  display: inline-block;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.curriculum-back:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.curriculum-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.curriculum-subtitle {
+  margin: 0.35rem 0 0;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.95rem;
+}
+
+.curriculum-loading,
+.curriculum-error {
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.curriculum-error {
+  color: #fca5a5;
+}
+
+.curriculum-error-hint {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.curriculum-error-hint code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+}
+
+.curriculum-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.curriculum-chapter {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+}
+
+.curriculum-chapter-title {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.curriculum-chapter-num {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.curriculum-lessons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.curriculum-lesson {
+  margin-bottom: 1rem;
+  padding-left: 1rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.curriculum-lesson:last-child {
+  margin-bottom: 0;
+}
+
+.curriculum-lesson-title {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.curriculum-contents {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.curriculum-content {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.25rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.curriculum-content-type {
+  min-width: 80px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.curriculum-content-id {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.curriculum-content-empty {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.curriculum-empty {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 2rem;
+}
+
+.curriculum-demo-banner {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 10px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fde047;
+  font-size: 0.9rem;
+}
+
+.curriculum-demo-banner code {
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+.curriculum-error-inline {
+  margin-bottom: 1rem;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+  font-size: 0.9rem;
+}

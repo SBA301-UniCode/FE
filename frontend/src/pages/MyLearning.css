@@ -1,0 +1,183 @@
+.mylearning {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #2d1e41 0%, #16213e 60%, #0f3460 100%);
+  color: #fff;
+}
+
+.mylearning-main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.mylearning-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.mylearning-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.mylearning-header p {
+  margin: 0.35rem 0 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.mylearning-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mylearning-btn {
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mylearning-btn-ghost {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.mylearning-btn-primary {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
+  box-shadow: 0 6px 22px rgba(234, 88, 12, 0.35);
+}
+
+.mylearning-loading,
+.mylearning-empty {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+}
+
+.mylearning-error {
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+}
+
+.mylearning-grid {
+  margin-top: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.mylearning-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 1rem 1rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.mylearning-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.mylearning-card-title {
+  font-weight: 800;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.mylearning-card-instructor {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.mylearning-card-desc {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.55;
+  font-size: 0.95rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mylearning-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.mylearning-chapters {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.mylearning-progress-text {
+  font-size: 0.85rem;
+  color: rgba(248, 250, 252, 0.9);
+}
+
+.mylearning-progress-bar-wrap {
+  margin-top: 0.35rem;
+}
+
+.mylearning-progress-bar-bg {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  overflow: hidden;
+}
+
+.mylearning-progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22c55e 0%, #a3e635 100%);
+}
+
+.mylearning-card-link {
+  margin-top: 0.5rem;
+  align-self: flex-start;
+}
+
+.mylearning-pill {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  color: #bbf7d0;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .mylearning-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .mylearning-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -1,14 +1,64 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Header from '../components/layout/Header'
+import { enrollmentApi } from '../api'
 import './PaymentSuccess.css'
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams()
   const courseId = searchParams.get('courseId')
   const status = searchParams.get('status') || searchParams.get('statusPayment') || ''
+  const resultCode = searchParams.get('resultCode')
   const message = searchParams.get('message') || ''
+  const orderId = searchParams.get('orderId') || ''
+  const requestId = searchParams.get('requestId') || ''
+  const transId = searchParams.get('transId') || searchParams.get('transactionId') || ''
+  const [enrolling, setEnrolling] = useState(false)
+  const enrollStorageKey = useMemo(() => {
+    if (!courseId) return ''
+    const transactionPart = [orderId, requestId, transId].filter(Boolean).join('|')
+    const identity = transactionPart || `course:${courseId}`
+    return `payment-success-enroll:${identity}`
+  }, [courseId, orderId, requestId, transId])
 
-  const isError = status.toUpperCase() === 'ERROR' || message.toLowerCase().includes('declined')
+  const isError =
+    (resultCode != null && resultCode !== '' && resultCode !== '0') ||
+    status.toUpperCase() === 'ERROR' ||
+    message.toLowerCase().includes('declined')
+
+  useEffect(() => {
+    if (isError || !courseId || !enrollStorageKey) return
+
+    const currentState = sessionStorage.getItem(enrollStorageKey)
+    if (currentState === 'pending' || currentState === 'done') return
+    sessionStorage.setItem(enrollStorageKey, 'pending')
+
+    let cancelled = false
+    const autoEnroll = async () => {
+      setEnrolling(true)
+      try {
+        const enrolledRes = await enrollmentApi.isEnrolled(courseId)
+        const enrolledData = enrolledRes.data?.data ?? enrolledRes.data
+        const alreadyEnrolled = enrolledData === true || enrolledData === 'true'
+
+        if (!alreadyEnrolled) {
+          await enrollmentApi.join(courseId)
+        }
+        sessionStorage.setItem(enrollStorageKey, 'done')
+      } catch (error) {
+        // Nếu backend báo conflict (đã tồn tại) thì đánh dấu done để không gọi lại
+        if (error?.response?.status === 409) {
+          sessionStorage.setItem(enrollStorageKey, 'done')
+        } else {
+          sessionStorage.removeItem(enrollStorageKey)
+        }
+      } finally {
+        if (!cancelled) setEnrolling(false)
+      }
+    }
+    autoEnroll()
+    return () => { cancelled = true }
+  }, [isError, courseId, enrollStorageKey])
 
   return (
     <div className="payment-success-page">
@@ -44,8 +94,12 @@ const PaymentSuccess = () => {
               <div className="payment-success-icon">✓</div>
               <h1>Thanh toán thành công</h1>
               <p>Bạn đã thanh toán qua MoMo. Khóa học đã được kích hoạt trong tài khoản của bạn.</p>
+              {enrolling && <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>Đang ghi danh khóa học...</p>}
               <div className="payment-success-actions">
-                <Link to="/dashboard" className="payment-success-btn payment-success-btn-primary">
+                <Link
+                  to="/my-learning"
+                  className="payment-success-btn payment-success-btn-primary"
+                >
                   Vào My Learning
                 </Link>
                 {courseId && (

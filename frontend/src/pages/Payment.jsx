@@ -61,7 +61,8 @@ const Payment = () => {
     setError('')
     try {
       const result = await paymentApi.buySubscription(courseId)
-      const payUrl = result?.message
+      // Backend trả payUrl trong field "data"; momoClient có thể unwrap nên result là string hoặc { data, message }
+      const payUrl = typeof result === 'string' ? result : (result?.data ?? result?.message)
       if (payUrl && typeof payUrl === 'string' && payUrl.startsWith('http')) {
         window.location.href = payUrl
         return

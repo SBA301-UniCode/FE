@@ -39,26 +39,29 @@ const Header = () => {
         <nav className="header-nav">
           <Link to="/courses" className="header-nav-link">Courses</Link>
           {isAuthenticated ? (
-            isLecturer || isAdmin ? (
+            isAdmin ? (
+              <>
+                <Link to="/dashboard" className="header-nav-link">Dashboard</Link>
+                <Link to="/admin" className="header-nav-link">Admin Panel</Link>
+                <Link to="/my-courses" className="header-nav-link">Courses</Link>
+                <Link to="/syllabuses" className="header-nav-link">Syllabuses</Link>
+              </>
+            ) : isLecturer ? (
               <>
                 <Link to="/dashboard" className="header-nav-link">Dashboard</Link>
                 <Link to="/my-courses" className="header-nav-link">My Courses</Link>
-                <Link to="/dashboard" className="header-nav-link">Students</Link>
-                <Link to="/dashboard" className="header-nav-link">Analytics</Link>
-                <Link to="/dashboard" className="header-nav-link">Earnings</Link>
+                <Link to="/syllabuses" className="header-nav-link">Syllabuses</Link>
               </>
             ) : (
               <>
-                <Link to="/dashboard" className="header-nav-link">My Learning</Link>
-                <Link to="/dashboard" className="header-nav-link">Exercises</Link>
-                <Link to="/dashboard" className="header-nav-link">Progress</Link>
+                <Link to="/my-learning" className="header-nav-link">My Learning</Link>
+                <Link to="/my-certificates" className="header-nav-link">Certificates</Link>
               </>
             )
           ) : (
             <>
               <a href="#learning" className="header-nav-link">My Learning</a>
-              <a href="#exercises" className="header-nav-link">Exercises</a>
-              <a href="#progress" className="header-nav-link">Progress</a>
+              <a href="#features" className="header-nav-link">Features</a>
             </>
           )}
         </nav>
@@ -118,6 +121,15 @@ const Header = () => {
                     <Link to="/dashboard" className="header-user-dropdown-item" onClick={() => setShowUserMenu(false)}>
                       Dashboard
                     </Link>
+                    {!isLecturer && !isAdmin && (
+                      <Link
+                        to="/my-certificates"
+                        className="header-user-dropdown-item"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        My Certificates
+                      </Link>
+                    )}
                     <button type="button" className="header-user-dropdown-item header-user-logout" onClick={handleLogout}>
                       Đăng xuất
                     </button>

@@ -40,6 +40,13 @@ const Dashboard = () => {
               </Link>
             </div>
           )}
+          {!isInstructor && (
+            <div className="dashboard-links">
+              <Link to="/my-learning" className="dashboard-link-btn">
+                Vào My Learning
+              </Link>
+            </div>
+          )}
           <button onClick={handleLogout} className="dashboard-logout">
             Đăng xuất
           </button>

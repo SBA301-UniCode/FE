@@ -12,6 +12,10 @@ const apiClient = axios.create({
 // Gắn token vào mọi request nếu có
 apiClient.interceptors.request.use(
   (config) => {
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      // Let browser set multipart boundary automatically.
+      delete config.headers['Content-Type']
+    }
     const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Header from '../components/layout/Header'
-import { courseApi } from '../api'
+import { courseApi, enrollmentApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import './Courses.css'
 
@@ -30,6 +30,7 @@ const Courses = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [courses, setCourses] = useState([])
+  const [enrolledMap, setEnrolledMap] = useState({})
 
   useEffect(() => {
     let cancelled = false
@@ -53,6 +54,31 @@ const Courses = () => {
       })
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated || courses.length === 0) return
+    let cancelled = false
+
+    const checkEnrollments = async () => {
+      const map = {}
+      await Promise.all(
+        courses.map(async (c) => {
+          const id = getCourseKey(c)
+          if (!id) return
+          try {
+            const res = await enrollmentApi.isEnrolled(id)
+            const data = res.data?.data ?? res.data
+            map[id] = data === true || data === 'true'
+          } catch {
+            map[id] = false
+          }
+        })
+      )
+      if (!cancelled) setEnrolledMap(map)
+    }
+    checkEnrollments()
+    return () => { cancelled = true }
+  }, [isAuthenticated, courses])
 
   const handleBuy = (course) => {
     const id = course?.courseId || course?.id
@@ -84,30 +110,44 @@ const Courses = () => {
 
         {!loading && !error && courses.length > 0 && (
           <div className="courses-grid">
-            {courses.map((c) => (
-              <article key={getCourseKey(c)} className="courses-card">
-                <div className="courses-card-top">
-                  <div className="courses-card-title">{getCourseTitle(c)}</div>
-                </div>
-                {c?.instructorName && (
-                  <p className="courses-card-instructor">GV: {c.instructorName}</p>
-                )}
-                {getCourseDesc(c) && <p className="courses-card-desc">{getCourseDesc(c)}</p>}
-                <div className="courses-card-meta">
-                  <span className="courses-price">{formatPrice(c.price)}</span>
-                  {Number(c?.chapterCount) >= 0 && (
-                    <span className="courses-chapters">{c.chapterCount} chương</span>
+            {courses.map((c) => {
+              const id = getCourseKey(c)
+              const enrolled = enrolledMap[id]
+              return (
+                <article key={id} className="courses-card">
+                  <div className="courses-card-top">
+                    <div className="courses-card-title">{getCourseTitle(c)}</div>
+                    {enrolled && <span className="courses-enrolled-badge">Đã đăng ký</span>}
+                  </div>
+                  {c?.instructorName && (
+                    <p className="courses-card-instructor">GV: {c.instructorName}</p>
                   )}
-                </div>
-                <button
-                  type="button"
-                  className="courses-btn-buy"
-                  onClick={() => handleBuy(c)}
-                >
-                  Mua ngay
-                </button>
-              </article>
-            ))}
+                  {getCourseDesc(c) && <p className="courses-card-desc">{getCourseDesc(c)}</p>}
+                  <div className="courses-card-meta">
+                    <span className="courses-price">{formatPrice(c.price)}</span>
+                    {Number(c?.chapterCount) >= 0 && (
+                      <span className="courses-chapters">{c.chapterCount} chương</span>
+                    )}
+                  </div>
+                  {enrolled ? (
+                    <Link
+                      to={`/learning/${id}`}
+                      className="courses-btn-learn"
+                    >
+                      Vào học
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      className="courses-btn-buy"
+                      onClick={() => handleBuy(c)}
+                    >
+                      Mua ngay
+                    </button>
+                  )}
+                </article>
+              )
+            })}
           </div>
         )}
       </main>

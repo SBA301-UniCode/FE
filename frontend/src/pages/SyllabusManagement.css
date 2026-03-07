@@ -1,0 +1,177 @@
+.syllabus-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #2d1e41 0%, #16213e 60%, #0f3460 100%);
+  color: #fff;
+}
+
+.syllabus-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.syllabus-main h1 {
+  margin: 0 0 0.25rem;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.syllabus-main > p {
+  margin: 0 0 1.25rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.syllabus-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.syllabus-section {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 1.25rem;
+}
+
+.syllabus-table-wrap {
+  overflow-x: auto;
+}
+
+.syllabus-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.syllabus-table th,
+.syllabus-table td {
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.syllabus-table th {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.syllabus-btn {
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.syllabus-btn-primary {
+  background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+  color: #fff;
+}
+
+.syllabus-btn-ghost {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.syllabus-btn-danger {
+  background: rgba(220, 38, 38, 0.25);
+  color: #fca5a5;
+}
+
+.syllabus-btn-sm {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+.syllabus-actions-cell {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.syllabus-loading,
+.syllabus-empty {
+  padding: 1rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.syllabus-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.syllabus-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+}
+
+.syllabus-modal {
+  background: #1e1b3a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  padding: 1.5rem 1.75rem;
+  width: 95%;
+  max-width: 550px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.syllabus-modal h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.syllabus-modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.syllabus-modal input,
+.syllabus-modal textarea,
+.syllabus-modal select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 0.5rem 0.7rem;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.syllabus-modal select option {
+  background: #1e1b3a;
+  color: #fff;
+}
+
+.syllabus-form-error {
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 10px;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.syllabus-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}

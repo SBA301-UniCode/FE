@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthProvider'
 import Login from './pages/Login'
 import LandingPage from './pages/LandingPage'
-import Dashboard from './pages/Dashboard'
 import MyCourses from './pages/MyCourses'
 import ManageCourseVideos from './pages/ManageCourseVideos'
 import MyLearning from './pages/MyLearning'
@@ -25,14 +24,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<OAuthCallback />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/dashboard" element={<Navigate to="/" replace />} />
           <Route
             path="/my-courses"
             element={
@@ -44,7 +36,7 @@ function App() {
           <Route
             path="/my-learning"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['LEARNER']}>
                 <MyLearning />
               </ProtectedRoute>
             }
@@ -61,7 +53,7 @@ function App() {
           <Route
             path="/payment"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['LEARNER']}>
                 <Payment />
               </ProtectedRoute>
             }
@@ -70,7 +62,7 @@ function App() {
           <Route
             path="/learning/:courseId"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['LEARNER']}>
                 <CourseLearning />
               </ProtectedRoute>
             }
@@ -78,7 +70,7 @@ function App() {
           <Route
             path="/my-certificates"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['LEARNER']}>
                 <MyCertificates />
               </ProtectedRoute>
             }
@@ -86,7 +78,7 @@ function App() {
           <Route
             path="/admin"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['ADMIN']}>
                 <AdminPanel />
               </ProtectedRoute>
             }
@@ -102,7 +94,7 @@ function App() {
           <Route
             path="/quiz/:contentId"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['LEARNER']}>
                 <QuizPage />
               </ProtectedRoute>
             }

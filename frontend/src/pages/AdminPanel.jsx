@@ -466,16 +466,98 @@ function ReportTab() {
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState({ from: '', to: '' })
   const [error, setError] = useState('')
+  const [sourceNote, setSourceNote] = useState('')
   const [chartType, setChartType] = useState('area')
+
+  const extractDateKey = (value) => {
+    if (!value) return ''
+    const raw = String(value)
+    if (raw.length >= 10 && raw[4] === '-' && raw[7] === '-') return raw.slice(0, 10)
+    const dt = new Date(raw)
+    if (Number.isNaN(dt.getTime())) return ''
+    const y = dt.getFullYear()
+    const m = String(dt.getMonth() + 1).padStart(2, '0')
+    const d = String(dt.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
+  const buildReportFromSubscriptions = async ({ from, to }) => {
+    const size = 100
+    let page = 0
+    let totalPages = 1
+    const allSubs = []
+
+    while (page < totalPages) {
+      const res = await subscriptionApi.search({ from, to }, page, size)
+      const payload = unwrap(res)
+      const p = extractPage(payload)
+      allSubs.push(...p.list)
+      totalPages = Math.max(1, Number(p.totalPages || 1))
+      page += 1
+    }
+
+    const dailyMap = new Map()
+    let totalAmount = 0
+    let totalPayment = 0
+    let totalSuccess = 0
+    let totalError = 0
+
+    allSubs.forEach((s) => {
+      const dateKey = extractDateKey(s?.createdAt)
+      if (!dateKey) return
+      const status = String(s?.statusPayment || '').toUpperCase()
+      const amount = Number(s?.subcriptionPrice || 0)
+
+      if (!dailyMap.has(dateKey)) {
+        dailyMap.set(dateKey, { localDate: dateKey, totalAmount: 0, totalPayment: 0, success: 0, error: 0 })
+      }
+      const row = dailyMap.get(dateKey)
+      row.totalPayment += 1
+      totalPayment += 1
+
+      if (status === 'SUCCESS') {
+        const revenue = Number.isFinite(amount) ? amount : 0
+        row.success += 1
+        row.totalAmount += revenue
+        totalSuccess += 1
+        totalAmount += revenue
+      } else if (status === 'ERROR') {
+        row.error += 1
+        totalError += 1
+      }
+    })
+
+    const data = Array.from(dailyMap.values()).sort((a, b) =>
+      String(a.localDate).localeCompare(String(b.localDate)),
+    )
+
+    return {
+      totalAmount,
+      totalPayment,
+      totalSuccess,
+      totalError,
+      totalPending: totalPayment - totalSuccess - totalError,
+      data,
+    }
+  }
 
   const fetchReport = async () => {
     if (!filter.from || !filter.to) { setError('Vui lòng chọn khoảng thời gian'); return }
+    if (new Date(filter.from) > new Date(filter.to)) {
+      setError('Khoảng thời gian không hợp lệ: "Từ ngày" phải nhỏ hơn hoặc bằng "Đến ngày".')
+      return
+    }
     setLoading(true)
     setError('')
+    setReport(null)
+    setSourceNote('')
     try {
-      const res = await subscriptionApi.report({ from: filter.from, to: filter.to })
-      setReport(unwrap(res))
-    } catch (e) { setError(e.response?.data?.message || e.message) }
+      const computed = await buildReportFromSubscriptions({ from: filter.from, to: filter.to })
+      setReport(computed)
+      setSourceNote('Nguồn dữ liệu: subscriptions/search (đọc từ database).')
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.errorCode || e?.message || 'Không tải được báo cáo doanh thu.')
+    }
     setLoading(false)
   }
 
@@ -504,6 +586,7 @@ function ReportTab() {
         </button>
       </div>
       {error && <div className="admin-error">{error}</div>}
+      {!error && sourceNote && <div className="admin-loading">{sourceNote}</div>}
 
       {report && (
         <>

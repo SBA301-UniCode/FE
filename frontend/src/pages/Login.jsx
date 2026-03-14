@@ -8,7 +8,7 @@ const Login = () => {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const { login, isAuthenticated } = useAuth()
-  const returnTo = location.state?.returnTo || '/dashboard'
+  const returnTo = location.state?.returnTo || '/'
   const [formData, setFormData] = useState({
     username: '',
     password: ''

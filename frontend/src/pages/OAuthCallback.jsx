@@ -22,7 +22,7 @@ const OAuthCallback = () => {
     if (accessToken && refreshToken) {
       // Handle successful login
       handleGoogleCallback(accessToken, refreshToken)
-      navigate('/dashboard', { replace: true })
+      navigate('/', { replace: true })
     } else {
       // Missing tokens, redirect to login
       navigate('/login?error=missing_tokens', { replace: true })

@@ -8,8 +8,8 @@ const VIDEOS_BASE = '/api/v1/videos'
  */
 export const videoApi = {
   /**
-   * Upload video (backend gửi lên Cloudinary).
-   * @param {{ contentId: string, duration: number }} request
+   * Upload video cho lesson (backend tự tạo Content(VIDEO)).
+   * @param {{ lessonId: string, duration: number }} request
    * @param {File} file - file video
    */
   uploadVideo(request, file) {
@@ -25,9 +25,9 @@ export const videoApi = {
     return apiClient.get(VIDEOS_BASE)
   },
 
-  /** Chi tiết một video theo contentId */
-  getVideoDetail(contentId) {
-    return apiClient.get(`${VIDEOS_BASE}/${contentId}`)
+  /** Chi tiết một video theo videoId */
+  getVideoDetail(videoId) {
+    return apiClient.get(`${VIDEOS_BASE}/${videoId}`)
   },
 
   /** Xóa video (soft delete + xóa trên Cloudinary) */

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Header from '../components/layout/Header'
-import { chapterApi, contentApi, lessonApi, videoApi, examApi, questionBankApi } from '../api'
+import { chapterApi, contentApi, lessonApi, videoApi, examApi, questionBankApi, documentApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import './ManageCourseVideos.css'
 
@@ -13,7 +13,6 @@ const getApiErrorMessage = (err, fallback) =>
   err?.message ||
   fallback
 const getContentId = (content) => content?.contentId || content?.id || ''
-const DOC_STORAGE_KEY = 'unicode_document_content_map_v1'
 const DELETED_CONTENT_STORAGE_KEY = 'unicode_deleted_content_ids_v1'
 
 const readJsonStorage = (key, fallback) => {
@@ -27,8 +26,6 @@ const readJsonStorage = (key, fallback) => {
   }
 }
 
-const readDocMap = () => readJsonStorage(DOC_STORAGE_KEY, {})
-const writeDocMap = (map) => localStorage.setItem(DOC_STORAGE_KEY, JSON.stringify(map))
 const readDeletedContentIdMap = () => readJsonStorage(DELETED_CONTENT_STORAGE_KEY, {})
 const writeDeletedContentIdMap = (map) => localStorage.setItem(DELETED_CONTENT_STORAGE_KEY, JSON.stringify(map))
 
@@ -82,7 +79,7 @@ const ManageCourseVideos = () => {
   const [questionBankItems, setQuestionBankItems] = useState([])
   const [documentTitle, setDocumentTitle] = useState('')
   const [documentBody, setDocumentBody] = useState('')
-  const [documentMap, setDocumentMap] = useState(() => readDocMap())
+  const [documentMap, setDocumentMap] = useState({})
   const [deletedContentIdMap, setDeletedContentIdMap] = useState(() => readDeletedContentIdMap())
 
   const clearMessages = () => { setError(''); setUploadError(''); setActionMsg(''); setQuestionBankError('') }
@@ -139,16 +136,45 @@ const ManageCourseVideos = () => {
   const fetchVideoMap = useCallback(async (contentList) => {
     const vMap = {}
     const videoItems = contentList.filter((c) => c.contentType === 'VIDEO')
-    await Promise.all(videoItems.map(async (c) => {
-      try {
-        const contentId = getContentId(c)
-        if (!contentId) return
-        const vRes = await videoApi.getVideoDetail(contentId)
-        const v = unwrap(vRes)
-        if (v) vMap[contentId] = v
-      } catch { /* not uploaded yet */ }
-    }))
+    if (videoItems.length === 0) return vMap
+    try {
+      // Backend detail endpoint now expects videoId, so map by list endpoint.
+      const allRes = await videoApi.getAllActiveVideos()
+      const allVideos = Array.isArray(unwrap(allRes)) ? unwrap(allRes) : []
+      const validContentIds = new Set(videoItems.map((c) => String(getContentId(c))))
+      allVideos.forEach((v) => {
+        const cId = String(v?.contentId || '')
+        if (cId && validContentIds.has(cId)) vMap[cId] = v
+      })
+      // Enrich with signed playback URLs when available.
+      await Promise.all(Object.entries(vMap).map(async ([cId, v]) => {
+        const videoId = v?.videoId
+        if (!videoId) return
+        try {
+          const detailRes = await videoApi.getVideoDetail(videoId)
+          const detail = unwrap(detailRes)
+          if (detail?.url) vMap[cId] = { ...v, ...detail }
+        } catch { /* fallback to list URL */ }
+      }))
+    } catch { /* keep empty */ }
     return vMap
+  }, [])
+
+  const fetchDocumentMap = useCallback(async (lessonId, contentList) => {
+    if (!lessonId) return {}
+    try {
+      const res = await documentApi.getByLessonId(lessonId)
+      const docs = Array.isArray(unwrap(res)) ? unwrap(res) : []
+      const validContentIds = new Set((contentList || []).map((c) => String(getContentId(c))))
+      const nextMap = {}
+      docs.forEach((doc) => {
+        const cId = String(doc?.contentId || '')
+        if (cId && validContentIds.has(cId)) nextMap[cId] = doc
+      })
+      return nextMap
+    } catch {
+      return {}
+    }
   }, [])
 
   // ── Initial load chapters ──
@@ -182,8 +208,10 @@ const ManageCourseVideos = () => {
     setContents(visibleList)
     const vMap = await fetchVideoMap(visibleList)
     setVideoMap(vMap)
+    const dMap = await fetchDocumentMap(lId, visibleList)
+    setDocumentMap(dMap)
     setLoadingContents(false)
-  }, [fetchContents, fetchVideoMap, deletedContentIdMap])
+  }, [fetchContents, fetchVideoMap, fetchDocumentMap, deletedContentIdMap])
 
   useEffect(() => {
     loadLessonContents(selectedLessonId)
@@ -251,31 +279,28 @@ const ManageCourseVideos = () => {
   }
 
   // ═══════════════════════════════════════════════
-  //  UPLOAD VIDEO: Content(VIDEO) → Video file
+  //  UPLOAD VIDEO: lessonId + file (backend tự tạo Content(VIDEO))
   // ═══════════════════════════════════════════════
   const handleUploadVideo = async (e) => {
     e.preventDefault()
     if (!selectedLessonId || !uploadFile) { setUploadError('Chọn bài giảng và file video.'); return }
     setUploading(true); clearMessages()
     try {
-      setUploadStep('Bước 1/2: Tạo Content(VIDEO)...')
-      const cRes = await contentApi.create({ contentType: 'VIDEO', lessonId: selectedLessonId })
-      const created = unwrap(cRes)
-      const contentId = created?.contentId
-      if (!contentId) throw new Error('Backend không trả về contentId.')
-
-      setUploadStep('Bước 2/2: Upload video lên Cloudinary...')
-      const vRes = await videoApi.uploadVideo({ contentId, duration: Number(uploadDuration) || 0 }, uploadFile)
+      setUploadStep('Đang upload video...')
+      const vRes = await videoApi.uploadVideo({ lessonId: selectedLessonId, duration: Number(uploadDuration) || 0 }, uploadFile)
       const video = unwrap(vRes)
+      const contentId = video?.contentId
 
       setUploadStep(''); setUploadFile(null); setUploadDuration(0)
       setActionMsg('Upload video thành công!')
 
-      if (video) setVideoMap((prev) => ({ ...prev, [contentId]: video }))
-      setContents((prev) => {
-        if (prev.some((c) => c.contentId === contentId)) return prev
-        return [...prev, { contentId, contentType: 'VIDEO', lessonId: selectedLessonId }]
-      })
+      if (video && contentId) setVideoMap((prev) => ({ ...prev, [contentId]: video }))
+      if (contentId) {
+        setContents((prev) => {
+          if (prev.some((c) => c.contentId === contentId)) return prev
+          return [...prev, { contentId, contentType: 'VIDEO', lessonId: selectedLessonId }]
+        })
+      }
 
       const refreshed = await fetchContents(selectedLessonId)
       if (refreshed) {
@@ -297,26 +322,19 @@ const ManageCourseVideos = () => {
   const handleCreateDocument = async () => {
     if (!selectedLessonId) return
     if (!documentBody.trim()) {
-      setUploadError('Vui lòng nhập nội dung tài liệu trước khi tạo.')
+      setUploadError('Vui lòng nhập URL tài liệu trước khi tạo.')
       return
     }
     setCreatingDoc(true); clearMessages()
     try {
-      const res = await contentApi.create({ contentType: 'DOCUMENT', lessonId: selectedLessonId })
+      const res = await documentApi.create({
+        lessonId: selectedLessonId,
+        title: documentTitle.trim() || 'Tài liệu bài giảng',
+        documentUrl: documentBody.trim(),
+      })
       const created = unwrap(res)
       const contentId = created?.contentId
       if (!contentId) throw new Error('Backend không trả về contentId của tài liệu.')
-
-      const nextDocMap = {
-        ...documentMap,
-        [contentId]: {
-          title: documentTitle.trim() || 'Tài liệu bài giảng',
-          body: documentBody.trim(),
-          updatedAt: new Date().toISOString(),
-        },
-      }
-      writeDocMap(nextDocMap)
-      setDocumentMap(nextDocMap)
       setDocumentTitle('')
       setDocumentBody('')
       setActionMsg('Tạo tài liệu thành công!')
@@ -418,7 +436,14 @@ const ManageCourseVideos = () => {
     if (!window.confirm(`Xóa ${label}?`)) return
     clearMessages()
     try {
-      await contentApi.delete(contentId)
+      if (ct.contentType === 'DOCUMENT') {
+        const doc = documentMap[contentId]
+        const documentId = doc?.documentId
+        if (!documentId) throw new Error('Không tìm thấy documentId để xóa tài liệu.')
+        await documentApi.delete(documentId)
+      } else {
+        await contentApi.delete(contentId)
+      }
       const lessonId = selectedLessonId || ct.lessonId
       if (lessonId) {
         const nextDeletedMap = { ...readDeletedContentIdMap() }
@@ -430,7 +455,6 @@ const ManageCourseVideos = () => {
       const docMap = { ...documentMap }
       if (docMap[contentId]) {
         delete docMap[contentId]
-        writeDocMap(docMap)
         setDocumentMap(docMap)
       }
       setContents((prev) => prev.filter((item) => getContentId(item) !== contentId))
@@ -757,7 +781,7 @@ const ManageCourseVideos = () => {
                     <div className="mv-add-card">
                       <span className="mv-add-card-icon">▶</span>
                       <span className="mv-add-card-title">Upload Video</span>
-                      <p className="mv-add-card-desc">Tạo Content(VIDEO) → upload file Cloudinary</p>
+                      <p className="mv-add-card-desc">Upload file video cho bài giảng (backend tự tạo content)</p>
                       <form className="mv-upload-form" onSubmit={handleUploadVideo}>
                         <input type="number" min={0} placeholder="Thời lượng (giây)" value={uploadDuration || ''}
                           onChange={(e) => setUploadDuration(e.target.value)} className="manage-videos-input" />
@@ -775,7 +799,7 @@ const ManageCourseVideos = () => {
                     <div className="mv-add-card">
                       <span className="mv-add-card-icon">📄</span>
                       <span className="mv-add-card-title">Thêm Tài liệu</span>
-                      <p className="mv-add-card-desc">Nhập nội dung trước khi tạo Content(DOCUMENT)</p>
+                      <p className="mv-add-card-desc">Nhập URL tài liệu, backend sẽ tạo Document + Content(DOCUMENT)</p>
                       <input
                         type="text"
                         placeholder="Tiêu đề tài liệu (không bắt buộc)"
@@ -787,7 +811,7 @@ const ManageCourseVideos = () => {
                       <textarea
                         className="manage-videos-input"
                         rows={4}
-                        placeholder="Nhập nội dung text tài liệu..."
+                        placeholder="Nhập URL tài liệu..."
                         value={documentBody}
                         onChange={(e) => setDocumentBody(e.target.value)}
                         disabled={creatingDoc}
@@ -863,7 +887,11 @@ const ManageCourseVideos = () => {
                             {ct.contentType === 'DOCUMENT' && (
                               <div className="manage-videos-hint">
                                 <p><strong>{docData?.title || 'Tài liệu bài giảng'}</strong></p>
-                                <p>{docData?.body || 'Chưa có nội dung text cho tài liệu này.'}</p>
+                                {docData?.documentUrl ? (
+                                  <a href={docData.documentUrl} target="_blank" rel="noreferrer">{docData.documentUrl}</a>
+                                ) : (
+                                  <p>Chưa có URL tài liệu cho nội dung này.</p>
+                                )}
                               </div>
                             )}
                             {ct.contentType === 'QUIZ' && <p className="manage-videos-hint">Bài kiểm tra đã tạo.</p>}

@@ -20,6 +20,8 @@ const QuizPage = () => {
   const enrollmentId = searchParams.get('enrollmentId') || ''
   const courseId = searchParams.get('courseId') || ''
   const lessonId = searchParams.get('lessonId') || contentId
+  const chapterId = searchParams.get('chapterId') || ''
+  const selectedContentId = searchParams.get('contentId') || contentId
   const navigate = useNavigate()
 
   const [loading, setLoading] = useState(true)
@@ -136,8 +138,16 @@ const QuizPage = () => {
   }
 
   const goBack = () => {
-    if (courseId) navigate(`/learning/${courseId}`)
-    else navigate(-1)
+    if (!courseId) {
+      navigate(-1)
+      return
+    }
+    const params = new URLSearchParams()
+    if (enrollmentId) params.set('enrollmentId', enrollmentId)
+    if (lessonId) params.set('lessonId', lessonId)
+    if (chapterId) params.set('chapterId', chapterId)
+    if (selectedContentId) params.set('contentId', selectedContentId)
+    navigate(`/learning/${courseId}?${params.toString()}`)
   }
 
   if (loading) {

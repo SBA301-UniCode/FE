@@ -41,14 +41,12 @@ const Header = () => {
           {isAuthenticated ? (
             isAdmin ? (
               <>
-                <Link to="/dashboard" className="header-nav-link">Dashboard</Link>
                 <Link to="/admin" className="header-nav-link">Admin Panel</Link>
-                <Link to="/my-courses" className="header-nav-link">Courses</Link>
+                <Link to="/my-courses" className="header-nav-link">My Courses</Link>
                 <Link to="/syllabuses" className="header-nav-link">Syllabuses</Link>
               </>
             ) : isLecturer ? (
               <>
-                <Link to="/dashboard" className="header-nav-link">Dashboard</Link>
                 <Link to="/my-courses" className="header-nav-link">My Courses</Link>
                 <Link to="/syllabuses" className="header-nav-link">Syllabuses</Link>
               </>
@@ -95,7 +93,7 @@ const Header = () => {
                 </Link>
               )}
               {!isLecturer && (
-                <Link to="/dashboard" className="header-btn header-btn-browse">
+                <Link to="/courses" className="header-btn header-btn-browse">
                   <span className="header-btn-icon">📖</span> Browse Courses
                 </Link>
               )}
@@ -118,8 +116,8 @@ const Header = () => {
                       <span>{user?.email}</span>
                       <span className="header-user-role">Role: {roleLabel}</span>
                     </div>
-                    <Link to="/dashboard" className="header-user-dropdown-item" onClick={() => setShowUserMenu(false)}>
-                      Dashboard
+                    <Link to="/courses" className="header-user-dropdown-item" onClick={() => setShowUserMenu(false)}>
+                      Courses
                     </Link>
                     {!isLecturer && !isAdmin && (
                       <Link

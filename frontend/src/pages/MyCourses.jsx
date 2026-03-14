@@ -134,8 +134,8 @@ const MyCourses = () => {
             <p>Danh sách khóa học bạn đang sở hữu/quản lý.</p>
           </div>
           <div className="mycourses-actions">
-            <Link to="/dashboard" className="mycourses-btn mycourses-btn-ghost">
-              ← Dashboard
+            <Link to="/" className="mycourses-btn mycourses-btn-ghost">
+              ← Trang chủ
             </Link>
             {canView && (
               <button type="button" className="mycourses-btn mycourses-btn-primary" onClick={openCreate}>

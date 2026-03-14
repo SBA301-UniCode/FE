@@ -156,15 +156,28 @@
 }
 
 .mycourses-card-link {
-  margin-top: 0.5rem;
-  align-self: flex-start;
+  margin-top: 0;
+  align-self: stretch;
 }
 
 .mycourses-card-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(88px, 1fr);
   gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-top: 0.35rem;
+  margin-top: 0.45rem;
+  align-items: stretch;
+}
+
+.mycourses-card-actions .mycourses-btn {
+  min-height: 44px;
+  padding: 0.62rem 0.9rem;
+}
+
+.mycourses-card-actions .mycourses-btn-danger {
+  grid-column: 1 / -1;
+  min-height: 40px;
+  min-width: 72px;
+  justify-self: start;
 }
 
 .mycourses-btn-danger {
@@ -260,6 +273,13 @@
   }
   .mycourses-grid {
     grid-template-columns: 1fr;
+  }
+  .mycourses-card-actions {
+    grid-template-columns: 1fr;
+  }
+  .mycourses-card-actions .mycourses-btn-danger {
+    grid-column: auto;
+    width: 100%;
   }
 }
 

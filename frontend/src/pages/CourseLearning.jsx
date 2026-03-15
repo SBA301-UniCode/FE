@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import Header from '../components/layout/Header'
-import { chapterApi, lessonApi, videoApi, contentApi, enrollmentApi, processApi, certificateApi, documentApi } from '../api'
+import { chapterApi, lessonApi, videoApi, contentApi, enrollmentApi, processApi, certificateApi, documentApi, watermarkApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import './CourseLearning.css'
 
@@ -693,9 +693,52 @@ const CourseLearning = () => {
                 <div className="cl-doc-header"><span className="cl-doc-icon">📄</span><h3>{selectedDoc?.title || 'Tài liệu bài giảng'}</h3></div>
                 <div className="cl-doc-body">
                   {selectedDoc?.documentUrl ? (
-                    <a href={selectedDoc.documentUrl} target="_blank" rel="noreferrer">
-                      Mở tài liệu: {selectedDoc.documentUrl}
-                    </a>
+                    <>
+                      <a href={selectedDoc.documentUrl} target="_blank" rel="noreferrer">
+                        📄 Mở tài liệu
+                      </a>
+                      <button
+                        type="button"
+                        className="cl-doc-btn"
+                        style={{ marginLeft: '0.75rem', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', color: '#fff', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
+                        onClick={async () => {
+                          try {
+                            const res = await watermarkApi.downloadWithWatermark(selectedDoc.documentId)
+                            const url = window.URL.createObjectURL(new Blob([res.data]))
+                            const a = document.createElement('a')
+                            a.href = url
+                            
+                            // Try to get filename from Content-Disposition header
+                            let filename = selectedDoc.title || 'document'
+                            const contentDisposition = res.headers['content-disposition']
+                            if (contentDisposition) {
+                              const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/)
+                              if (filenameMatch && filenameMatch.length === 2) {
+                                filename = filenameMatch[1]
+                              }
+                            } else {
+                              // Fallback: try to guess extension from Content-Type if title has no extension
+                              if (!filename.includes('.')) {
+                                const contentType = res.headers['content-type']
+                                if (contentType === 'application/pdf') filename += '.pdf'
+                                else if (contentType?.startsWith('image/')) filename += '.png'
+                                else filename += '.pdf' // Default fallback
+                              }
+                            }
+                            
+                            a.download = filename
+                            document.body.appendChild(a)
+                            a.click()
+                            a.remove()
+                            window.URL.revokeObjectURL(url)
+                          } catch (e) {
+                            alert('Không thể tải tài liệu: ' + (e?.response?.data?.message || e.message))
+                          }
+                        }}
+                      >
+                        🔒 Tải có Watermark
+                      </button>
+                    </>
                   ) : (
                     <>
                       <p>Tài liệu này hiện chưa có URL.</p>

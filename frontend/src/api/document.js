@@ -3,8 +3,13 @@ import apiClient from './client'
 const DOCUMENTS_BASE = '/api/v1/documents'
 
 export const documentApi = {
-  create(payload) {
-    return apiClient.post(`${DOCUMENTS_BASE}/create`, payload)
+  create(data, file) {
+    const formData = new FormData()
+    if (file) formData.append('file', file)
+    formData.append('request', new Blob([JSON.stringify(data)], { type: 'application/json' }))
+    return apiClient.post(`${DOCUMENTS_BASE}/create`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
   },
 
   getByLessonId(lessonId) {

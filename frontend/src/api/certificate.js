@@ -7,7 +7,7 @@ const CERTS_BASE = '/api/v1/certificates'
  */
 export const certificateApi = {
   /**
-   * Lấy tất cả certificates (phân trang) – dành cho admin (nếu cần).
+   * Lấy tất cả certificates (phân trang) – dành cho admin.
    */
   getAll(page = 0, size = 20) {
     return apiClient.get(CERTS_BASE, { params: { page, size } })
@@ -15,16 +15,20 @@ export const certificateApi = {
 
   /**
    * Lấy certificates theo learnerId.
-   * Lưu ý: backend không có endpoint /me, nên nếu cần tự động,
-   * FE phải biết learnerId (ví dụ từ userApi.getMe()).
    */
   getByLearnerId(learnerId) {
     return apiClient.get(`${CERTS_BASE}/user/${learnerId}`)
   },
 
   /**
-   * Tạo certificate mới cho một khóa học (khi đã hoàn thành 100%).
-   * Cần xem CertificateCreateRequest bên backend để map đúng field.
+   * Lấy certificates của user hiện tại (cần auth).
+   */
+  getMyList() {
+    return apiClient.get(`${CERTS_BASE}/me`)
+  },
+
+  /**
+   * Tạo certificate mới cho một khóa học (backend validate 100%).
    */
   create(payload) {
     return apiClient.post(CERTS_BASE, payload)
@@ -34,8 +38,14 @@ export const certificateApi = {
     return apiClient.get(`${CERTS_BASE}/${certificateId}`)
   },
 
+  /**
+   * Xác minh certificate bằng serial number (public, không cần auth).
+   */
+  verifyBySerial(serialNumber) {
+    return apiClient.get(`${CERTS_BASE}/verify/${serialNumber}`)
+  },
+
   delete(certificateId) {
     return apiClient.delete(`${CERTS_BASE}/${certificateId}`)
   },
 }
-

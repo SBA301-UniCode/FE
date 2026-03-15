@@ -1,153 +1,185 @@
 .mycerts {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 12% 16%, rgba(52, 211, 153, 0.16), transparent 30%),
-    radial-gradient(circle at 86% 18%, rgba(96, 165, 250, 0.2), transparent 30%),
-    linear-gradient(145deg, #020617 0%, #08142a 55%, #000000 100%);
-  color: #f8fafc;
+  background: linear-gradient(135deg, #0f0c29 0%, #1a1a3e 50%, #24243e 100%);
+  color: #e0e0e0;
 }
 
 .mycerts-main {
-  max-width: 1280px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 2.2rem 1.5rem 4.5rem;
+  padding: 2rem 1.5rem 4rem;
 }
 
 .mycerts-header {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 1.1rem;
-  margin-bottom: 1.4rem;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
 }
 
 .mycerts-header h1 {
-  margin: 0;
-  font-size: clamp(2rem, 3.5vw, 2.45rem);
-  font-weight: 900;
-  letter-spacing: -0.02em;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.3rem;
 }
 
 .mycerts-header p {
-  margin: 0.45rem 0 0;
-  color: rgba(203, 213, 225, 0.88);
+  color: #9ca3af;
+  margin: 0;
 }
 
-.mycerts-sync-btn {
-  border: 1px solid rgba(34, 197, 94, 0.45);
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.6), rgba(15, 23, 42, 0.9));
-  color: #ecfeff;
-  border-radius: 13px;
-  padding: 0.68rem 1.05rem;
-  font-weight: 700;
+.mycerts-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Buttons */
+.mycerts-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
-  box-shadow: 0 10px 24px rgba(16, 185, 129, 0.24);
+  transition: all 0.2s;
+  text-decoration: none;
+  border: none;
 }
 
-.mycerts-sync-btn:hover:not(:disabled) {
+.mycerts-btn-primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+}
+
+.mycerts-btn-primary:hover {
+  background: linear-gradient(135deg, #818cf8, #a78bfa);
   transform: translateY(-1px);
-  filter: brightness(1.05);
-  box-shadow: 0 12px 26px rgba(16, 185, 129, 0.32);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
 }
 
-.mycerts-sync-btn:disabled {
-  opacity: 0.58;
-  cursor: not-allowed;
+.mycerts-btn-ghost {
+  background: transparent;
+  color: #a5b4fc;
+  border: 1px solid #4f46e5;
 }
 
+.mycerts-btn-ghost:hover {
+  background: rgba(99, 102, 241, 0.15);
+  color: #c7d2fe;
+}
+
+/* States */
 .mycerts-loading,
 .mycerts-empty {
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.72));
-  border-radius: 18px;
-  padding: 1rem 1.25rem;
-  border: 1px solid rgba(30, 64, 175, 0.36);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #9ca3af;
+  font-size: 1.05rem;
 }
 
 .mycerts-error {
-  background: rgba(220, 38, 38, 0.1);
-  border-radius: 18px;
-  padding: 1rem 1.25rem;
-  border: 1px solid rgba(220, 38, 38, 0.5);
+  background: #2d1b1b;
+  border: 1px solid #7f1d1d;
+  border-radius: 10px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #fca5a5;
 }
 
+/* Grid */
 .mycerts-grid {
-  margin-top: 1.35rem;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.1rem;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
 }
 
+/* Card */
 .mycerts-card {
-  background:
-    radial-gradient(circle at top left, rgba(74, 222, 128, 0.3), transparent 45%),
-    linear-gradient(145deg, rgba(6, 78, 59, 0.58), rgba(15, 23, 42, 0.95) 65%);
-  border-radius: 20px;
-  padding: 1.02rem 1.1rem;
-  border: 1px solid rgba(34, 197, 94, 0.4);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   flex-direction: column;
-  gap: 0.52rem;
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.36);
-  position: relative;
-  overflow: hidden;
-  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
-}
-
-.mycerts-card::after {
-  content: 'CERT';
-  position: absolute;
-  top: -8px;
-  right: 8px;
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  color: rgba(187, 247, 208, 0.28);
+  gap: 0.6rem;
 }
 
 .mycerts-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.44);
-  border-color: rgba(74, 222, 128, 0.6);
+  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.mycerts-card-badge {
+  font-size: 0.8rem;
+  color: #a78bfa;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .mycerts-card-title {
-  font-weight: 900;
-  font-size: 1.08rem;
-  letter-spacing: -0.01em;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  line-height: 1.3;
 }
 
-.mycerts-card-learner {
-  font-size: 0.9rem;
-  color: rgba(226, 232, 240, 0.93);
+.mycerts-card-instructor {
+  color: #9ca3af;
+  font-size: 0.88rem;
+  margin: 0;
 }
 
-.mycerts-card-meta {
-  font-size: 0.82rem;
-  color: rgba(226, 232, 240, 0.84);
+.mycerts-card-info {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mycerts-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+}
+
+.mycerts-label {
+  color: #9ca3af;
+}
+
+.mycerts-serial {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #a78bfa;
+  font-weight: 600;
+  font-size: 0.92rem;
+  letter-spacing: 0.03em;
+}
+
+.mycerts-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 640px) {
-  .mycerts-main {
-    padding: 1.6rem 1rem 3rem;
-  }
-  .mycerts-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .mycerts-header h1 {
-    font-size: 1.85rem;
-  }
-  .mycerts-sync-btn {
-    width: 100%;
-  }
   .mycerts-grid {
     grid-template-columns: 1fr;
   }
+  .mycerts-header {
+    flex-direction: column;
+  }
 }
-

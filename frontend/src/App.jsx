@@ -7,6 +7,7 @@ import ManageCourseVideos from './pages/ManageCourseVideos'
 import MyLearning from './pages/MyLearning'
 import CourseLearning from './pages/CourseLearning'
 import MyCertificates from './pages/MyCertificates'
+import VerifyCertificate from './pages/VerifyCertificate'
 import Courses from './pages/Courses'
 import Payment from './pages/Payment'
 import PaymentSuccess from './pages/PaymentSuccess'
@@ -50,6 +51,7 @@ function App() {
             }
           />
           <Route path="/courses" element={<Courses />} />
+          <Route path="/verify-certificate" element={<VerifyCertificate />} />
           <Route
             path="/payment"
             element={

@@ -15,6 +15,7 @@ import OAuthCallback from './pages/OAuthCallback'
 import AdminPanel from './pages/AdminPanel'
 import SyllabusManagement from './pages/SyllabusManagement'
 import QuizPage from './pages/QuizPage'
+import VerifyContent from './pages/VerifyContent'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -98,6 +99,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['LEARNER']}>
                 <QuizPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/verify-content"
+            element={
+              <ProtectedRoute>
+                <VerifyContent />
               </ProtectedRoute>
             }
           />

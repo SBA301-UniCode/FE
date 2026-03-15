@@ -44,11 +44,13 @@ const Header = () => {
                 <Link to="/admin" className="header-nav-link">Admin Panel</Link>
                 <Link to="/my-courses" className="header-nav-link">My Courses</Link>
                 <Link to="/syllabuses" className="header-nav-link">Syllabuses</Link>
+                <Link to="/verify-content" className="header-nav-link">🛡️ Verify</Link>
               </>
             ) : isLecturer ? (
               <>
                 <Link to="/my-courses" className="header-nav-link">My Courses</Link>
                 <Link to="/syllabuses" className="header-nav-link">Syllabuses</Link>
+                <Link to="/verify-content" className="header-nav-link">🛡️ Verify</Link>
               </>
             ) : (
               <>
@@ -126,6 +128,15 @@ const Header = () => {
                         onClick={() => setShowUserMenu(false)}
                       >
                         My Certificates
+                      </Link>
+                    )}
+                    {(isAdmin || isLecturer) && (
+                      <Link
+                        to="/verify-content"
+                        className="header-user-dropdown-item"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        🛡️ Verify Content
                       </Link>
                     )}
                     <button type="button" className="header-user-dropdown-item header-user-logout" onClick={handleLogout}>

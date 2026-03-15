@@ -78,7 +78,7 @@ const ManageCourseVideos = () => {
   const [questionBankError, setQuestionBankError] = useState('')
   const [questionBankItems, setQuestionBankItems] = useState([])
   const [documentTitle, setDocumentTitle] = useState('')
-  const [documentBody, setDocumentBody] = useState('')
+  const [uploadDocFile, setUploadDocFile] = useState(null)
   const [documentMap, setDocumentMap] = useState({})
   const [deletedContentIdMap, setDeletedContentIdMap] = useState(() => readDeletedContentIdMap())
 
@@ -319,24 +319,25 @@ const ManageCourseVideos = () => {
   // ═══════════════════════════════════════════════
   const [creatingDoc, setCreatingDoc] = useState(false)
 
-  const handleCreateDocument = async () => {
+  const handleCreateDocument = async (e) => {
+    e.preventDefault()
     if (!selectedLessonId) return
-    if (!documentBody.trim()) {
-      setUploadError('Vui lòng nhập URL tài liệu trước khi tạo.')
+    if (!uploadDocFile) {
+      setUploadError('Vui lòng chọn file tài liệu trước khi tạo.')
       return
     }
     setCreatingDoc(true); clearMessages()
     try {
       const res = await documentApi.create({
         lessonId: selectedLessonId,
-        title: documentTitle.trim() || 'Tài liệu bài giảng',
-        documentUrl: documentBody.trim(),
-      })
+        title: documentTitle.trim() || 'Tài liệu bài giảng'
+      }, uploadDocFile)
+      
       const created = unwrap(res)
       const contentId = created?.contentId
       if (!contentId) throw new Error('Backend không trả về contentId của tài liệu.')
       setDocumentTitle('')
-      setDocumentBody('')
+      setUploadDocFile(null)
       setActionMsg('Tạo tài liệu thành công!')
 
       if (contentId) {
@@ -798,28 +799,29 @@ const ManageCourseVideos = () => {
                     {/* Document */}
                     <div className="mv-add-card">
                       <span className="mv-add-card-icon">📄</span>
-                      <span className="mv-add-card-title">Thêm Tài liệu</span>
-                      <p className="mv-add-card-desc">Nhập URL tài liệu, backend sẽ tạo Document + Content(DOCUMENT)</p>
-                      <input
-                        type="text"
-                        placeholder="Tiêu đề tài liệu (không bắt buộc)"
-                        className="manage-videos-input"
-                        value={documentTitle}
-                        onChange={(e) => setDocumentTitle(e.target.value)}
-                        disabled={creatingDoc}
-                      />
-                      <textarea
-                        className="manage-videos-input"
-                        rows={4}
-                        placeholder="Nhập URL tài liệu..."
-                        value={documentBody}
-                        onChange={(e) => setDocumentBody(e.target.value)}
-                        disabled={creatingDoc}
-                      />
-                      <button type="button" className="manage-videos-btn manage-videos-btn-primary"
-                        onClick={handleCreateDocument} disabled={creatingDoc || !documentBody.trim()}>
-                        {creatingDoc ? 'Đang tạo...' : '+ Tạo tài liệu'}
-                      </button>
+                      <span className="mv-add-card-title">Upload Tài Liệu</span>
+                      <p className="mv-add-card-desc">Tải file tài liệu (PDF, Word, Ảnh...) từ máy tính</p>
+                      <form className="mv-upload-form" onSubmit={handleCreateDocument}>
+                        <input
+                          type="text"
+                          placeholder="Tiêu đề tài liệu (không bắt buộc)"
+                          className="manage-videos-input"
+                          value={documentTitle}
+                          onChange={(e) => setDocumentTitle(e.target.value)}
+                          disabled={creatingDoc}
+                        />
+                        <input 
+                          type="file"
+                          className="manage-videos-input"
+                          onChange={(e) => setUploadDocFile(e.target.files?.[0] || null)}
+                          disabled={creatingDoc}
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.txt"
+                        />
+                        <button type="submit" className="manage-videos-btn manage-videos-btn-primary"
+                          disabled={creatingDoc || !uploadDocFile}>
+                          {creatingDoc ? 'Đang tải lên...' : '+ Tạo tài liệu'}
+                        </button>
+                      </form>
                     </div>
 
                     {/* Quiz */}

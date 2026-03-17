@@ -9,6 +9,7 @@ import CourseLearning from './pages/CourseLearning'
 import MyCertificates from './pages/MyCertificates'
 import VerifyCertificate from './pages/VerifyCertificate'
 import Courses from './pages/Courses'
+import CourseDetail from './pages/CourseDetail'
 import Payment from './pages/Payment'
 import PaymentSuccess from './pages/PaymentSuccess'
 import OAuthCallback from './pages/OAuthCallback'
@@ -52,6 +53,7 @@ function App() {
             }
           />
           <Route path="/courses" element={<Courses />} />
+          <Route path="/courses/:courseId" element={<CourseDetail />} />
           <Route path="/verify-certificate" element={<VerifyCertificate />} />
           <Route
             path="/payment"

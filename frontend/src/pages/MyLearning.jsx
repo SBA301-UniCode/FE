@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Header from '../components/layout/Header'
-import { enrollmentApi, processApi, chapterApi, certificateApi, userApi } from '../api'
+import { enrollmentApi, processApi, chapterApi, certificateApi, userApi, feedbackApi } from '../api'
+import FeedbackModal from '../components/feedback/FeedbackModal'
 import './MyLearning.css'
 
 const extractList = (payload) => {
@@ -19,6 +20,7 @@ const getCourseId = (enrollment) =>
   enrollment?.course?.courseId ||
   enrollment?.course?.id ||
   ''
+const unwrap = (res) => res?.data?.data ?? res?.data ?? res
 
 const MyLearning = () => {
   const navigate = useNavigate()
@@ -31,6 +33,9 @@ const MyLearning = () => {
   const [issuingCourseId, setIssuingCourseId] = useState('')
   const [issueMessage, setIssueMessage] = useState('')
   const [learnerId, setLearnerId] = useState('')
+  const [canFeedbackByCourse, setCanFeedbackByCourse] = useState({})
+  const [activeCommentCourseId, setActiveCommentCourseId] = useState('')
+  const [feedbackSubmittingByCourse, setFeedbackSubmittingByCourse] = useState({})
 
   useEffect(() => {
     let cancelled = false
@@ -137,6 +142,30 @@ const MyLearning = () => {
     return () => { cancelled = true }
   }, [])
 
+  useEffect(() => {
+    if (enrollments.length === 0) return
+    let cancelled = false
+    const run = async () => {
+      const map = {}
+      await Promise.all(
+        enrollments.map(async (enrollment) => {
+          const courseId = getCourseId(enrollment)
+          if (!courseId) return
+          try {
+            const res = await feedbackApi.canFeedback(courseId)
+            const can = unwrap(res)
+            map[courseId] = can === true || can === 'true'
+          } catch {
+            map[courseId] = false
+          }
+        })
+      )
+      if (!cancelled) setCanFeedbackByCourse(map)
+    }
+    run()
+    return () => { cancelled = true }
+  }, [enrollments])
+
   const handleContinueLearning = (enrollment) => {
     const courseId = getCourseId(enrollment)
     const enrollmentId = enrollment?.enrollmentId
@@ -172,6 +201,29 @@ const MyLearning = () => {
   const formatPercent = (value) => {
     const n = Number(value)
     return Number.isNaN(n) ? '0%' : `${Math.round(n)}%`
+  }
+
+  const handleSubmitFeedback = async (courseId, payload) => {
+    if (!courseId) return
+    if (!payload?.comment?.trim()) return
+    setFeedbackSubmittingByCourse((prev) => ({ ...prev, [courseId]: true }))
+    try {
+      await feedbackApi.create(
+        courseId,
+        {
+          comment: payload.comment.trim(),
+          rating: Number(payload.rating) || 5,
+        },
+        payload.fileList || []
+      )
+      setActiveCommentCourseId('')
+      setCanFeedbackByCourse((prev) => ({ ...prev, [courseId]: false }))
+      setIssueMessage('Gửi bình luận thành công!')
+    } catch (e) {
+      setIssueMessage(`Gửi bình luận thất bại: ${e?.response?.data?.message || e.message}`)
+    } finally {
+      setFeedbackSubmittingByCourse((prev) => ({ ...prev, [courseId]: false }))
+    }
   }
 
   return (
@@ -251,6 +303,15 @@ const MyLearning = () => {
                     </div>
                   </div>
                   <div className="mylearning-card-actions">
+                    {canFeedbackByCourse[courseId] && (
+                      <button
+                        type="button"
+                        className="mylearning-btn mylearning-btn-ghost mylearning-card-link"
+                        onClick={() => setActiveCommentCourseId(courseId)}
+                      >
+                        Comment
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="mylearning-btn mylearning-btn-primary mylearning-card-link"
@@ -279,6 +340,15 @@ const MyLearning = () => {
           </div>
         )}
       </main>
+
+      <FeedbackModal
+        open={Boolean(activeCommentCourseId)}
+        title="Tạo bình luận khóa học"
+        submitText="Gửi comment"
+        submitting={Boolean(feedbackSubmittingByCourse[activeCommentCourseId])}
+        onClose={() => setActiveCommentCourseId('')}
+        onSubmit={(payload) => handleSubmitFeedback(activeCommentCourseId, payload)}
+      />
     </div>
   )
 }

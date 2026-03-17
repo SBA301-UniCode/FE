@@ -239,6 +239,42 @@
   margin-top: 0.6rem;
 }
 
+.mylearning-feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.6rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.mylearning-feedback-form textarea {
+  width: 100%;
+  min-height: 70px;
+  resize: vertical;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+  padding: 0.48rem 0.58rem;
+}
+
+.mylearning-feedback-row {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.mylearning-feedback-row select {
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: rgba(15, 23, 42, 0.75);
+  color: #fff;
+  padding: 0.36rem 0.5rem;
+}
+
 .mylearning-pill {
   font-size: 0.72rem;
   font-weight: 800;

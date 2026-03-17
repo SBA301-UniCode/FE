@@ -17,6 +17,10 @@ const extractList = (payload) => {
 const getCourseKey = (c) => c?.courseId || c?.id || c?._id || c?.courseCode || c?.slug || c?.title
 const getCourseTitle = (c) => c?.title || c?.name || c?.courseName || 'Untitled course'
 const getCourseDesc = (c) => c?.description || c?.summary || ''
+const getCourseImage = (c) => {
+  const image = c?.image || c?.imageUrl || c?.thumbnail || c?.coverImage || c?.cover || c?.courseImage
+  return typeof image === 'string' ? image.trim() : ''
+}
 const formatPrice = (price) => {
   if (price === null || price === undefined || price === '') return ''
   const num = Number(price)
@@ -31,6 +35,7 @@ const Courses = () => {
   const [error, setError] = useState('')
   const [courses, setCourses] = useState([])
   const [enrolledMap, setEnrolledMap] = useState({})
+  const [brokenImages, setBrokenImages] = useState({})
 
   useEffect(() => {
     let cancelled = false
@@ -113,38 +118,61 @@ const Courses = () => {
             {courses.map((c) => {
               const id = getCourseKey(c)
               const enrolled = enrolledMap[id]
+              const imageUrl = getCourseImage(c)
+              const showImage = Boolean(imageUrl) && !brokenImages[id]
+              const title = getCourseTitle(c)
               return (
                 <article key={id} className="courses-card">
-                  <div className="courses-card-top">
-                    <div className="courses-card-title">{getCourseTitle(c)}</div>
-                    {enrolled && <span className="courses-enrolled-badge">Đã đăng ký</span>}
-                  </div>
-                  {c?.instructorName && (
-                    <p className="courses-card-instructor">GV: {c.instructorName}</p>
-                  )}
-                  {getCourseDesc(c) && <p className="courses-card-desc">{getCourseDesc(c)}</p>}
-                  <div className="courses-card-meta">
-                    <span className="courses-price">{formatPrice(c.price)}</span>
-                    {Number(c?.chapterCount) >= 0 && (
-                      <span className="courses-chapters">{c.chapterCount} chương</span>
+                  <div className="courses-card-media">
+                    {showImage ? (
+                      <img
+                        src={imageUrl}
+                        alt={title}
+                        className="courses-card-image"
+                        loading="lazy"
+                        onError={() =>
+                          setBrokenImages((prev) => ({ ...prev, [id]: true }))
+                        }
+                      />
+                    ) : (
+                      <div className="courses-card-image-fallback" aria-hidden="true">
+                        <span className="courses-card-image-fallback-icon">&lt;/&gt;</span>
+                        <span className="courses-card-image-fallback-text">UniCode</span>
+                      </div>
                     )}
                   </div>
-                  {enrolled ? (
-                    <Link
-                      to={`/learning/${id}`}
-                      className="courses-btn-learn"
-                    >
-                      Vào học
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      className="courses-btn-buy"
-                      onClick={() => handleBuy(c)}
-                    >
-                      Mua ngay
-                    </button>
-                  )}
+                  <div className="courses-card-body">
+                    <div className="courses-card-top">
+                      <div className="courses-card-title">{title}</div>
+                      {enrolled && <span className="courses-enrolled-badge">Đã đăng ký</span>}
+                    </div>
+                    {c?.instructorName && (
+                      <p className="courses-card-instructor">GV: {c.instructorName}</p>
+                    )}
+                    {getCourseDesc(c) && <p className="courses-card-desc">{getCourseDesc(c)}</p>}
+                    <div className="courses-card-meta">
+                      <span className="courses-price">{formatPrice(c.price)}</span>
+                      {Number(c?.chapterCount) >= 0 && (
+                        <span className="courses-chapters">{c.chapterCount} chương</span>
+                      )}
+                    </div>
+                    {enrolled ? (
+                      <Link
+                        to={`/learning/${id}`}
+                        className="courses-btn-learn"
+                      >
+                        Vào học
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        className="courses-btn-buy"
+                        onClick={() => handleBuy(c)}
+                      >
+                        Mua ngay
+                      </button>
+                    )}
+                  </div>
                 </article>
               )
             })}

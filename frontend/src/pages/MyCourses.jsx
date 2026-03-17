@@ -17,6 +17,7 @@ const extractList = (payload) => {
 const getCourseKey = (c) => c?.courseId || c?.id || c?._id || c?.courseCode || c?.slug || c?.title
 const getCourseTitle = (c) => c?.title || c?.name || c?.courseName || 'Untitled course'
 const getCourseDesc = (c) => c?.description || c?.summary || ''
+const getCourseImage = (c) => c?.image || c?.imageUrl || c?.thumbnail || c?.coverImage || c?.cover || ''
 const formatPrice = (price) => {
   if (price === null || price === undefined || price === '') return ''
   const num = Number(price)
@@ -24,7 +25,7 @@ const formatPrice = (price) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
 }
 
-const EMPTY_FORM = { title: '', description: '', price: 0, instructorId: '', sylabusId: '' }
+const EMPTY_FORM = { title: '', description: '', price: 0, instructorId: '', sylabusId: '', imageFile: null }
 
 const MyCourses = () => {
   const { user } = useAuth()
@@ -38,6 +39,8 @@ const MyCourses = () => {
   const [showForm, setShowForm] = useState(false)
   const [editingCourse, setEditingCourse] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [imagePreview, setImagePreview] = useState('')
+  const [isObjectPreview, setIsObjectPreview] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
 
@@ -63,8 +66,25 @@ const MyCourses = () => {
 
   useEffect(() => { fetchCourses() }, [canView])
 
+  useEffect(() => {
+    return () => {
+      if (isObjectPreview && imagePreview) {
+        URL.revokeObjectURL(imagePreview)
+      }
+    }
+  }, [isObjectPreview, imagePreview])
+
+  const resetImagePreview = () => {
+    if (isObjectPreview && imagePreview) {
+      URL.revokeObjectURL(imagePreview)
+    }
+    setImagePreview('')
+    setIsObjectPreview(false)
+  }
+
   const openCreate = () => {
     setEditingCourse(null)
+    resetImagePreview()
     setForm({ ...EMPTY_FORM, instructorId: user?.userId || '' })
     setFormError('')
     setShowForm(true)
@@ -72,15 +92,39 @@ const MyCourses = () => {
 
   const openEdit = (c) => {
     setEditingCourse(c)
+    resetImagePreview()
+    const existingImage = getCourseImage(c)
+    if (existingImage) {
+      setImagePreview(existingImage)
+      setIsObjectPreview(false)
+    }
     setForm({
       title: getCourseTitle(c),
       description: getCourseDesc(c),
       price: c.price ?? 0,
       instructorId: c.instructorId || user?.userId || '',
       sylabusId: c.sylabusId || '',
+      imageFile: null,
     })
     setFormError('')
     setShowForm(true)
+  }
+
+  const closeForm = () => {
+    resetImagePreview()
+    setShowForm(false)
+  }
+
+  const handleImageChange = (file) => {
+    resetImagePreview()
+    if (!file) {
+      setForm((prev) => ({ ...prev, imageFile: null }))
+      return
+    }
+    const previewUrl = URL.createObjectURL(file)
+    setForm((prev) => ({ ...prev, imageFile: file }))
+    setImagePreview(previewUrl)
+    setIsObjectPreview(true)
   }
 
   const handleDelete = async (c) => {
@@ -97,25 +141,39 @@ const MyCourses = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.title.trim()) { setFormError('Tên khóa học không được trống'); return }
+    if (!editingCourse && !form.imageFile) {
+      setFormError('Vui lòng chọn ảnh khóa học trước khi tạo mới.')
+      return
+    }
     setSaving(true)
     setFormError('')
     try {
+      const requestPayload = {
+        title: form.title,
+        description: form.description,
+        price: Number(form.price) || 0,
+      }
+
       if (editingCourse) {
-        await courseApi.update(getCourseKey(editingCourse), {
-          title: form.title,
-          description: form.description,
-          price: Number(form.price) || 0,
-        })
+        const courseId = getCourseKey(editingCourse)
+        await courseApi.update(courseId, requestPayload)
+        if (form.imageFile) {
+          const imageFormData = new FormData()
+          imageFormData.append('file', form.imageFile)
+          await courseApi.updateImage(courseId, imageFormData)
+        }
       } else {
-        await courseApi.create({
-          title: form.title,
-          description: form.description,
-          price: Number(form.price) || 0,
+        const createPayload = {
+          ...requestPayload,
           instructorId: form.instructorId || user?.userId,
           sylabusId: form.sylabusId || undefined,
-        })
+        }
+        const formData = new FormData()
+        formData.append('request', new Blob([JSON.stringify(createPayload)], { type: 'application/json' }))
+        formData.append('file', form.imageFile)
+        await courseApi.create(formData)
       }
-      setShowForm(false)
+      closeForm()
       fetchCourses()
     } catch (err) {
       setFormError(err.response?.data?.message || err.message || 'Lưu thất bại')
@@ -146,7 +204,7 @@ const MyCourses = () => {
         </div>
 
         {showForm && (
-          <div className="mycourses-modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="mycourses-modal-overlay" onClick={closeForm}>
             <form className="mycourses-modal" onClick={(ev) => ev.stopPropagation()} onSubmit={handleSubmit}>
               <h2>{editingCourse ? 'Chỉnh sửa khóa học' : 'Tạo khóa học mới'}</h2>
               {formError && <div className="mycourses-form-error">{formError}</div>}
@@ -175,8 +233,22 @@ const MyCourses = () => {
                   onChange={(ev) => setForm({ ...form, price: ev.target.value })}
                 />
               </label>
+              <label>
+                Ảnh khóa học {editingCourse ? '(tùy chọn)' : '*'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(ev) => handleImageChange(ev.target.files?.[0])}
+                  required={!editingCourse}
+                />
+              </label>
+              {imagePreview && (
+                <div className="mycourses-image-preview-wrap">
+                  <img src={imagePreview} alt="Xem trước ảnh khóa học" className="mycourses-image-preview" />
+                </div>
+              )}
               <div className="mycourses-form-actions">
-                <button type="button" className="mycourses-btn mycourses-btn-ghost" onClick={() => setShowForm(false)}>
+                <button type="button" className="mycourses-btn mycourses-btn-ghost" onClick={closeForm}>
                   Hủy
                 </button>
                 <button type="submit" className="mycourses-btn mycourses-btn-primary" disabled={saving}>

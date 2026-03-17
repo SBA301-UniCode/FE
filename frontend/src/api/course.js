@@ -8,6 +8,7 @@ export const courseApi = {
   getAll: (page = 0, size = 10) => apiClient.get(COURSES_BASE, { params: { page, size } }),
   create: (data) => apiClient.post(COURSES_BASE, data),
   update: (courseId, data) => apiClient.put(`${COURSES_BASE}/${courseId}`, data),
+  updateImage: (courseId, data) => apiClient.post(`${COURSES_BASE}/${courseId}/image`, data),
   delete: (courseId) => apiClient.delete(`${COURSES_BASE}/${courseId}`),
 }
 

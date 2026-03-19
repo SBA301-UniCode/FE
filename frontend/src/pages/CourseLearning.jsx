@@ -318,22 +318,6 @@ const CourseLearning = () => {
 
   const handleVideoError = async (event) => {
     if (!currentVideo) return
-    const videoId = currentVideo.videoId || currentVideo.id
-    if (!videoId) {
-      console.warn('Video load error:', event?.target?.error)
-      return
-    }
-    try {
-      const detailRes = await videoApi.getVideoDetail(videoId)
-      const detail = unwrap(detailRes)
-      if (detail) {
-        // Force re-render with fresh stream URL
-        setCurrentVideo((prev) => ({ ...(prev || {}), ...detail }))
-        return
-      }
-    } catch {
-      // keep fallback log below
-    }
     console.warn('Video load error:', event?.target?.error)
   }
 
@@ -508,7 +492,15 @@ const CourseLearning = () => {
           <aside className={`cl-sidebar ${sidebarOpen ? 'cl-sidebar--open' : 'cl-sidebar--closed'}`}>
             <div className="cl-sidebar-head">
               <h2>Nội dung khóa học</h2>
-              <button type="button" className="cl-sidebar-close" onClick={() => setSidebarOpen(false)}>✕</button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <Link
+                  to={`/learning/${courseId}/mindmap`}
+                  className="cl-sidebar-close"
+                  title="Xem Mind Map"
+                  style={{ fontSize: '0.8rem', textDecoration: 'none' }}
+                >🗺️</Link>
+                <button type="button" className="cl-sidebar-close" onClick={() => setSidebarOpen(false)}>✕</button>
+              </div>
             </div>
 
             {loading && <div className="cl-sidebar-msg">Đang tải...</div>}

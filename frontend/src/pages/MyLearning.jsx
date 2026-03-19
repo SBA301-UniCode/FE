@@ -319,6 +319,13 @@ const MyLearning = () => {
                     >
                       Tiếp tục học
                     </button>
+                    <button
+                      type="button"
+                      className="mylearning-btn mylearning-btn-ghost mylearning-card-link"
+                      onClick={() => navigate(`/learning/${courseId}/mindmap`)}
+                    >
+                      🗺️ Mind Map
+                    </button>
                     {percent >= 99.99 && (
                       <button
                         type="button"

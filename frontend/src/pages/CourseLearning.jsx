@@ -17,15 +17,7 @@ const isValidId = (value) => {
 }
 const extractProcessId = (item) => normalizeId(item?.id ?? item?.contentId ?? item?.lessonId ?? item?.chapterId ?? '')
 const extractStatus = (item) => item?.statusContent ?? item?.status ?? 'NOT_STARTED'
-const getVideoUrl = (v) => {
-  if (!v) return ''
-  const raw = v.url ?? v.videoUrl ?? v.videoURL ?? v.video_url ?? v.secureUrl ?? v.secure_url ?? ''
-  const url = String(raw || '').trim()
-  if (!url) return ''
-  // Normalize common Cloudinary URL variants.
-  if (url.startsWith('http://res.cloudinary.com/')) return `https://${url.slice('http://'.length)}`
-  return url
-}
+
 const normalizeContent = (content) => ({
   ...content,
   contentId: getContentId(content),
@@ -249,7 +241,7 @@ const CourseLearning = () => {
             )
             allVideos.forEach((v) => {
               const normalizedVideoContentId = normalizeId(getVideoContentId(v))
-              if (validIds.has(normalizedVideoContentId) && getVideoUrl(v)) {
+              if (validIds.has(normalizedVideoContentId)) {
                 videoMapByContentId.set(normalizedVideoContentId, v)
               }
             })
@@ -334,9 +326,9 @@ const CourseLearning = () => {
     try {
       const detailRes = await videoApi.getVideoDetail(videoId)
       const detail = unwrap(detailRes)
-      const signedUrl = getVideoUrl(detail)
-      if (signedUrl && signedUrl !== getVideoUrl(currentVideo)) {
-        setCurrentVideo((prev) => ({ ...(prev || {}), ...detail, url: signedUrl }))
+      if (detail) {
+        // Force re-render with fresh stream URL
+        setCurrentVideo((prev) => ({ ...(prev || {}), ...detail }))
         return
       }
     } catch {
@@ -661,13 +653,15 @@ const CourseLearning = () => {
             {selectedContent?.contentType === 'VIDEO' && (
               <div className="cl-player">
                 {currentVideo ? (
-                  getVideoUrl(currentVideo) ? (
+                  (currentVideo.videoId || currentVideo.id) ? (
                     <>
                       <div className="cl-video-wrap">
                         <video
                           key={currentVideo.videoId || currentVideo.contentId}
-                          src={getVideoUrl(currentVideo)}
+                          src={videoApi.getStreamUrl(currentVideo.videoId || currentVideo.id)}
                           controls
+                          controlsList="nodownload"
+                          onContextMenu={(e) => e.preventDefault()}
                           preload="metadata"
                           playsInline
                           className="cl-video"

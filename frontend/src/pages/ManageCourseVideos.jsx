@@ -138,7 +138,6 @@ const ManageCourseVideos = () => {
     const videoItems = contentList.filter((c) => c.contentType === 'VIDEO')
     if (videoItems.length === 0) return vMap
     try {
-      // Backend detail endpoint now expects videoId, so map by list endpoint.
       const allRes = await videoApi.getAllActiveVideos()
       const allVideos = Array.isArray(unwrap(allRes)) ? unwrap(allRes) : []
       const validContentIds = new Set(videoItems.map((c) => String(getContentId(c))))
@@ -146,16 +145,6 @@ const ManageCourseVideos = () => {
         const cId = String(v?.contentId || '')
         if (cId && validContentIds.has(cId)) vMap[cId] = v
       })
-      // Enrich with signed playback URLs when available.
-      await Promise.all(Object.entries(vMap).map(async ([cId, v]) => {
-        const videoId = v?.videoId
-        if (!videoId) return
-        try {
-          const detailRes = await videoApi.getVideoDetail(videoId)
-          const detail = unwrap(detailRes)
-          if (detail?.url) vMap[cId] = { ...v, ...detail }
-        } catch { /* fallback to list URL */ }
-      }))
     } catch { /* keep empty */ }
     return vMap
   }, [])
@@ -882,7 +871,14 @@ const ManageCourseVideos = () => {
                             </div>
                             {ct.contentType === 'VIDEO' && vid && (
                               <div className="manage-videos-video-wrap">
-                                <video src={vid.url || vid.videoUrl} controls preload="metadata" className="manage-videos-video" />
+                                <video
+                                  src={videoApi.getStreamUrl(vid.videoId || vid.id)}
+                                  controls
+                                  controlsList="nodownload"
+                                  onContextMenu={(e) => e.preventDefault()}
+                                  preload="metadata"
+                                  className="manage-videos-video"
+                                />
                               </div>
                             )}
                             {ct.contentType === 'VIDEO' && !vid && <p className="manage-videos-hint">Video chưa được upload.</p>}

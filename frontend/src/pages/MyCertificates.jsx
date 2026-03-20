@@ -4,6 +4,9 @@ import Header from '../components/layout/Header'
 import { certificateApi } from '../api'
 import './MyCertificates.css'
 
+const getCertificateImageUrl = (cert) =>
+  String(cert?.certicateUrl || cert?.certificateUrl || cert?.imageUrl || '').trim()
+
 const MyCertificates = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -106,6 +109,16 @@ const MyCertificates = () => {
                   </div>
                 </div>
                 <div className="mycerts-card-actions">
+                  {getCertificateImageUrl(cert) && (
+                    <a
+                      href={getCertificateImageUrl(cert)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mycerts-btn mycerts-btn-ghost"
+                    >
+                      Xem ảnh chứng chỉ
+                    </a>
+                  )}
                   {cert.serialNumber && (
                     <Link
                       to={`/verify-certificate?code=${cert.serialNumber}`}

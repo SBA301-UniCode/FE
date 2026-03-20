@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import Hls from 'hls.js'
 import Header from '../components/layout/Header'
 import { chapterApi, lessonApi, videoApi, contentApi, enrollmentApi, processApi, certificateApi, documentApi, watermarkApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
@@ -17,7 +18,21 @@ const isValidId = (value) => {
 }
 const extractProcessId = (item) => normalizeId(item?.id ?? item?.contentId ?? item?.lessonId ?? item?.chapterId ?? '')
 const extractStatus = (item) => item?.statusContent ?? item?.status ?? 'NOT_STARTED'
-
+const getVideoUrl = (v) => {
+  if (!v) return ''
+  const raw = v.url ?? v.videoUrl ?? v.videoURL ?? v.video_url ?? v.secureUrl ?? v.secure_url ?? ''
+  const url = String(raw || '').trim()
+  if (!url) return ''
+  // Normalize common Cloudinary URL variants.
+  if (url.startsWith('http://res.cloudinary.com/')) return `https://${url.slice('http://'.length)}`
+  return url
+}
+const extractPlaybackUrl = (payload) => {
+  if (!payload) return ''
+  if (typeof payload === 'string') return payload
+  return String(payload.url || payload.videoUrl || payload.playbackUrl || payload.signedUrl || '').trim()
+}
+const isHlsUrl = (url) => String(url || '').toLowerCase().includes('.m3u8')
 const normalizeContent = (content) => ({
   ...content,
   contentId: getContentId(content),
@@ -33,6 +48,272 @@ function MiniBar({ percent, color }) {
   return (
     <div className="cl-mini-bar">
       <div className="cl-mini-bar-fill" style={{ width: `${p}%`, background: color || 'linear-gradient(90deg,#22c55e,#a3e635)' }} />
+    </div>
+  )
+}
+
+/** HLS qua hls.js; refresh URL định kỳ bằng cách preload trên video ẩn rồi swap → tránh “load lại” trên màn đang xem. */
+function HlsCourseVideoPlayer({ src, playbackVideoId, playbackDuration, className, onPlay, onEnded, onError }) {
+  const video0Ref = useRef(null)
+  const video1Ref = useRef(null)
+  const hlsRefs = useRef([null, null])
+  const activeSlotRef = useRef(0)
+  const [activeSlot, setActiveSlot] = useState(0)
+  const refreshBusyRef = useRef(false)
+  const playbackVideoIdRef = useRef(playbackVideoId)
+  const playbackDurationRef = useRef(playbackDuration)
+
+  useEffect(() => {
+    playbackVideoIdRef.current = playbackVideoId
+  }, [playbackVideoId])
+
+  useEffect(() => {
+    playbackDurationRef.current = playbackDuration
+  }, [playbackDuration])
+
+  const getVideoEl = (slot) => (slot === 0 ? video0Ref.current : video1Ref.current)
+
+  const destroySlot = useCallback((slot) => {
+    const hls = hlsRefs.current[slot]
+    if (hls) {
+      try {
+        hls.destroy()
+      } catch { /* ignore */ }
+      hlsRefs.current[slot] = null
+    }
+    const v = slot === 0 ? video0Ref.current : video1Ref.current
+    if (v) {
+      v.removeAttribute('src')
+      try {
+        v.load()
+      } catch { /* ignore */ }
+    }
+  }, [])
+
+  // Đổi bài / đổi src: luôn load lại từ slot 0
+  useEffect(() => {
+    activeSlotRef.current = 0
+    setActiveSlot(0)
+    destroySlot(0)
+    destroySlot(1)
+
+    const v0 = video0Ref.current
+    if (!v0 || !src) return undefined
+
+    if (isHlsUrl(src)) {
+      if (v0.canPlayType('application/vnd.apple.mpegurl')) {
+        v0.src = src
+      } else if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          startLevel: -1,
+          maxBufferLength: 90,
+          backBufferLength: 30,
+        })
+        hlsRefs.current[0] = hls
+        hls.loadSource(src)
+        hls.attachMedia(v0)
+      } else {
+        v0.src = src
+      }
+    } else {
+      v0.src = src
+    }
+
+    return () => {
+      destroySlot(0)
+      destroySlot(1)
+    }
+  }, [src, destroySlot])
+
+  const refreshPlaybackUrl = useCallback(async () => {
+    if (refreshBusyRef.current) return
+    const videoId = playbackVideoIdRef.current
+    const a = activeSlotRef.current
+    const b = 1 - a
+    const vActive = getVideoEl(a)
+    const vBack = getVideoEl(b)
+    if (!videoId || !vActive || !vBack) return
+
+    refreshBusyRef.current = true
+    const t = Number.isFinite(vActive.currentTime) ? vActive.currentTime : 0
+    const wasPlaying = !vActive.paused && !vActive.ended
+
+    try {
+      const playbackRes = await videoApi.getVideoPlaybackUrl(videoId)
+      const playbackPayload = unwrap(playbackRes)
+      const newUrl = extractPlaybackUrl(playbackPayload)
+      const durationMinutes = Number(playbackPayload?.duration)
+      if (!newUrl) {
+        refreshBusyRef.current = false
+        return
+      }
+
+      // duration có thể thay đổi theo payload backend; lưu lại để chu kỳ interval lần sau dùng giá trị mới.
+      if (Number.isFinite(durationMinutes) && durationMinutes > 0) {
+        playbackDurationRef.current = durationMinutes
+      }
+
+      destroySlot(b)
+
+      let finalized = false
+      let safetyTimer = null
+      const clearSafety = () => {
+        if (safetyTimer != null) {
+          window.clearTimeout(safetyTimer)
+          safetyTimer = null
+        }
+      }
+      const finalizeSwap = () => {
+        if (finalized) return
+        finalized = true
+        clearSafety()
+        try {
+          // Re-sync tại thời điểm swap để tránh lệch 1-2s do thời gian gọi API + buffer.
+          const liveTime = Number.isFinite(vActive.currentTime) ? vActive.currentTime : t
+          if (Number.isFinite(liveTime) && liveTime >= 0) vBack.currentTime = liveTime
+          vBack.playbackRate = vActive.playbackRate
+          vActive.pause()
+          vBack.volume = vActive.volume
+          if (wasPlaying) {
+            vBack.play().catch(() => { })
+          } else {
+            vBack.pause()
+            if (Number.isFinite(t) && t >= 0) vBack.currentTime = t
+          }
+        } catch { /* ignore */ }
+        destroySlot(a)
+        activeSlotRef.current = b
+        setActiveSlot(b)
+        refreshBusyRef.current = false
+      }
+
+      safetyTimer = window.setTimeout(() => {
+        if (finalized) return
+        destroySlot(b)
+        refreshBusyRef.current = false
+      }, 12000)
+
+      const waitThenSwap = () => {
+        if (vBack.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          finalizeSwap()
+          return
+        }
+        const onReady = () => {
+          if (!finalized && vBack.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) finalizeSwap()
+        }
+        vBack.addEventListener('canplay', onReady, { once: true })
+        vBack.addEventListener('loadeddata', onReady, { once: true })
+        window.setTimeout(() => finalizeSwap(), 5000)
+      }
+
+      if (isHlsUrl(newUrl) && Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          startLevel: -1,
+          maxBufferLength: 90,
+          backBufferLength: 30,
+        })
+        hlsRefs.current[b] = hls
+        hls.attachMedia(vBack)
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (!data?.fatal) return
+          if (finalized) return
+          try {
+            hls.destroy()
+          } catch { /* ignore */ }
+          hlsRefs.current[b] = null
+          clearSafety()
+          refreshBusyRef.current = false
+        })
+        const onParsed = () => {
+          try {
+            if (Number.isFinite(t) && t >= 0) vBack.currentTime = t
+          } catch { /* ignore */ }
+          hls.off(Hls.Events.MANIFEST_PARSED, onParsed)
+          waitThenSwap()
+        }
+        hls.on(Hls.Events.MANIFEST_PARSED, onParsed)
+        hls.loadSource(newUrl)
+        hls.startLoad()
+      } else if (isHlsUrl(newUrl)) {
+        vBack.src = newUrl
+        const onMeta = () => {
+          try {
+            if (Number.isFinite(t) && t >= 0) vBack.currentTime = t
+          } catch { /* ignore */ }
+          vBack.removeEventListener('loadedmetadata', onMeta)
+          waitThenSwap()
+        }
+        vBack.addEventListener('loadedmetadata', onMeta, { once: true })
+      } else {
+        vBack.src = newUrl
+        const onMeta = () => {
+          try {
+            if (Number.isFinite(t) && t >= 0) vBack.currentTime = t
+          } catch { /* ignore */ }
+          vBack.removeEventListener('loadedmetadata', onMeta)
+          waitThenSwap()
+        }
+        vBack.addEventListener('loadedmetadata', onMeta, { once: true })
+      }
+    } catch {
+      refreshBusyRef.current = false
+    }
+  }, [destroySlot])
+
+  useEffect(() => {
+    if (!playbackVideoId || !src) return undefined
+    const durationMinutes = Number(playbackDurationRef.current)
+    // reload theo (duration - 60s), chạy lặp đều theo chu kỳ đó
+    const delayMs = Number.isFinite(durationMinutes) && durationMinutes > 0
+      ? Math.max(30_000, (durationMinutes * 60 + 60) * 1000)
+      : 60_000
+    //  const delayMs = 10 * 1000; 
+    const id = window.setInterval(() => {
+      refreshPlaybackUrl()
+    }, delayMs)
+    return () => window.clearInterval(id)
+  }, [playbackVideoId, src, playbackDuration, refreshPlaybackUrl])
+
+  const relayIfActive = (slot, handler) => (e) => {
+    if (slot !== activeSlotRef.current) return
+    handler?.(e)
+  }
+
+  const handleError = async (slot, e) => {
+    if (slot !== activeSlotRef.current) return
+    await refreshPlaybackUrl()
+    onError?.(e)
+  }
+
+  if (!src) return null
+
+  const layerClass = (slot) =>
+    `${className || ''} cl-video-layer ${slot === activeSlot ? 'cl-video-layer--top' : 'cl-video-layer--back'}`.trim()
+
+  return (
+    <div className="cl-video-stack">
+      <video
+        ref={video0Ref}
+        controls={activeSlot === 0}
+        preload="metadata"
+        playsInline
+        className={layerClass(0)}
+        onPlay={relayIfActive(0, onPlay)}
+        onEnded={relayIfActive(0, onEnded)}
+        onError={(e) => handleError(0, e)}
+      />
+      <video
+        ref={video1Ref}
+        controls={activeSlot === 1}
+        preload="metadata"
+        playsInline
+        className={layerClass(1)}
+        onPlay={relayIfActive(1, onPlay)}
+        onEnded={relayIfActive(1, onEnded)}
+        onError={(e) => handleError(1, e)}
+      />
     </div>
   )
 }
@@ -78,6 +359,10 @@ const CourseLearning = () => {
   const [selectedLessonId, setSelectedLessonId] = useState('')
   const [selectedContent, setSelectedContent] = useState(null)
   const [currentVideo, setCurrentVideo] = useState(null)
+  const currentVideoRef = useRef(null)
+  useEffect(() => {
+    currentVideoRef.current = currentVideo
+  }, [currentVideo])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [refreshingContent, setRefreshingContent] = useState(false)
@@ -104,7 +389,7 @@ const CourseLearning = () => {
           chapters: (p?.processResponseList || []).map((r) => ({ id: extractProcessId(r), status: extractStatus(r) })),
         })
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [courseId, enrollmentId])
 
   const refreshChapterProgress = useCallback((chapterId) => {
@@ -120,7 +405,7 @@ const CourseLearning = () => {
           },
         }))
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [enrollmentId])
 
   const refreshLessonProgress = useCallback((lessonId) => {
@@ -140,7 +425,7 @@ const CourseLearning = () => {
         })
         setContentStatusMap((prev) => ({ ...prev, ...map }))
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [enrollmentId])
 
   useEffect(() => {
@@ -245,6 +530,19 @@ const CourseLearning = () => {
                 videoMapByContentId.set(normalizedVideoContentId, v)
               }
             })
+            await Promise.all([...videoMapByContentId.entries()].map(async ([contentId, v]) => {
+              const videoId = v?.videoId || v?.id
+              if (!videoId) return
+              try {
+                const playbackRes = await videoApi.getVideoPlaybackUrl(videoId)
+                const playbackPayload = unwrap(playbackRes)
+                const playbackUrl = extractPlaybackUrl(playbackPayload)
+                const playbackDuration = Number(playbackPayload?.duration)
+                if (playbackUrl) videoMapByContentId.set(contentId, { ...v, url: playbackUrl, playbackDuration })
+              } catch {
+                // keep existing URL if backend fails
+              }
+            }))
           } catch { /* keep empty */ }
         }
         const videos = [...videoMapByContentId.values()]
@@ -316,11 +614,6 @@ const CourseLearning = () => {
     setCurrentVideo(content.contentType === 'VIDEO' ? (currentVideos.find((v) => normalizeId(getVideoContentId(v)) === contentId) || null) : null)
   }
 
-  const handleVideoError = async (event) => {
-    if (!currentVideo) return
-    console.warn('Video load error:', event?.target?.error)
-  }
-
   const trackContent = (contentId, status) => {
     if (!enrollmentId || !isTrackableContentId(contentId)) return
     const normalizedContentId = normalizeId(contentId)
@@ -338,7 +631,7 @@ const CourseLearning = () => {
           refreshAllProgress()
         }, 400)
       })
-      .catch(() => {})
+      .catch(() => { })
   }
 
   const handleVideoPlay = () => {
@@ -492,15 +785,7 @@ const CourseLearning = () => {
           <aside className={`cl-sidebar ${sidebarOpen ? 'cl-sidebar--open' : 'cl-sidebar--closed'}`}>
             <div className="cl-sidebar-head">
               <h2>Nội dung khóa học</h2>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <Link
-                  to={`/learning/${courseId}/mindmap`}
-                  className="cl-sidebar-close"
-                  title="Xem Mind Map"
-                  style={{ fontSize: '0.8rem', textDecoration: 'none' }}
-                >🗺️</Link>
-                <button type="button" className="cl-sidebar-close" onClick={() => setSidebarOpen(false)}>✕</button>
-              </div>
+              <button type="button" className="cl-sidebar-close" onClick={() => setSidebarOpen(false)}>✕</button>
             </div>
 
             {loading && <div className="cl-sidebar-msg">Đang tải...</div>}
@@ -645,24 +930,22 @@ const CourseLearning = () => {
             {selectedContent?.contentType === 'VIDEO' && (
               <div className="cl-player">
                 {currentVideo ? (
-                  (currentVideo.videoId || currentVideo.id) ? (
+                  getVideoUrl(currentVideo) ? (
                     <>
                       <div className="cl-video-wrap">
-                        <video
-                          key={currentVideo.videoId || currentVideo.contentId}
-                          src={videoApi.getStreamUrl(currentVideo.videoId || currentVideo.id)}
-                          controls
-                          controlsList="nodownload"
-                          onContextMenu={(e) => e.preventDefault()}
-                          preload="metadata"
-                          playsInline
+                        <HlsCourseVideoPlayer
+                          src={getVideoUrl(currentVideo)}
+                          playbackVideoId={currentVideo.videoId || currentVideo.id}
+                          playbackDuration={currentVideo.playbackDuration}
                           className="cl-video"
                           onPlay={handleVideoPlay}
                           onEnded={handleVideoEnded}
-                          onError={handleVideoError}
                         />
                       </div>
-                      <div className="cl-video-title">Video bài giảng {currentVideo.duration ? `(${currentVideo.duration}s)` : ''}</div>
+                      <div className="cl-video-title">
+                        Video bài giảng (HLS)
+                        {currentVideo.duration ? ` · ${currentVideo.duration} phút` : ''}
+                      </div>
                     </>
                   ) : (
                     <div className="cl-placeholder">Video chưa có URL hợp lệ. Vui lòng upload lại video.</div>
@@ -693,7 +976,7 @@ const CourseLearning = () => {
                             const url = window.URL.createObjectURL(new Blob([res.data]))
                             const a = document.createElement('a')
                             a.href = url
-                            
+
                             // Try to get filename from Content-Disposition header
                             let filename = selectedDoc.title || 'document'
                             const contentDisposition = res.headers['content-disposition']
@@ -711,7 +994,7 @@ const CourseLearning = () => {
                                 else filename += '.pdf' // Default fallback
                               }
                             }
-                            
+
                             a.download = filename
                             document.body.appendChild(a)
                             a.click()

@@ -2,22 +2,25 @@ import apiClient from './client'
 
 const VIDEOS_BASE = '/api/v1/videos'
 
-/**
- * Tích hợp video Cloudinary qua backend.
- * Backend upload file lên Cloudinary và lưu URL vào DB.
- */
 export const videoApi = {
   /**
-   * Upload video cho lesson (backend tự tạo Content(VIDEO)).
-   * @param {{ lessonId: string, duration: number }} request
-   * @param {File} file - file video
+   * Xin presigned PUT URL để upload thẳng lên S3.
+   * Backend trả về { uploadUrl, key }.
+   * @param {{ fileName: string, contentType: string, size: string|number }} payload
    */
-  uploadVideo(request, file) {
+  generateUploadUrl(payload) {
+    return apiClient.post(`${VIDEOS_BASE}/generate-upload-url`, payload)
+  },
+
+  /**
+   * Tạo record video sau khi upload client-side.
+   * Spring đang dùng @RequestPart request (multipart/form-data).
+   * @param {{ lessonId: string, duration: number, key: string }} request
+   */
+  createVideoRecord(request) {
     const formData = new FormData()
-    // Spring @RequestPart("request") expects a JSON part.
     formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }), 'request.json')
-    formData.append('file', file)
-    return apiClient.post(`${VIDEOS_BASE}/create`, formData, { timeout: 300000 })
+    return apiClient.post(`${VIDEOS_BASE}/create`, formData)
   },
 
   /** Lấy tất cả video đang dùng */
@@ -28,6 +31,11 @@ export const videoApi = {
   /** Chi tiết một video theo videoId */
   getVideoDetail(videoId) {
     return apiClient.get(`${VIDEOS_BASE}/${videoId}`)
+  },
+
+  /** Lấy signed playback URL (HLS m3u8) theo videoId */
+  getVideoPlaybackUrl(videoId) {
+    return apiClient.get(`${VIDEOS_BASE}/video-url/${videoId}`)
   },
 
   /** Xóa video (soft delete + xóa trên Cloudinary) */

@@ -455,6 +455,33 @@
   border: 1px solid rgba(148, 163, 184, 0.1);
 }
 
+/* Hai lớp video: preload URL mới phía sau, swap khi buffer xong → giảm khựng khi refresh signed URL */
+.cl-video-stack {
+  position: relative;
+  width: 100%;
+  min-height: 120px;
+}
+.cl-video-layer {
+  width: 100%;
+  max-height: 520px;
+  display: block;
+  background: #000;
+}
+.cl-video-layer--top {
+  position: relative;
+  z-index: 1;
+}
+.cl-video-layer--back {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  max-height: 520px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
 .cl-video { width: 100%; max-height: 520px; display: block; background: #000; }
 .cl-video-title { font-weight: 600; font-size: 1rem; }
 

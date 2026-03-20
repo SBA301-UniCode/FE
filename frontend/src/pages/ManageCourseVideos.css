@@ -355,6 +355,23 @@
   font-size: 0.9rem;
 }
 
+.mv-practice-textarea {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.mv-practice-textarea--code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 /* Quiz questions */
 .mv-quiz-questions {
   display: flex;

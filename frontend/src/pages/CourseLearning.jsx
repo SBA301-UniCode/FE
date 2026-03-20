@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import Hls from 'hls.js'
 import Header from '../components/layout/Header'
-import { chapterApi, lessonApi, videoApi, contentApi, enrollmentApi, processApi, certificateApi, documentApi, watermarkApi } from '../api'
+import { chapterApi, lessonApi, videoApi, contentApi, enrollmentApi, processApi, certificateApi, documentApi, watermarkApi, practiceApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import './CourseLearning.css'
 
@@ -33,12 +33,23 @@ const extractPlaybackUrl = (payload) => {
   return String(payload.url || payload.videoUrl || payload.playbackUrl || payload.signedUrl || '').trim()
 }
 const isHlsUrl = (url) => String(url || '').toLowerCase().includes('.m3u8')
+const extractPracticeStarterCode = (payload) => {
+  if (!payload) return ''
+  const candidate =
+    payload?.starterCode ??
+    payload?.startCode ??
+    payload?.starter_code ??
+    payload?.practice?.starterCode ??
+    payload?.practiceExam?.starterCode ??
+    ''
+  return String(candidate || '')
+}
 const normalizeContent = (content) => ({
   ...content,
   contentId: getContentId(content),
 })
 
-const CONTENT_ICONS = { VIDEO: '▶', DOCUMENT: '📄', QUIZ: '✏️' }
+const CONTENT_ICONS = { VIDEO: '▶', DOCUMENT: '📄', QUIZ: '✏️', PRACTICE: '💻' }
 const STATUS_ICONS = { COMPLETED: '✅', IN_PROCESS: '🔵', NOT_STARTED: '○' }
 const LEARNING_STATE_KEY_PREFIX = 'unicode_learning_state_v1'
 const COURSE_PROGRESS_CACHE_KEY_PREFIX = 'unicode_course_progress_v1'
@@ -373,6 +384,13 @@ const CourseLearning = () => {
   const [certLearnerName, setCertLearnerName] = useState('')
   const [docRead, setDocRead] = useState(false)
   const [documentsByLesson, setDocumentsByLesson] = useState({})
+  const [practiceLoading, setPracticeLoading] = useState(false)
+  const [practiceError, setPracticeError] = useState('')
+  const [practiceSession, setPracticeSession] = useState(null)
+  const [practiceCode, setPracticeCode] = useState('')
+  const [submittingPractice, setSubmittingPractice] = useState(false)
+  const [practiceResult, setPracticeResult] = useState(null)
+  const [practiceSubmitError, setPracticeSubmitError] = useState('')
 
   const [courseProgress, setCourseProgress] = useState({ percent: 0, chapters: [] })
   const [chapterProgressMap, setChapterProgressMap] = useState({})
@@ -617,6 +635,11 @@ const CourseLearning = () => {
   const trackContent = (contentId, status) => {
     if (!enrollmentId || !isTrackableContentId(contentId)) return
     const normalizedContentId = normalizeId(contentId)
+    const currentStatus = contentStatusMap[normalizedContentId]
+    // Tránh gọi API lặp khi status không đổi (vd: mở lại practice nhiều lần).
+    if (currentStatus === status) return
+    // Nếu đã COMPLETED thì không hạ xuống IN_PROCESS khi user chỉ mở lại nội dung.
+    if (currentStatus === 'COMPLETED' && status === 'IN_PROCESS') return
     // Optimistic UI to avoid waiting for backend aggregation.
     setContentStatusMap((prev) => ({ ...prev, [normalizedContentId]: status }))
     processApi.trackContent({ contentId, enrollmentId, status })
@@ -659,6 +682,74 @@ const CourseLearning = () => {
     if (selectedChapterId) params.set('chapterId', selectedChapterId)
     if (selectedContentId) params.set('contentId', selectedContentId)
     navigate(`/quiz/${qId}?${params.toString()}`)
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    const loadPractice = async () => {
+      if (selectedContent?.contentType !== 'PRACTICE') {
+        setPracticeError('')
+        setPracticeSession(null)
+        setPracticeCode('')
+        setPracticeResult(null)
+        setPracticeSubmitError('')
+        return
+      }
+      const contentId = getContentId(selectedContent)
+      if (!isTrackableContentId(contentId)) {
+        setPracticeError('Không tìm thấy contentId hợp lệ để bắt đầu bài thực hành.')
+        setPracticeSession(null)
+        setPracticeCode('')
+        return
+      }
+      setPracticeLoading(true)
+      setPracticeError('')
+      try {
+        const res = await practiceApi.startPractice(contentId)
+        if (cancelled) return
+        const payload = unwrap(res)
+        setPracticeSession(payload || null)
+        setPracticeCode(extractPracticeStarterCode(payload))
+        setPracticeResult(null)
+        setPracticeSubmitError('')
+        trackContent(contentId, 'IN_PROCESS')
+      } catch (err) {
+        if (cancelled) return
+        setPracticeSession(null)
+        setPracticeCode('')
+        setPracticeError(err?.response?.data?.message || err?.message || 'Không thể tải bài thực hành.')
+      } finally {
+        if (!cancelled) setPracticeLoading(false)
+      }
+    }
+    loadPractice()
+    return () => { cancelled = true }
+  }, [selectedContent])
+
+  const handleSubmitPractice = async () => {
+    if (!practiceSession?.submissionId) {
+      setPracticeSubmitError('Thiếu submissionId. Vui lòng tải lại bài thực hành.')
+      return
+    }
+    setSubmittingPractice(true)
+    setPracticeSubmitError('')
+    try {
+      const res = await practiceApi.submitPractice({
+        submissionId: practiceSession.submissionId,
+        learnerCode: practiceCode,
+      })
+      const payload = unwrap(res)
+      setPracticeResult(payload || null)
+      const selectedContentId = getContentId(selectedContent)
+      if (isTrackableContentId(selectedContentId) && Number(payload?.failed || 0) === 0) {
+        trackContent(selectedContentId, 'COMPLETED')
+      }
+    } catch (err) {
+      setPracticeSubmitError(err?.response?.data?.message || err?.message || 'Nộp bài thực hành thất bại.')
+      setPracticeResult(null)
+    } finally {
+      setSubmittingPractice(false)
+    }
   }
 
   const getChapterTitle = (c) => c?.title ?? c?.chapterTitle ?? 'Chương'
@@ -836,7 +927,13 @@ const CourseLearning = () => {
                                     >
                                       <span className="cl-sb-content-icon">{CONTENT_ICONS[ct.contentType] || '•'}</span>
                                       <span className="cl-sb-content-label">
-                                        {ct.contentType === 'VIDEO' ? 'Video' : ct.contentType === 'DOCUMENT' ? 'Tài liệu' : 'Bài kiểm tra'}
+                                        {ct.contentType === 'VIDEO'
+                                          ? 'Video'
+                                          : ct.contentType === 'DOCUMENT'
+                                            ? 'Tài liệu'
+                                            : ct.contentType === 'PRACTICE'
+                                              ? 'Bài thực hành'
+                                              : 'Bài kiểm tra'}
                                       </span>
                                       <span className="cl-sb-content-status">{getStatusIcon(getContentId(ct))}</span>
                                     </button>
@@ -1044,6 +1141,90 @@ const CourseLearning = () => {
                     </>
                   )}
                 </div>
+              </div>
+            )}
+
+            {selectedContent?.contentType === 'PRACTICE' && (
+              <div className="cl-practice">
+                <div className="cl-practice-header">
+                  <span className="cl-practice-icon">💻</span>
+                  <div>
+                    <h3>{practiceSession?.title || 'Bài thực hành'}</h3>
+                    <p>{practiceSession?.language || 'N/A'} • {practiceSession?.difficulty || 'N/A'}</p>
+                  </div>
+                </div>
+
+                {practiceLoading && <div className="cl-placeholder">Đang tải bài thực hành...</div>}
+                {!practiceLoading && practiceError && <div className="cl-placeholder">{practiceError}</div>}
+
+                {!practiceLoading && !practiceError && practiceSession && (
+                  <div className="cl-practice-body">
+                    <div className="cl-practice-problem">
+                      <h4>Mô tả bài toán</h4>
+                      <p>{practiceSession.description || 'Chưa có mô tả.'}</p>
+                      <h4 style={{ marginTop: '1rem' }}>Test case hiển thị</h4>
+                      <div className="cl-practice-tests">
+                        {(practiceSession.visibleTestCases || []).length === 0 && (
+                          <p className="cl-placeholder">Không có test case hiển thị.</p>
+                        )}
+                        {(practiceSession.visibleTestCases || []).map((tc, idx) => (
+                          <div key={tc.testcaseId || idx} className="cl-practice-test-card">
+                            <div className="cl-practice-test-title">Case {idx + 1} · {tc.outputType}</div>
+                            <div><strong>Input:</strong> <code>{tc.inputData || '(trống)'}</code></div>
+                            <div><strong>Expected:</strong> <code>{tc.expectedOutput || '(trống)'}</code></div>
+                            {tc.description && <div><strong>Mô tả:</strong> {tc.description}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="cl-practice-editor">
+                      <div className="cl-practice-editor-head">Code editor ({practiceSession.language})</div>
+                      <textarea
+                        className="cl-practice-code"
+                        value={practiceCode}
+                        onChange={(e) => setPracticeCode(e.target.value)}
+                        spellCheck={false}
+                        placeholder="Viết code của bạn..."
+                      />
+                      {!practiceCode && (
+                        <p className="cl-practice-empty-code">Chưa có starter code từ API start practice.</p>
+                      )}
+                      <div className="cl-practice-actions">
+                        <button
+                          type="button"
+                          className="cl-quiz-go"
+                          onClick={() => setPracticeCode(extractPracticeStarterCode(practiceSession))}
+                        >
+                          Reset starter code
+                        </button>
+                        <button type="button" className="cl-quiz-go" onClick={handleSubmitPractice} disabled={submittingPractice}>
+                          {submittingPractice ? 'Đang chấm...' : 'Run / Submit'}
+                        </button>
+                      </div>
+                      {practiceSubmitError && <p className="cl-practice-submit-error">{practiceSubmitError}</p>}
+                      {practiceResult && (
+                        <div className="cl-practice-result">
+                          <div className="cl-practice-result-head">
+                            <strong>Kết quả:</strong> Pass {practiceResult.passed ?? 0} • Fail {practiceResult.failed ?? 0}
+                          </div>
+                          <div className="cl-practice-tests">
+                            {(practiceResult.results || []).map((r, idx) => (
+                              <div key={r.testcaseId || idx} className="cl-practice-test-card">
+                                <div className="cl-practice-test-title">
+                                  Case {idx + 1} · {r.status === 'PASS' ? '✅ PASS' : '❌ FAIL'} {r.hidden ? '(hidden)' : ''}
+                                </div>
+                                <div><strong>Input:</strong> <code>{r.inputData || '(trống)'}</code></div>
+                                <div><strong>Expected:</strong> <code>{r.expectedOutput || '(trống)'}</code></div>
+                                <div><strong>Actual:</strong> <code>{r.actualOutput || '(trống)'}</code></div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </section>

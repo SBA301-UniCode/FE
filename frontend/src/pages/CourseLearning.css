@@ -597,6 +597,82 @@
 
 .cl-quiz-go:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3); }
 
+/* ── PRACTICE (LeetCode-like) ── */
+.cl-practice {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 18px;
+  padding: 1rem;
+}
+
+.cl-practice-header { display: flex; gap: 0.7rem; align-items: center; margin-bottom: 0.8rem; }
+.cl-practice-icon { font-size: 1.4rem; }
+.cl-practice-header h3 { margin: 0; font-size: 1.1rem; }
+.cl-practice-header p { margin: 0.1rem 0 0; color: rgba(226, 232, 240, 0.7); font-size: 0.85rem; }
+
+.cl-practice-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.cl-practice-problem,
+.cl-practice-editor {
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  padding: 0.8rem;
+}
+
+.cl-practice-problem h4 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+.cl-practice-problem p { margin: 0; color: rgba(226, 232, 240, 0.85); line-height: 1.5; }
+
+.cl-practice-tests { display: flex; flex-direction: column; gap: 0.5rem; }
+.cl-practice-test-card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  padding: 0.55rem;
+  background: rgba(15, 23, 42, 0.5);
+  font-size: 0.84rem;
+}
+.cl-practice-test-title { font-weight: 700; margin-bottom: 0.35rem; color: #c4b5fd; }
+
+.cl-practice-editor-head { font-size: 0.85rem; font-weight: 700; color: rgba(226, 232, 240, 0.75); margin-bottom: 0.55rem; }
+.cl-practice-code {
+  width: 100%;
+  min-height: 320px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: #020617;
+  color: #e2e8f0;
+  padding: 0.7rem;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+.cl-practice-empty-code {
+  margin: 0.4rem 0 0;
+  color: rgba(248, 113, 113, 0.95);
+  font-size: 0.82rem;
+}
+.cl-practice-actions { margin-top: 0.65rem; display: flex; justify-content: flex-end; }
+.cl-practice-submit-error {
+  margin: 0.55rem 0 0;
+  color: #fda4af;
+  font-size: 0.84rem;
+}
+.cl-practice-result {
+  margin-top: 0.75rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  padding-top: 0.65rem;
+}
+.cl-practice-result-head {
+  margin-bottom: 0.5rem;
+  font-size: 0.86rem;
+  color: rgba(226, 232, 240, 0.9);
+}
+
 /* ═══════════════ Responsive ═══════════════ */
 @media (max-width: 900px) {
   .cl-wrapper {
@@ -630,5 +706,9 @@
   .cl-chapter-cards { flex-wrap: nowrap; }
   .cl-content {
     padding: 1rem 1rem 1.2rem;
+  }
+
+  .cl-practice-body {
+    grid-template-columns: 1fr;
   }
 }

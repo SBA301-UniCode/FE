@@ -42,4 +42,14 @@ export const videoApi = {
   deleteVideo(contentId) {
     return apiClient.delete(`${VIDEOS_BASE}/${contentId}`)
   },
+
+  /**
+   * Tạo URL stream qua backend proxy (giấu Cloudinary URL).
+   * Dùng cho <video src="..."> — browser không gửi Authorization header,
+   * nên truyền token qua query param.
+   */
+  getStreamUrl(videoId) {
+    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
+    return `${VIDEOS_BASE}/${videoId}/stream${token ? '?token=' + encodeURIComponent(token) : ''}`
+  },
 }

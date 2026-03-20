@@ -16,6 +16,7 @@ import OAuthCallback from './pages/OAuthCallback'
 import AdminPanel from './pages/AdminPanel'
 import SyllabusManagement from './pages/SyllabusManagement'
 import QuizPage from './pages/QuizPage'
+import CourseMindMap from './pages/CourseMindMap'
 import VerifyContent from './pages/VerifyContent'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -69,6 +70,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['LEARNER']}>
                 <CourseLearning />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/learning/:courseId/mindmap"
+            element={
+              <ProtectedRoute allowedRoles={['LEARNER']}>
+                <CourseMindMap />
               </ProtectedRoute>
             }
           />

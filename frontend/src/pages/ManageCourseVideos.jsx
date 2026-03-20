@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import Hls from 'hls.js'
 import Header from '../components/layout/Header'
 import { chapterApi, contentApi, lessonApi, videoApi, examApi, questionBankApi, documentApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
@@ -30,6 +31,90 @@ const readDeletedContentIdMap = () => readJsonStorage(DELETED_CONTENT_STORAGE_KE
 const writeDeletedContentIdMap = (map) => localStorage.setItem(DELETED_CONTENT_STORAGE_KEY, JSON.stringify(map))
 
 const CONTENT_LABELS = { VIDEO: '▶ Video', DOCUMENT: '📄 Tài liệu', QUIZ: '✏️ Bài kiểm tra' }
+const isHlsUrl = (url) => String(url || '').toLowerCase().includes('.m3u8')
+const extractPlaybackUrl = (payload) => {
+  if (!payload) return ''
+  if (typeof payload === 'string') return payload
+  return String(payload.url || payload.videoUrl || payload.playbackUrl || payload.signedUrl || '').trim()
+}
+
+const getVideoDurationSecondsFromFile = (file) =>
+  new Promise((resolve, reject) => {
+    try {
+      if (!file) return reject(new Error('No video file'))
+      if (!file.type || !String(file.type).startsWith('video/')) return reject(new Error('Invalid video type'))
+
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      video.muted = true
+      video.playsInline = true
+
+      const objectUrl = URL.createObjectURL(file)
+      let done = false
+
+      const cleanup = () => {
+        if (done) return
+        try { URL.revokeObjectURL(objectUrl) } catch { /* ignore */ }
+      }
+
+      video.onloadedmetadata = () => {
+        done = true
+        const d = video.duration
+        cleanup()
+        if (!Number.isFinite(d) || d <= 0) return reject(new Error('Cannot read video duration'))
+        resolve(d)
+      }
+
+      video.onerror = () => {
+        done = true
+        cleanup()
+        reject(new Error('Cannot read video metadata'))
+      }
+
+      video.src = objectUrl
+    } catch (e) {
+      reject(e)
+    }
+  })
+
+function HlsPreviewVideo({ src, className }) {
+  const videoRef = useRef(null)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !src) return undefined
+
+    let hls = null
+    if (isHlsUrl(src)) {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = src
+      } else if (Hls.isSupported()) {
+        hls = new Hls({ enableWorker: true })
+        hls.loadSource(src)
+        hls.attachMedia(video)
+      } else {
+        video.src = src
+      }
+    } else {
+      video.src = src
+    }
+
+    return () => {
+      if (hls) hls.destroy()
+    }
+  }, [src])
+
+  if (!src) return null
+  return (
+    <video
+      ref={videoRef}
+      controls
+      preload="metadata"
+      playsInline
+      className={className}
+    />
+  )
+}
 
 const ManageCourseVideos = () => {
   const { courseId } = useParams()
@@ -62,9 +147,9 @@ const ManageCourseVideos = () => {
 
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
-  const [uploadDuration, setUploadDuration] = useState(0)
   const [uploadFile, setUploadFile] = useState(null)
   const [uploadStep, setUploadStep] = useState('')
+  const [uploadProgress, setUploadProgress] = useState(0)
 
   const [showQuizEditor, setShowQuizEditor] = useState(false)
   const [quizQuestions, setQuizQuestions] = useState([])
@@ -151,9 +236,10 @@ const ManageCourseVideos = () => {
         const videoId = v?.videoId
         if (!videoId) return
         try {
-          const detailRes = await videoApi.getVideoDetail(videoId)
+          const detailRes = await videoApi.getVideoPlaybackUrl(videoId)
           const detail = unwrap(detailRes)
-          if (detail?.url) vMap[cId] = { ...v, ...detail }
+          const playbackUrl = extractPlaybackUrl(detail)
+          if (playbackUrl) vMap[cId] = { ...v, ...detail, url: playbackUrl }
         } catch { /* fallback to list URL */ }
       }))
     } catch { /* keep empty */ }
@@ -279,19 +365,67 @@ const ManageCourseVideos = () => {
   }
 
   // ═══════════════════════════════════════════════
-  //  UPLOAD VIDEO: lessonId + file (backend tự tạo Content(VIDEO))
+  //  UPLOAD VIDEO (S3 Presigned PUT) + CREATE RECORD
   // ═══════════════════════════════════════════════
+  const uploadFileToS3WithProgress = (uploadUrl, file, onProgress) => new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', uploadUrl, true)
+    xhr.setRequestHeader('Content-Type', file.type || 'video/mp4')
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return
+      const percent = Math.min(100, Math.round((event.loaded / event.total) * 100))
+      onProgress(percent)
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(100)
+        resolve()
+        return
+      }
+      reject(new Error(`Upload lên S3 thất bại (${xhr.status}).`))
+    }
+
+    xhr.onerror = () => reject(new Error('Lỗi mạng khi upload file lên S3.'))
+    xhr.onabort = () => reject(new Error('Upload đã bị hủy.'))
+    xhr.send(file)
+  })
+
   const handleUploadVideo = async (e) => {
     e.preventDefault()
     if (!selectedLessonId || !uploadFile) { setUploadError('Chọn bài giảng và file video.'); return }
+    setUploadProgress(0)
     setUploading(true); clearMessages()
     try {
-      setUploadStep('Đang upload video...')
-      const vRes = await videoApi.uploadVideo({ lessonId: selectedLessonId, duration: Number(uploadDuration) || 0 }, uploadFile)
+      setUploadStep('Bước 1/3: Tạo link upload...')
+      const presignRes = await videoApi.generateUploadUrl({
+        fileName: uploadFile.name,
+        contentType: uploadFile.type || 'video/mp4',
+        size: String(uploadFile.size || 0),
+      })
+      const presign = unwrap(presignRes)
+      const uploadUrl = presign?.uploadUrl
+      const key = presign?.key
+      if (!uploadUrl || !key) throw new Error('Backend không trả về uploadUrl/key.')
+
+      setUploadStep('Bước 2/3: Đang upload lên S3...')
+      await uploadFileToS3WithProgress(uploadUrl, uploadFile, setUploadProgress)
+
+      setUploadStep('Bước 3/3: Đọc thời lượng & lưu record...')
+      const durationSeconds = await getVideoDurationSecondsFromFile(uploadFile)
+      // Lưu duration theo PHÚT (int). Mặc định tối thiểu 1 phút để tránh 0 khi video < 60s.
+      const durationMinutes = Math.max(1, Math.round(durationSeconds / 60))
+
+      const vRes = await videoApi.createVideoRecord({
+        lessonId: selectedLessonId,
+        duration: durationMinutes,
+        key,
+      })
       const video = unwrap(vRes)
       const contentId = video?.contentId
 
-      setUploadStep(''); setUploadFile(null); setUploadDuration(0)
+      setUploadStep(''); setUploadFile(null)
       setActionMsg('Upload video thành công!')
 
       if (video && contentId) setVideoMap((prev) => ({ ...prev, [contentId]: video }))
@@ -311,7 +445,10 @@ const ManageCourseVideos = () => {
       const msg = getApiErrorMessage(err, 'Upload thất bại.')
       setUploadError(msg)
       setUploadStep('')
-    } finally { setUploading(false) }
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
   }
 
   // ═══════════════════════════════════════════════
@@ -782,17 +919,24 @@ const ManageCourseVideos = () => {
                     <div className="mv-add-card">
                       <span className="mv-add-card-icon">▶</span>
                       <span className="mv-add-card-title">Upload Video</span>
-                      <p className="mv-add-card-desc">Upload file video cho bài giảng (backend tự tạo content)</p>
+                      <p className="mv-add-card-desc">Upload MP4 lên S3 → backend chuyển HLS; xem bài học bằng .m3u8</p>
                       <form className="mv-upload-form" onSubmit={handleUploadVideo}>
-                        <input type="number" min={0} placeholder="Thời lượng (giây)" value={uploadDuration || ''}
-                          onChange={(e) => setUploadDuration(e.target.value)} className="manage-videos-input" />
                         <input type="file" accept="video/*"
                           onChange={(e) => setUploadFile(e.target.files?.[0] || null)} className="manage-videos-input" />
                         <button type="submit" className="manage-videos-btn manage-videos-btn-primary"
-                          disabled={uploading || !uploadFile}>
+                          disabled={uploading}>
                           {uploading ? 'Đang xử lý...' : 'Upload'}
                         </button>
+                        {!uploading && !uploadFile && (
+                          <p className="manage-videos-hint">Chọn file video để bật upload.</p>
+                        )}
                         {uploading && uploadStep && <p className="manage-videos-hint" style={{ color: '#a5b4fc' }}>{uploadStep}</p>}
+                        {uploading && (
+                          <div className="mv-upload-progress">
+                            <div className="mv-upload-progress-bar" style={{ width: `${uploadProgress}%` }} />
+                            <span className="mv-upload-progress-text">{uploadProgress}%</span>
+                          </div>
+                        )}
                       </form>
                     </div>
 
@@ -882,7 +1026,7 @@ const ManageCourseVideos = () => {
                             </div>
                             {ct.contentType === 'VIDEO' && vid && (
                               <div className="manage-videos-video-wrap">
-                                <video src={vid.url || vid.videoUrl} controls preload="metadata" className="manage-videos-video" />
+                                <HlsPreviewVideo src={vid.url || vid.videoUrl} className="manage-videos-video" />
                               </div>
                             )}
                             {ct.contentType === 'VIDEO' && !vid && <p className="manage-videos-hint">Video chưa được upload.</p>}

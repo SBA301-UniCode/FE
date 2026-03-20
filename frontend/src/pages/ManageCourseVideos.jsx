@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Hls from 'hls.js'
 import Header from '../components/layout/Header'
-import { chapterApi, contentApi, lessonApi, videoApi, examApi, questionBankApi, documentApi } from '../api'
+import { chapterApi, contentApi, lessonApi, videoApi, examApi, questionBankApi, documentApi, practiceApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import './ManageCourseVideos.css'
 
@@ -30,8 +30,45 @@ const readJsonStorage = (key, fallback) => {
 const readDeletedContentIdMap = () => readJsonStorage(DELETED_CONTENT_STORAGE_KEY, {})
 const writeDeletedContentIdMap = (map) => localStorage.setItem(DELETED_CONTENT_STORAGE_KEY, JSON.stringify(map))
 
-const CONTENT_LABELS = { VIDEO: '▶ Video', DOCUMENT: '📄 Tài liệu', QUIZ: '✏️ Bài kiểm tra' }
+const CONTENT_LABELS = { VIDEO: '▶ Video', DOCUMENT: '📄 Tài liệu', QUIZ: '✏️ Bài kiểm tra', PRACTICE: '💻 Bài thực hành' }
 const isHlsUrl = (url) => String(url || '').toLowerCase().includes('.m3u8')
+const defaultPracticeInputTypes = 'int, int'
+const defaultPracticeReturnType = 'int'
+const defaultPracticeTodoByLang = (lang) => (lang === 'PYTHON' ? 'return 0' : 'return 0;')
+const parseInputTypeList = (raw) =>
+  String(raw || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+const getPracticeArgCount = (inputTypeRaw) => Math.max(1, parseInputTypeList(inputTypeRaw).length)
+const buildArgNames = (types) => types.map((_, idx) => `arg${idx + 1}`)
+const buildStarterCode = (lang, inputTypeRaw, returnTypeRaw) => {
+  const types = parseInputTypeList(inputTypeRaw)
+  const argNames = buildArgNames(types)
+  const returnType = String(returnTypeRaw || '').trim() || defaultPracticeReturnType
+  if (lang === 'PYTHON') {
+    const pyArgs = argNames.join(', ') || 'arg1'
+    return `class Solution:\n    def solve(self, ${pyArgs}):\n        # TODO`
+  }
+  const javaParams = types.length > 0
+    ? types.map((t, idx) => `${t} ${argNames[idx]}`).join(', ')
+    : 'int arg1'
+  return `class Solution {\n    public ${returnType} solve(${javaParams}) {\n        // TODO\n    }\n}`
+}
+const buildRightCode = (lang, inputTypeRaw, returnTypeRaw, todoBody) => {
+  const types = parseInputTypeList(inputTypeRaw)
+  const argNames = buildArgNames(types)
+  const returnType = String(returnTypeRaw || '').trim() || defaultPracticeReturnType
+  const todo = String(todoBody || '').trim() || defaultPracticeTodoByLang(lang)
+  if (lang === 'PYTHON') {
+    const pyArgs = argNames.join(', ') || 'arg1'
+    return `class Solution:\n    def solve(self, ${pyArgs}):\n        ${todo}`
+  }
+  const javaParams = types.length > 0
+    ? types.map((t, idx) => `${t} ${argNames[idx]}`).join(', ')
+    : 'int arg1'
+  return `class Solution {\n    public ${returnType} solve(${javaParams}) {\n        ${todo}\n    }\n}`
+}
 const extractPlaybackUrl = (payload) => {
   if (!payload) return ''
   if (typeof payload === 'string') return payload
@@ -162,6 +199,19 @@ const ManageCourseVideos = () => {
   const [questionBankLoading, setQuestionBankLoading] = useState(false)
   const [questionBankError, setQuestionBankError] = useState('')
   const [questionBankItems, setQuestionBankItems] = useState([])
+  const [showPracticeEditor, setShowPracticeEditor] = useState(false)
+  const [savingPractice, setSavingPractice] = useState(false)
+  const [practiceStep, setPracticeStep] = useState('')
+  const [practiceTitle, setPracticeTitle] = useState('Bài thực hành')
+  const [practiceDescription, setPracticeDescription] = useState('')
+  const [practiceLanguage, setPracticeLanguage] = useState('JAVA')
+  const [practiceDifficulty, setPracticeDifficulty] = useState('NORMAL')
+  const [practiceStarterCode, setPracticeStarterCode] = useState('')
+  const [practiceRightCode, setPracticeRightCode] = useState('')
+  const [practiceInputType, setPracticeInputType] = useState(defaultPracticeInputTypes)
+  const [practiceReturnType, setPracticeReturnType] = useState(defaultPracticeReturnType)
+  const [practiceRightTodo, setPracticeRightTodo] = useState(defaultPracticeTodoByLang('JAVA'))
+  const [practiceCases, setPracticeCases] = useState([])
   const [documentTitle, setDocumentTitle] = useState('')
   const [uploadDocFile, setUploadDocFile] = useState(null)
   const [documentMap, setDocumentMap] = useState({})
@@ -647,6 +697,131 @@ const ManageCourseVideos = () => {
     setQuizQuestions((prev) => prev.filter((_, i) => i !== idx))
   }
 
+  const createEmptyPracticeCase = (argCount = 1) => ({
+    id: `tc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    inputValues: Array.from({ length: Math.max(1, argCount) }, () => ''),
+    expectedOutput: '',
+    outputType: 'STRING',
+    hidden: false,
+    description: '',
+  })
+
+  const openPracticeEditor = () => {
+    setPracticeTitle('Bài thực hành')
+    setPracticeDescription('')
+    setPracticeLanguage('JAVA')
+    setPracticeDifficulty('NORMAL')
+    setPracticeInputType(defaultPracticeInputTypes)
+    setPracticeReturnType(defaultPracticeReturnType)
+    setPracticeRightTodo(defaultPracticeTodoByLang('JAVA'))
+    setPracticeStarterCode(buildStarterCode('JAVA', defaultPracticeInputTypes, defaultPracticeReturnType))
+    setPracticeRightCode(buildRightCode('JAVA', defaultPracticeInputTypes, defaultPracticeReturnType, defaultPracticeTodoByLang('JAVA')))
+    setPracticeCases([createEmptyPracticeCase(getPracticeArgCount(defaultPracticeInputTypes))])
+    setPracticeStep('')
+    setShowPracticeEditor(true)
+  }
+
+  useEffect(() => {
+    setPracticeStarterCode(buildStarterCode(practiceLanguage, practiceInputType, practiceReturnType))
+    setPracticeRightCode(buildRightCode(practiceLanguage, practiceInputType, practiceReturnType, practiceRightTodo))
+  }, [practiceLanguage, practiceInputType, practiceReturnType, practiceRightTodo])
+
+  const addPracticeCase = () =>
+    setPracticeCases((prev) => [...prev, createEmptyPracticeCase(getPracticeArgCount(practiceInputType))])
+  const removePracticeCase = (idx) => {
+    if (practiceCases.length <= 1) return
+    setPracticeCases((prev) => prev.filter((_, i) => i !== idx))
+  }
+  const updatePracticeCase = (idx, field, value) => {
+    setPracticeCases((prev) => prev.map((tc, i) => (i === idx ? { ...tc, [field]: value } : tc)))
+  }
+  const updatePracticeCaseInput = (caseIdx, inputIdx, value) => {
+    setPracticeCases((prev) =>
+      prev.map((tc, i) => {
+        if (i !== caseIdx) return tc
+        const current = Array.isArray(tc.inputValues) ? tc.inputValues : []
+        const next = [...current]
+        while (next.length <= inputIdx) next.push('')
+        next[inputIdx] = value
+        return { ...tc, inputValues: next }
+      })
+    )
+  }
+
+  useEffect(() => {
+    const argCount = getPracticeArgCount(practiceInputType)
+    setPracticeCases((prev) =>
+      prev.map((tc) => {
+        const current = Array.isArray(tc.inputValues) ? tc.inputValues : []
+        const next = current.slice(0, argCount)
+        while (next.length < argCount) next.push('')
+        return { ...tc, inputValues: next }
+      })
+    )
+  }, [practiceInputType])
+
+  const handleCreatePractice = async () => {
+    if (!selectedLessonId) return
+    const title = practiceTitle.trim()
+    if (!title) {
+      setUploadError('Vui lòng nhập tiêu đề bài thực hành.')
+      return
+    }
+    const validCases = practiceCases
+      .map((tc) => ({
+        inputData: JSON.stringify((Array.isArray(tc.inputValues) ? tc.inputValues : []).map((v) => String(v || ''))),
+        expectedOutput: tc.expectedOutput.trim(),
+        outputType: tc.outputType,
+        hidden: Boolean(tc.hidden),
+        description: tc.description.trim(),
+      }))
+      .filter((tc) => tc.expectedOutput)
+
+    if (validCases.length === 0) {
+      setUploadError('Cần ít nhất 1 test case có expectedOutput.')
+      return
+    }
+    const invalidArrayCaseIndex = validCases.findIndex((tc) => {
+      if (tc.outputType !== 'ARRAY') return false
+      const normalized = String(tc.expectedOutput || '').trim()
+      return !(normalized.startsWith('[') && normalized.endsWith(']'))
+    })
+    if (invalidArrayCaseIndex >= 0) {
+      setUploadError(`Test case ${invalidArrayCaseIndex + 1}: expectedOutput kiểu ARRAY phải có dạng [ ... ].`)
+      return
+    }
+
+    setSavingPractice(true)
+    clearMessages()
+    try {
+      setPracticeStep('Đang tạo bài thực hành...')
+      const normalizedInputTypes = parseInputTypeList(practiceInputType)
+      await practiceApi.createPractice(selectedLessonId, {
+        title,
+        description: practiceDescription.trim(),
+        language: practiceLanguage,
+        difficulty: practiceDifficulty,
+        starterCode: practiceStarterCode,
+        rightCode: practiceRightCode,
+        inputType: JSON.stringify(normalizedInputTypes),
+        returnType: String(practiceReturnType || '').trim() || defaultPracticeReturnType,
+        testCases: validCases,
+      })
+      setActionMsg('Tạo bài thực hành thành công!')
+      setShowPracticeEditor(false)
+      setPracticeStep('')
+      const refreshed = await fetchContents(selectedLessonId)
+      if (refreshed) {
+        setContents(refreshed)
+      }
+    } catch (err) {
+      setUploadError(getApiErrorMessage(err, 'Tạo bài thực hành thất bại.'))
+      setPracticeStep('')
+    } finally {
+      setSavingPractice(false)
+    }
+  }
+
   const gk = (c) => String(c?.chapterId ?? c?.id ?? '')
   const gt = (c) => c?.title ?? c?.chapterTitle ?? 'Chương'
   const lk = (l) => String(l?.lessonId ?? l?.id ?? '')
@@ -1004,6 +1179,20 @@ const ManageCourseVideos = () => {
                         + Tạo bài kiểm tra
                       </button>
                     </div>
+
+                    {/* Practice */}
+                    <div className="mv-add-card">
+                      <span className="mv-add-card-icon">💻</span>
+                      <span className="mv-add-card-title">Thêm Bài thực hành</span>
+                      <p className="mv-add-card-desc">Tạo bài code kèm test case cho bài giảng hiện tại</p>
+                      <button
+                        type="button"
+                        className="manage-videos-btn manage-videos-btn-primary"
+                        onClick={openPracticeEditor}
+                      >
+                        + Tạo bài thực hành
+                      </button>
+                    </div>
                   </div>
                 </section>
 
@@ -1041,6 +1230,7 @@ const ManageCourseVideos = () => {
                               </div>
                             )}
                             {ct.contentType === 'QUIZ' && <p className="manage-videos-hint">Bài kiểm tra đã tạo.</p>}
+                            {ct.contentType === 'PRACTICE' && <p className="manage-videos-hint">Bài thực hành đã tạo.</p>}
                             <div className="mv-content-card-id">ID: {contentId || 'N/A'}</div>
                           </div>
                         )
@@ -1134,6 +1324,175 @@ const ManageCourseVideos = () => {
                   <button type="button" className="manage-videos-btn manage-videos-btn-primary"
                     onClick={handleCreateQuiz} disabled={savingQuiz}>
                     {savingQuiz ? 'Đang tạo...' : 'Tạo bài kiểm tra'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showPracticeEditor && (
+          <div className="mv-modal-overlay" onClick={() => !savingPractice && setShowPracticeEditor(false)}>
+            <div className="mv-quiz-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="mv-quiz-modal-header">
+                <h2>Tạo bài thực hành</h2>
+                <button type="button" className="mv-modal-close" onClick={() => !savingPractice && setShowPracticeEditor(false)}>✕</button>
+              </div>
+
+              <div className="mv-quiz-modal-body">
+                <div className="mv-quiz-meta-row">
+                  <label className="mv-quiz-meta-field">
+                    <span>Tiêu đề</span>
+                    <input value={practiceTitle} onChange={(e) => setPracticeTitle(e.target.value)} />
+                  </label>
+                  <label className="mv-quiz-meta-field">
+                    <span>Ngôn ngữ</span>
+                    <select className="mv-quiz-q-type-select" value={practiceLanguage} onChange={(e) => setPracticeLanguage(e.target.value)}>
+                      <option value="JAVA">JAVA</option>
+                      <option value="PYTHON">PYTHON</option>
+                    </select>
+                  </label>
+                  <label className="mv-quiz-meta-field">
+                    <span>Độ khó</span>
+                    <select className="mv-quiz-q-type-select" value={practiceDifficulty} onChange={(e) => setPracticeDifficulty(e.target.value)}>
+                      <option value="EASY">EASY</option>
+                      <option value="NORMAL">NORMAL</option>
+                      <option value="HARD">HARD</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label className="mv-quiz-meta-field" style={{ marginBottom: '0.35rem' }}>
+                  <span>Input type (phân tách bằng dấu phẩy)</span>
+                  <input
+                    value={practiceInputType}
+                    onChange={(e) => setPracticeInputType(e.target.value)}
+                    placeholder="int[], int"
+                  />
+                </label>
+                <label className="mv-quiz-meta-field" style={{ marginBottom: '0.35rem' }}>
+                  <span>Return type</span>
+                  <input
+                    value={practiceReturnType}
+                    onChange={(e) => setPracticeReturnType(e.target.value)}
+                    placeholder="int"
+                  />
+                </label>
+                <p className="manage-videos-hint" style={{ marginBottom: '0.8rem' }}>
+                  `inputType` sẽ được lưu thành chuỗi JSON, ví dụ: ["int[]","int"].
+                </p>
+                <p className="manage-videos-hint" style={{ marginBottom: '0.8rem' }}>
+                  Mỗi test case sẽ tự tạo {getPracticeArgCount(practiceInputType)} dòng input tương ứng với số kiểu dữ liệu ở inputType.
+                </p>
+
+                <label className="mv-quiz-meta-field" style={{ marginBottom: '0.8rem' }}>
+                  <span>Starter code</span>
+                  <textarea
+                    className="mv-practice-textarea mv-practice-textarea--code"
+                    value={practiceStarterCode}
+                    readOnly
+                    rows={6}
+                    placeholder="Code khởi tạo (khóa cứng, tự sinh theo language + inputType + returnType)"
+                  />
+                </label>
+
+                <label className="mv-quiz-meta-field" style={{ marginBottom: '0.8rem' }}>
+                  <span>Right code TODO (chỉ sửa phần TODO)</span>
+                  <textarea
+                    className="mv-practice-textarea mv-practice-textarea--code"
+                    value={practiceRightTodo}
+                    onChange={(e) => setPracticeRightTodo(e.target.value)}
+                    rows={4}
+                    placeholder={practiceLanguage === 'PYTHON' ? 'return 0' : 'return 0;'}
+                  />
+                </label>
+
+                <label className="mv-quiz-meta-field" style={{ marginBottom: '0.8rem' }}>
+                  <span>Right code preview</span>
+                  <textarea
+                    className="mv-practice-textarea mv-practice-textarea--code"
+                    value={practiceRightCode}
+                    readOnly
+                    rows={8}
+                    placeholder="Code đáp án (tự ghép)"
+                  />
+                </label>
+
+                <label className="mv-quiz-meta-field" style={{ marginBottom: '0.8rem' }}>
+                  <span>Mô tả</span>
+                  <textarea
+                    className="mv-practice-textarea"
+                    value={practiceDescription}
+                    onChange={(e) => setPracticeDescription(e.target.value)}
+                    rows={3}
+                    placeholder="Mô tả đề bài..."
+                  />
+                </label>
+
+                <div className="mv-quiz-questions">
+                  {practiceCases.map((tc, idx) => (
+                    <div key={tc.id} className="mv-quiz-q-card">
+                      <div className="mv-quiz-q-top">
+                        <span className="mv-quiz-q-num">Test case {idx + 1}</span>
+                        <div className="mv-quiz-q-top-right">
+                          <select
+                            value={tc.outputType}
+                            onChange={(e) => updatePracticeCase(idx, 'outputType', e.target.value)}
+                            className="mv-quiz-q-type-select"
+                          >
+                            <option value="NUMBER">NUMBER</option>
+                            <option value="STRING">STRING</option>
+                            <option value="ARRAY">ARRAY</option>
+                          </select>
+                          {practiceCases.length > 1 && (
+                            <button type="button" className="mv-quiz-q-remove" onClick={() => removePracticeCase(idx)}>✕</button>
+                          )}
+                        </div>
+                      </div>
+                      {(Array.isArray(tc.inputValues) ? tc.inputValues : []).map((v, inputIdx) => (
+                        <input
+                          key={`${tc.id}-in-${inputIdx}`}
+                          className="mv-quiz-q-input"
+                          placeholder={`Input ${inputIdx + 1}`}
+                          value={v}
+                          onChange={(e) => updatePracticeCaseInput(idx, inputIdx, e.target.value)}
+                        />
+                      ))}
+                      <input
+                        className="mv-quiz-q-input"
+                        placeholder="Expected output (bắt buộc, ARRAY thì nhập dạng [1,2,3])"
+                        value={tc.expectedOutput}
+                        onChange={(e) => updatePracticeCase(idx, 'expectedOutput', e.target.value)}
+                      />
+                      <input
+                        className="mv-quiz-q-input"
+                        placeholder="Mô tả test case (không bắt buộc)"
+                        value={tc.description}
+                        onChange={(e) => updatePracticeCase(idx, 'description', e.target.value)}
+                      />
+                      <label className="manage-videos-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={tc.hidden}
+                          onChange={(e) => updatePracticeCase(idx, 'hidden', e.target.checked)}
+                        />
+                        Test ẩn (hidden)
+                      </label>
+                    </div>
+                  ))}
+                  <button type="button" className="mv-quiz-add-q" onClick={addPracticeCase}>+ Thêm test case</button>
+                </div>
+              </div>
+
+              <div className="mv-quiz-modal-footer">
+                <div className="mv-quiz-modal-summary">
+                  {practiceCases.length} test case • {practiceLanguage} • {practiceDifficulty}
+                  {savingPractice && practiceStep && <span style={{ color: '#a5b4fc', marginLeft: 8 }}>{practiceStep}</span>}
+                </div>
+                <div className="mv-quiz-modal-actions">
+                  <button type="button" className="manage-videos-btn manage-videos-btn-ghost" onClick={() => setShowPracticeEditor(false)} disabled={savingPractice}>Hủy</button>
+                  <button type="button" className="manage-videos-btn manage-videos-btn-primary" onClick={handleCreatePractice} disabled={savingPractice}>
+                    {savingPractice ? 'Đang tạo...' : 'Tạo bài thực hành'}
                   </button>
                 </div>
               </div>

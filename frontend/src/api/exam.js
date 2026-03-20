@@ -4,7 +4,7 @@ const EXAMS_BASE = '/api/v1/exams'
 
 export const examApi = {
   createExam(lessonId, payload) {
-    return apiClient.post(`${EXAMS_BASE}/${lessonId}`, payload)
+    return apiClient.post(`${EXAMS_BASE}/quiz/${lessonId}`, payload)
   },
 
   updateExam(examId, payload) {

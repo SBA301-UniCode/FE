@@ -1,10 +1,11 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/useAuth'
 
 const normalizeRole = (role) => String(role || '').trim().toUpperCase()
 
 const ProtectedRoute = ({ children, allowedRoles = [], redirectTo = '/' }) => {
   const { isAuthenticated, loading, user } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -13,7 +14,7 @@ const ProtectedRoute = ({ children, allowedRoles = [], redirectTo = '/' }) => {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        background: 'var(--bg-page)'
       }}>
         <div style={{ color: 'white', fontSize: '18px' }}>Đang tải...</div>
       </div>
@@ -21,7 +22,7 @@ const ProtectedRoute = ({ children, allowedRoles = [], redirectTo = '/' }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" state={{ returnTo: location.pathname + location.search }} replace />
   }
 
   if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {

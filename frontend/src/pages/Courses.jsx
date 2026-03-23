@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState, useMemo } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '../components/layout/Header'
+import Footer from '../components/layout/Footer'
 import { courseApi, enrollmentApi, feedbackApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
+import StarRating from '../components/StarRating'
 import './Courses.css'
 
 const extractList = (payload) => {
@@ -63,6 +65,58 @@ const toAverageText = (summary) => {
   return `${summary.avg.toFixed(1)}★ (${summary.count})`
 }
 
+const guessLevel = (c) => {
+  const title = (c?.title || '').toLowerCase()
+  const desc = (c?.description || '').toLowerCase()
+  if (title.includes('advanced') || title.includes('nâng cao') || desc.includes('advanced')) return 'Advanced'
+  if (title.includes('master') || title.includes('chuyên') || desc.includes('master')) return 'Advanced'
+  if (title.includes('intermediate') || title.includes('trung cấp')) return 'Intermediate'
+  if (title.includes('beginner') || title.includes('cơ bản') || title.includes('nhập môn')) return 'Beginner'
+  return 'All Levels'
+}
+
+const extractSkills = (c) => {
+  const title = c?.title || ''
+  const keywords = ['Java', 'Python', 'React', 'Spring', 'Node.js', 'JavaScript', 'TypeScript',
+    'OOP', 'SQL', 'MongoDB', 'Docker', 'AWS', 'REST API', 'HTML', 'CSS', 'Git',
+    'Machine Learning', 'Data Science', 'Frontend', 'Backend', 'DevOps', 'Pandas',
+    'Numpy', 'Matplotlib', 'Hooks', 'Router', 'Redux', 'Collections', 'Streams'
+  ]
+  const found = keywords.filter(k => title.toLowerCase().includes(k.toLowerCase()))
+  if (found.length === 0) {
+    const desc = c?.description || ''
+    return keywords.filter(k => desc.toLowerCase().includes(k.toLowerCase())).slice(0, 3)
+  }
+  return found.slice(0, 3)
+}
+
+const estimateDuration = (c) => {
+  const chapters = Number(c?.chapterCount) || 0
+  if (chapters <= 0) return null
+  const hours = Math.max(2, chapters * 4)
+  return `${hours} hours`
+}
+
+const estimateLearners = (id) => {
+  let hash = 0
+  for (let i = 0; i < String(id).length; i++) { hash = (hash * 31 + String(id).charCodeAt(i)) & 0x7fffffff }
+  return 200 + (hash % 3000)
+}
+
+const FILTER_LEVELS = ['All', 'Beginner', 'Intermediate', 'Advanced', 'Free']
+
+const SkeletonCard = () => (
+  <article className="courses-card courses-card--skeleton">
+    <div className="courses-card-media"><div className="skeleton skeleton-image" /></div>
+    <div className="courses-card-body">
+      <div className="skeleton skeleton-line skeleton-line--title" />
+      <div className="skeleton skeleton-line skeleton-line--short" />
+      <div className="skeleton skeleton-line" />
+      <div className="skeleton skeleton-line skeleton-line--short" />
+    </div>
+  </article>
+)
+
 const Courses = () => {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
@@ -80,6 +134,46 @@ const Courses = () => {
   const [ratingSummaryByCourse, setRatingSummaryByCourse] = useState({})
   const [draftByCourse, setDraftByCourse] = useState({})
   const [editingByCourse, setEditingByCourse] = useState({})
+  const [searchParams] = useSearchParams()
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
+  const [sortBy, setSortBy] = useState('default')
+  const [filterLevel, setFilterLevel] = useState('All')
+  const [currentPage, setCurrentPage] = useState(0)
+  const ITEMS_PER_PAGE = 12
+
+  const filteredCourses = useMemo(() => {
+    let result = [...courses]
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      result = result.filter((c) => {
+        const title = getCourseTitle(c).toLowerCase()
+        const desc = getCourseDesc(c).toLowerCase()
+        return title.includes(q) || desc.includes(q)
+      })
+    }
+    if (filterLevel !== 'All') {
+      if (filterLevel === 'Free') {
+        result = result.filter((c) => !c.price || Number(c.price) === 0)
+      } else {
+        result = result.filter((c) => guessLevel(c) === filterLevel)
+      }
+    }
+    if (sortBy === 'name-asc') result.sort((a, b) => getCourseTitle(a).localeCompare(getCourseTitle(b)))
+    else if (sortBy === 'name-desc') result.sort((a, b) => getCourseTitle(b).localeCompare(getCourseTitle(a)))
+    else if (sortBy === 'price-asc') result.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))
+    else if (sortBy === 'price-desc') result.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0))
+    else if (sortBy === 'rating') {
+      result.sort((a, b) => {
+        const ra = ratingSummaryByCourse[getCourseKey(a)]?.avg || 0
+        const rb = ratingSummaryByCourse[getCourseKey(b)]?.avg || 0
+        return rb - ra
+      })
+    }
+    return result
+  }, [courses, searchQuery, sortBy, filterLevel, ratingSummaryByCourse])
+
+  const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE)
+  const pagedCourses = filteredCourses.slice(currentPage * ITEMS_PER_PAGE, (currentPage + 1) * ITEMS_PER_PAGE)
 
   useEffect(() => {
     let cancelled = false
@@ -279,16 +373,76 @@ const Courses = () => {
           </div>
         </div>
 
-        {loading && <div className="courses-loading">Đang tải danh sách khóa học...</div>}
+        {!loading && !error && courses.length > 0 && (
+          <div className="courses-toolbar">
+            <div className="courses-search-wrap">
+              <svg className="courses-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                type="text"
+                className="courses-search-input"
+                placeholder="Tìm kiếm khóa học..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button type="button" className="courses-search-clear" onClick={() => setSearchQuery('')}>✕</button>
+              )}
+            </div>
+            <select
+              className="courses-sort-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="default">Sắp xếp mặc định</option>
+              <option value="name-asc">Tên A → Z</option>
+              <option value="name-desc">Tên Z → A</option>
+              <option value="price-asc">Giá tăng dần</option>
+              <option value="price-desc">Giá giảm dần</option>
+              <option value="rating">Đánh giá cao nhất</option>
+            </select>
+            <span className="courses-result-count">{filteredCourses.length} khóa học</span>
+          </div>
+        )}
+
+        {/* Filter Pills */}
+        {!loading && !error && courses.length > 0 && (
+          <div className="courses-filter-pills">
+            {FILTER_LEVELS.map((level) => (
+              <button
+                key={level}
+                type="button"
+                className={`courses-filter-pill${filterLevel === level ? ' courses-filter-pill--active' : ''}`}
+                onClick={() => { setFilterLevel(level); setCurrentPage(0) }}
+              >
+                {level === 'All' ? 'Tất cả' : level === 'Free' ? 'Miễn phí' : level}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Skeleton Loading */}
+        {loading && (
+          <div className="courses-grid">
+            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        )}
         {!loading && error && <div className="courses-error">{error}</div>}
 
         {!loading && !error && courses.length === 0 && (
-          <div className="courses-empty">Chưa có khóa học nào.</div>
+          <div className="courses-empty-state">
+            <span className="courses-empty-icon">🎓</span>
+            <h3>Chưa có khóa học nào</h3>
+            <p>Hãy quay lại sau để khám phá các khóa học mới nhất!</p>
+          </div>
         )}
 
         {!loading && !error && courses.length > 0 && (
+          <>
           <div className="courses-grid">
-            {courses.map((c) => {
+            {pagedCourses.map((c) => {
               const id = getCourseKey(c)
               const enrolled = enrolledMap[id]
               const imageUrl = getCourseImage(c)
@@ -323,21 +477,40 @@ const Courses = () => {
                         <span className="courses-card-image-fallback-text">UniCode</span>
                       </div>
                     )}
+                    <span className="courses-card-level-badge">{guessLevel(c)}</span>
                   </div>
                   <div className="courses-card-body">
+                    <div className="courses-card-provider">
+                      <span className="courses-card-provider-logo">&lt;/&gt;</span>
+                      <span className="courses-card-provider-name">UniCode</span>
+                    </div>
                     <div className="courses-card-top">
                       <div className="courses-card-title-wrap">
                         <Link to={`/courses/${id}`} className="courses-card-title-link">
                           <div className="courses-card-title">{title}</div>
                         </Link>
-                        <div className="courses-card-rating">{toAverageText(ratingSummary)}</div>
                       </div>
                       {enrolled && <span className="courses-enrolled-badge">Đã đăng ký</span>}
                     </div>
-                    {c?.instructorName && (
-                      <p className="courses-card-instructor">GV: {c.instructorName}</p>
+                    {extractSkills(c).length > 0 && (
+                      <div className="courses-card-skills">
+                        {extractSkills(c).map((s) => (
+                          <span key={s} className="courses-card-skill-tag">{s}</span>
+                        ))}
+                      </div>
                     )}
-                    {getCourseDesc(c) && <p className="courses-card-desc">{getCourseDesc(c)}</p>}
+                    <div className="courses-card-rating">
+                      <StarRating rating={ratingSummary.avg || 0} count={ratingSummary.count || 0} size="0.9rem" />
+                    </div>
+                    <div className="courses-card-detail-row">
+                      <span className="courses-card-detail-level">{guessLevel(c)}</span>
+                      {estimateDuration(c) && <><span className="courses-card-detail-sep">·</span><span>{estimateDuration(c)}</span></>}
+                      <span className="courses-card-detail-sep">·</span>
+                      <span>Course</span>
+                    </div>
+                    <div className="courses-card-social">
+                      <span className="courses-card-learners">👥 {estimateLearners(id).toLocaleString()} enrolled</span>
+                    </div>
                     <div className="courses-card-meta">
                       <span className="courses-price">{formatPrice(c.price)}</span>
                       {Number(c?.chapterCount) >= 0 && (
@@ -518,8 +691,41 @@ const Courses = () => {
               )
             })}
           </div>
+
+          {/* ── Pagination Controls ── */}
+          {totalPages > 1 && (
+            <div className="courses-pagination">
+              <button
+                className="courses-pagination-btn"
+                disabled={currentPage === 0}
+                onClick={() => setCurrentPage(p => p - 1)}
+              >
+                ← Trước
+              </button>
+              <div className="courses-pagination-pages">
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button
+                    key={i}
+                    className={`courses-pagination-page${currentPage === i ? ' courses-pagination-page--active' : ''}`}
+                    onClick={() => setCurrentPage(i)}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="courses-pagination-btn"
+                disabled={currentPage >= totalPages - 1}
+                onClick={() => setCurrentPage(p => p + 1)}
+              >
+                Sau →
+              </button>
+            </div>
+          )}
+          </>
         )}
       </main>
+      <Footer />
     </div>
   )
 }

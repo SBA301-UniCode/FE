@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import Header from '../components/layout/Header'
+import Footer from '../components/layout/Footer'
 import { userApi, roleApi, privilegeApi, subscriptionApi, enrollmentApi } from '../api'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -31,8 +32,21 @@ const AdminPanel = () => {
   return (
     <div className="admin-panel">
       <Header />
+
+      {/* ═══ ADMIN DASHBOARD BANNER ═══ */}
+      <div className="ap-dashboard">
+        <div className="ap-dashboard-inner">
+          <div className="ap-dashboard-breadcrumb">
+            <a href="/">Trang chủ</a> <span>/</span> <span>Admin</span>
+          </div>
+          <div>
+            <h1 className="ap-dashboard-title">🛡️ Admin Dashboard</h1>
+            <p className="ap-dashboard-sub">Quản lý người dùng, quyền hạn, giao dịch và báo cáo hệ thống.</p>
+          </div>
+        </div>
+      </div>
+
       <main className="admin-panel-main">
-        <h1>Admin Panel</h1>
         <div className="admin-tabs">
           {TABS.map((t) => (
             <button
@@ -51,6 +65,7 @@ const AdminPanel = () => {
         {tab === 'report' && <ReportTab />}
         {tab === 'enrollments' && <EnrollmentsTab />}
       </main>
+      <Footer />
     </div>
   )
 }

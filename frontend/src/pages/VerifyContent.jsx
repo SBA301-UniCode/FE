@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/layout/Header'
+import Footer from '../components/layout/Footer'
 import { watermarkApi } from '../api'
 import './VerifyContent.css'
 
@@ -250,6 +251,7 @@ const VerifyContent = () => {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

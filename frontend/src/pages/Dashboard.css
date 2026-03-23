@@ -1,9 +1,6 @@
 .dashboard {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 14% 18%, rgba(129, 140, 248, 0.3), transparent 30%),
-    radial-gradient(circle at 86% 18%, rgba(16, 185, 129, 0.18), transparent 30%),
-    linear-gradient(145deg, #1e1b4b 0%, #1e293b 55%, #020617 100%);
+  background: var(--bg-page-radial);
 }
 
 .dashboard-main {
@@ -20,11 +17,11 @@
   background: linear-gradient(155deg, rgba(255, 255, 255, 0.94), rgba(238, 242, 255, 0.9));
   border-radius: 26px;
   padding: 48px;
-  box-shadow: 0 24px 64px rgba(2, 6, 23, 0.38);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   text-align: center;
   max-width: 560px;
   animation: dashboardFadeIn 0.5s ease-out;
-  border: 1px solid rgba(99, 102, 241, 0.18);
+  border: 1px solid var(--border-medium);
 }
 
 @keyframes dashboardFadeIn {
@@ -40,7 +37,7 @@
 
 .dashboard-title {
   font-size: 2rem;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 60%, #0891b2 100%);
+  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 60%, #0891b2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -77,9 +74,9 @@
 .dashboard-link-btn {
   padding: 0.72rem 1.22rem;
   border-radius: 13px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.14), rgba(59, 130, 246, 0.08));
-  border: 1px solid rgba(99, 102, 241, 0.34);
-  color: #4f46e5;
+  background: rgba(0, 86, 210, 0.06);
+  border: 1px solid rgba(0, 86, 210, 0.25);
+  color: var(--primary-500);
   font-weight: 700;
   text-decoration: none;
   transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
@@ -87,13 +84,13 @@
 
 .dashboard-link-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 30px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 8px 20px var(--primary-shadow);
   filter: brightness(1.04);
 }
 
 .dashboard-logout {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+  background: var(--primary-gradient);
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -102,12 +99,12 @@
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   font-family: inherit;
-  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.34);
+  box-shadow: 0 4px 12px var(--primary-shadow);
 }
 
 .dashboard-logout:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 28px rgba(99, 102, 241, 0.42);
+  box-shadow: 0 8px 20px var(--primary-shadow);
 }
 
 @media (max-width: 640px) {

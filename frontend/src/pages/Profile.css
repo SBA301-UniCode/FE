@@ -1,0 +1,351 @@
+.profile-page {
+  min-height: 100vh;
+  background: var(--bg-page);
+  color: var(--text-main);
+}
+
+.profile-loading {
+  text-align: center;
+  padding: 5rem 0;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+/* ═══ COVER GRADIENT ═══ */
+.pf-cover {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 2.5rem 1.5rem 2rem;
+  color: #fff;
+}
+
+.pf-cover-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.pf-avatar-wrap {
+  flex-shrink: 0;
+}
+
+.pf-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid rgba(255,255,255,0.3);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.pf-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pf-avatar-fallback {
+  color: #fff;
+  font-size: 2.5rem;
+  font-weight: 800;
+}
+
+.pf-cover-info {
+  flex: 1;
+}
+
+.pf-name {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pf-edit-btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: 6px;
+  color: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  transition: color 0.2s, background 0.2s;
+}
+
+.pf-edit-btn:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.25);
+}
+
+.pf-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pf-edit-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.pf-edit-input:focus {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
+}
+
+.pf-btn {
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.pf-btn-save {
+  background: #fff;
+  color: var(--primary-500);
+}
+
+.pf-btn-save:hover {
+  background: #f0f0f0;
+}
+
+.pf-btn-cancel {
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.8);
+}
+
+.pf-btn-cancel:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+.pf-email {
+  margin: 0.25rem 0 0;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.92rem;
+}
+
+.pf-roles {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.pf-role-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ═══ MAIN CONTENT ═══ */
+.profile-main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.pf-message {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #E3F2FD;
+  color: var(--primary-500);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 1.25rem;
+}
+
+/* ═══ STATS ═══ */
+.pf-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.pf-stat-card {
+  background: #fff;
+  border: 1px solid var(--border-medium);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pf-stat-card:hover {
+  border-color: var(--primary-500);
+  box-shadow: 0 4px 16px rgba(0,86,210,0.08);
+}
+
+.pf-stat-icon {
+  font-size: 1.5rem;
+}
+
+.pf-stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.pf-stat-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.pf-stat-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ═══ QUICK LINKS ═══ */
+.pf-quick-links {
+  margin-bottom: 1.5rem;
+}
+
+.pf-section-title {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.pf-links-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pf-link-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-medium);
+  text-decoration: none;
+  color: var(--text-main);
+  background: #fff;
+  transition: all 0.2s;
+}
+
+.pf-link-card:hover {
+  border-color: var(--primary-500);
+  box-shadow: 0 4px 12px rgba(0,86,210,0.08);
+  transform: translateX(4px);
+}
+
+.pf-link-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.pf-link-icon--blue { background: #EFF6FF; }
+.pf-link-icon--gold { background: #FFFBEB; }
+.pf-link-icon--green { background: #ECFDF5; }
+
+.pf-link-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.pf-link-text strong {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.pf-link-text span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.pf-link-arrow {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* ═══ ACCOUNT INFO ═══ */
+.pf-account-section {
+  background: #fff;
+  border: 1px solid var(--border-medium);
+  border-radius: 14px;
+  padding: 1.25rem;
+}
+
+.pf-account-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.pf-account-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pf-account-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pf-account-value {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+/* ═══ RESPONSIVE ═══ */
+@media (max-width: 640px) {
+  .pf-cover-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .pf-stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-avatar {
+    width: 80px;
+    height: 80px;
+  }
+}

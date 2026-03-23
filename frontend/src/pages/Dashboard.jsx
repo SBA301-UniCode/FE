@@ -1,6 +1,7 @@
 import { useAuth } from '../contexts/useAuth'
 import { Link, useNavigate } from 'react-router-dom'
 import Header from '../components/layout/Header'
+import Footer from '../components/layout/Footer'
 import './Dashboard.css'
 
 const Dashboard = () => {
@@ -52,6 +53,7 @@ const Dashboard = () => {
           </button>
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

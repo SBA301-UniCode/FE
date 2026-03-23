@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/layout/Header'
+import Footer from '../components/layout/Footer'
 import { syllabusApi, courseApi } from '../api'
 import './SyllabusManagement.css'
 
@@ -95,9 +96,19 @@ const SyllabusManagement = () => {
   return (
     <div className="syllabus-page">
       <Header />
+
+      {/* ═══ SYLLABUS DASHBOARD BANNER ═══ */}
+      <div className="syl-dashboard">
+        <div className="syl-dashboard-inner">
+          <div className="syl-dashboard-breadcrumb">
+            <Link to="/">Trang chủ</Link> <span>/</span> <Link to="/my-courses">Khóa học của tôi</Link> <span>/</span> <span>Đề cương</span>
+          </div>
+          <h1 className="syl-dashboard-title">📋 Quản lý Đề cương</h1>
+          <p className="syl-dashboard-sub">Quản lý đề cương khóa học — nội dung, phương pháp giảng dạy và tài liệu tham khảo.</p>
+        </div>
+      </div>
+
       <main className="syllabus-main">
-        <h1>Syllabus Management</h1>
-        <p>Quản lý đề cương khóa học (nội dung, phương pháp, tài liệu tham khảo).</p>
 
         <div className="syllabus-header">
           <Link to="/my-courses" className="syllabus-btn syllabus-btn-ghost">← My Courses</Link>
@@ -176,6 +187,7 @@ const SyllabusManagement = () => {
           )}
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

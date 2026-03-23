@@ -1,6 +1,8 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './contexts/AuthProvider'
 import Login from './pages/Login'
+import Register from './pages/Register'
 import LandingPage from './pages/LandingPage'
 import MyCourses from './pages/MyCourses'
 import ManageCourseVideos from './pages/ManageCourseVideos'
@@ -18,21 +20,44 @@ import SyllabusManagement from './pages/SyllabusManagement'
 import QuizPage from './pages/QuizPage'
 import CourseMindMap from './pages/CourseMindMap'
 import VerifyContent from './pages/VerifyContent'
+import Profile from './pages/Profile'
 import ProtectedRoute from './components/ProtectedRoute'
+
+const NotFound = () => (
+  <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-deep)', color: 'var(--text-main)', textAlign: 'center', padding: '2rem' }}>
+    <div style={{ fontSize: '8rem', fontWeight: 900, lineHeight: 1, background: 'linear-gradient(135deg, #0056D2, #003E99)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>404</div>
+    <p style={{ fontSize: '1.25rem', fontWeight: 700, margin: '1rem 0 0.5rem', color: 'var(--text-main)' }}>Trang bạn tìm không tồn tại</p>
+    <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)', maxWidth: 400, margin: '0 0 1.5rem' }}>Trang này có thể đã bị xóa, chuyển đi, hoặc URL không chính xác.</p>
+    <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.75rem 1.5rem', background: 'var(--primary-gradient)', color: '#fff', borderRadius: '10px', textDecoration: 'none', fontWeight: 700, fontSize: '0.95rem', boxShadow: '0 4px 14px rgba(0,86,210,0.25)' }}>← Về trang chủ</Link>
+  </div>
+)
 
 function App() {
   return (
     <AuthProvider>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#1F1F1F',
+            color: '#fff',
+            borderRadius: '8px',
+            fontSize: '0.9rem',
+          },
+        }}
+      />
       <Router>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/auth/callback" element={<OAuthCallback />} />
           <Route path="/dashboard" element={<Navigate to="/" replace />} />
           <Route
             path="/my-courses"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['INSTRUCTOR', 'ADMIN']}>
                 <MyCourses />
               </ProtectedRoute>
             }
@@ -57,6 +82,14 @@ function App() {
           <Route path="/courses/:courseId" element={<CourseDetail />} />
           <Route path="/verify-certificate" element={<VerifyCertificate />} />
           <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/payment"
             element={
               <ProtectedRoute allowedRoles={['LEARNER']}>
@@ -64,7 +97,14 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/payment/success" element={<PaymentSuccess />} />
+          <Route
+            path="/payment/success"
+            element={
+              <ProtectedRoute allowedRoles={['LEARNER']}>
+                <PaymentSuccess />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/learning/:courseId"
             element={
@@ -100,7 +140,7 @@ function App() {
           <Route
             path="/syllabuses"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['INSTRUCTOR', 'ADMIN']}>
                 <SyllabusManagement />
               </ProtectedRoute>
             }
@@ -116,12 +156,12 @@ function App() {
           <Route
             path="/verify-content"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['INSTRUCTOR', 'ADMIN']}>
                 <VerifyContent />
               </ProtectedRoute>
             }
           />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     </AuthProvider>

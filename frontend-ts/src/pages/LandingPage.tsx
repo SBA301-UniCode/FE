@@ -157,8 +157,8 @@ const LandingPage = () => {
             <h2 className="m-0 mb-3 text-3xl font-extrabold text-white">Ready to Start Learning?</h2>
             <p className="m-0 mb-7 text-lg text-white/85">Join 500,000+ learners and transform your career with UniCode.</p>
             <div className="flex gap-4 justify-center flex-wrap max-[640px]:flex-col max-[640px]:items-center">
-              <Link to="/courses" className="px-8 py-3.5 rounded-xl text-base font-bold no-underline transition-all bg-white text-primary-500 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)]">Browse Courses</Link>
-              <Link to="/register" className="px-8 py-3.5 rounded-xl text-base font-bold no-underline transition-all bg-transparent text-white border-2 border-white/50 hover:border-white hover:bg-white/10">Create Free Account</Link>
+              <Link to="/courses" className="px-8 py-3.5 rounded-xl text-base font-bold no-underline transition-all bg-white hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)]" style={{ color: '#0056D2' }}>Browse Courses</Link>
+              <Link to="/register" className="px-8 py-3.5 rounded-xl text-base font-bold no-underline transition-all bg-transparent border-2 border-white/50 hover:border-white hover:bg-white/10" style={{ color: '#fff' }}>Create Free Account</Link>
             </div>
           </div>
         </section>

@@ -11,8 +11,12 @@ export const courseApi = {
     apiClient.get(`${COURSES_BASE}/${courseId}`),
   getAll: (page = 0, size = 10): Promise<AxiosResponse<ApiResponse<PageResponse<Course>>>> =>
     apiClient.get(COURSES_BASE, { params: { page, size } }),
-  create: (data: Partial<Course>): Promise<AxiosResponse> =>
-    apiClient.post(COURSES_BASE, data),
+  create(data: Partial<Course>, file?: File): Promise<AxiosResponse> {
+    const formData = new FormData()
+    formData.append('request', new Blob([JSON.stringify(data)], { type: 'application/json' }), 'request.json')
+    if (file) formData.append('file', file)
+    return apiClient.post(COURSES_BASE, formData)
+  },
   update: (courseId: string, data: Partial<Course>): Promise<AxiosResponse> =>
     apiClient.put(`${COURSES_BASE}/${courseId}`, data),
   updateImage: (courseId: string, data: FormData): Promise<AxiosResponse> =>

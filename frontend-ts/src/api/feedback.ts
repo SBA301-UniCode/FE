@@ -16,7 +16,6 @@ export const feedbackApi = {
     const formData = new FormData()
     const requestBlob = new Blob([JSON.stringify(feedbackRequest)], { type: 'application/json' })
     formData.append('feedbackRequest', requestBlob, 'feedbackRequest.json')
-    formData.append('request', requestBlob, 'request.json')
     appendFiles(formData, fileList)
     return apiClient.post(`${FEEDBACKS_BASE}/${courseId}`, formData)
   },

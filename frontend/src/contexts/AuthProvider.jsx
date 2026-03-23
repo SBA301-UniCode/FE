@@ -27,6 +27,16 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
+  // Listen for 401 from API client (SPA-safe logout)
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setIsAuthenticated(false)
+      setUser(null)
+    }
+    window.addEventListener('auth:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized)
+  }, [])
+
   const login = async (username, password, rememberMe) => {
     try {
       const res = await authApi.login(username, password)

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Hls from 'hls.js'
 import Header from '../components/layout/Header'
+import Footer from '../components/layout/Footer'
 import { chapterApi, contentApi, lessonApi, videoApi, examApi, questionBankApi, documentApi, practiceApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import './ManageCourseVideos.css'
@@ -958,12 +959,21 @@ const ManageCourseVideos = () => {
   return (
     <div className="manage-videos">
       <Header />
+
+      {/* ═══ CONTENT MANAGEMENT BANNER ═══ */}
+      <div className="mv-dashboard">
+        <div className="mv-dashboard-inner">
+          <div className="mv-dashboard-breadcrumb">
+            <Link to="/">Trang chủ</Link> <span>/</span> <Link to="/my-courses">Khóa học của tôi</Link> <span>/</span> <span>Nội dung</span>
+          </div>
+          <h1 className="mv-dashboard-title">🎬 Quản lý nội dung khóa học</h1>
+          <p className="mv-dashboard-sub">Chọn chương → bài giảng → thêm Video, Tài liệu, Bài kiểm tra hoặc Bài thực hành.</p>
+        </div>
+      </div>
+
       <main className="manage-videos-main">
         <div className="manage-videos-header">
-          <div>
-            <h1>Quản lý nội dung khóa học</h1>
-            <p>Chọn chương → bài giảng → thêm Video, Tài liệu hoặc Bài kiểm tra.</p>
-          </div>
+          <div></div>
           <Link to="/my-courses" className="manage-videos-btn manage-videos-btn-ghost">← My Courses</Link>
         </div>
 
@@ -1500,6 +1510,7 @@ const ManageCourseVideos = () => {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   )
 }

@@ -1,14 +1,83 @@
 .mycourses {
   min-height: 100vh;
-  background: linear-gradient(135deg, #2d1e41 0%, #16213e 60%, #0f3460 100%);
-  color: #fff;
+  background: var(--bg-page);
+  color: var(--text-main);
 }
 
 .mycourses-main {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 4rem;
+  padding: 1.5rem 1.5rem 4rem;
 }
+
+/* ═══ INSTRUCTOR DASHBOARD BANNER ═══ */
+.mc-dashboard {
+  background: linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6366f1 100%);
+  padding: 2rem 1.5rem;
+  color: #fff;
+}
+
+.mc-dashboard-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.mc-dashboard-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.mc-dashboard-sub {
+  margin: 0.25rem 0 0;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.92rem;
+}
+
+.mc-dashboard-stats {
+  display: flex;
+  gap: 2rem;
+}
+
+.mc-dashboard-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mc-dashboard-stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.mc-dashboard-stat-label {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ═══ CARD THUMBNAIL ═══ */
+.mc-card-thumb {
+  width: 100%;
+  height: 130px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #E8F0FE;
+  margin-bottom: 0.25rem;
+}
+
+.mc-card-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 
 .mycourses-header {
   display: flex;
@@ -26,7 +95,7 @@
 
 .mycourses-header p {
   margin: 0.35rem 0 0;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
 }
 
 .mycourses-actions {
@@ -45,17 +114,27 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s;
 }
 
 .mycourses-btn-ghost {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background: #fff;
+  color: var(--text-main);
+  border: 1px solid var(--border-medium);
+}
+
+.mycourses-btn-ghost:hover {
+  background: var(--btn-ghost-bg-hover);
 }
 
 .mycourses-btn-primary {
-  background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+  background: var(--primary-500);
   color: #fff;
-  box-shadow: 0 6px 22px rgba(109, 40, 217, 0.35);
+  box-shadow: 0 4px 12px var(--primary-shadow);
+}
+
+.mycourses-btn-primary:hover:not(:disabled) {
+  background: var(--primary-600);
 }
 
 .mycourses-btn:disabled {
@@ -65,27 +144,29 @@
 
 .mycourses-loading,
 .mycourses-empty {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #fff;
+  border: 1px solid var(--border-medium);
   border-radius: 16px;
   padding: 1rem 1.25rem;
+  color: var(--text-muted);
 }
 
 .mycourses-error {
-  background: rgba(220, 38, 38, 0.15);
-  border: 1px solid rgba(220, 38, 38, 0.35);
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
   border-radius: 16px;
   padding: 1rem 1.25rem;
+  color: #dc2626;
 }
 
 .mycourses-error-hint {
   margin-top: 0.75rem;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-secondary);
 }
 
 .mycourses-error code {
-  background: rgba(0, 0, 0, 0.25);
+  background: #F3F4F6;
   padding: 0.15rem 0.35rem;
   border-radius: 8px;
 }
@@ -98,13 +179,20 @@
 }
 
 .mycourses-card {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #fff;
+  border: 1px solid var(--border-medium);
   border-radius: 18px;
   padding: 1rem 1rem 0.9rem;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mycourses-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 86, 210, 0.08);
 }
 
 .mycourses-card-top {
@@ -123,12 +211,12 @@
 .mycourses-card-instructor {
   margin: 0;
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-muted);
 }
 
 .mycourses-card-desc {
   margin: 0;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--text-secondary);
   line-height: 1.55;
   font-size: 0.95rem;
   display: -webkit-box;
@@ -147,12 +235,12 @@
 
 .mycourses-price {
   font-weight: 800;
-  color: #e9d5ff;
+  color: var(--primary-500);
 }
 
 .mycourses-chapters {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--text-muted);
 }
 
 .mycourses-card-link {
@@ -181,19 +269,19 @@
 }
 
 .mycourses-btn-danger {
-  background: rgba(220, 38, 38, 0.25);
-  color: #fca5a5;
-  border: 1px solid rgba(220, 38, 38, 0.4);
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  border: 1px solid #FECACA;
 }
 
 .mycourses-btn-danger:hover {
-  background: rgba(220, 38, 38, 0.45);
+  background: rgba(220, 38, 38, 0.15);
 }
 
 .mycourses-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -201,8 +289,8 @@
 }
 
 .mycourses-modal {
-  background: #1e1b3a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #fff;
+  border: 1px solid var(--border-medium);
   border-radius: 18px;
   padding: 1.5rem 1.75rem;
   width: 95%;
@@ -210,6 +298,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .mycourses-modal h2 {
@@ -228,20 +317,29 @@
 
 .mycourses-modal input,
 .mycourses-modal textarea {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #F5F7F8;
+  border: 1px solid var(--border-medium);
   border-radius: 10px;
   padding: 0.55rem 0.75rem;
-  color: #fff;
+  color: var(--text-main);
   font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.mycourses-modal input:focus,
+.mycourses-modal textarea:focus {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(0, 86, 210, 0.1);
 }
 
 .mycourses-form-error {
-  background: rgba(220, 38, 38, 0.15);
-  border: 1px solid rgba(220, 38, 38, 0.35);
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
   border-radius: 10px;
   padding: 0.55rem 0.75rem;
   font-size: 0.9rem;
+  color: #dc2626;
 }
 
 .mycourses-form-actions {
@@ -252,10 +350,10 @@
 
 .mycourses-image-preview-wrap {
   margin-top: -0.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--border-medium);
   border-radius: 12px;
   overflow: hidden;
-  background: rgba(15, 23, 42, 0.35);
+  background: #F5F7F8;
 }
 
 .mycourses-image-preview {
@@ -267,9 +365,9 @@
 
 .mycourses-form-note {
   font-size: 0.86rem;
-  color: rgba(255, 255, 255, 0.78);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  background: #F5F7F8;
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   padding: 0.6rem 0.75rem;
 }
@@ -278,9 +376,9 @@
   font-size: 0.75rem;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  background: rgba(74, 222, 128, 0.15);
-  border: 1px solid rgba(74, 222, 128, 0.25);
-  color: #86efac;
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  color: #16a34a;
   white-space: nowrap;
 }
 
@@ -306,4 +404,3 @@
     width: 100%;
   }
 }
-

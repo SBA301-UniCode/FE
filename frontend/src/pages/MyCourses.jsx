@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/layout/Header'
+import Footer from '../components/layout/Footer'
 import { courseApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import './MyCourses.css'
@@ -182,23 +183,41 @@ const MyCourses = () => {
     }
   }
 
+  const totalChapters = useMemo(() => courses.reduce((s, c) => s + (Number(c?.chapterCount) || 0), 0), [courses])
+
   return (
     <div className="mycourses">
       <Header />
+
+      {/* ═══ INSTRUCTOR DASHBOARD BANNER ═══ */}
+      {canView && (
+        <div className="mc-dashboard">
+          <div className="mc-dashboard-inner">
+            <div className="mc-dashboard-left">
+              <h1 className="mc-dashboard-title">Instructor Dashboard</h1>
+              <p className="mc-dashboard-sub">Quản lý và phát triển các khóa học của bạn.</p>
+            </div>
+            <div className="mc-dashboard-stats">
+              <div className="mc-dashboard-stat">
+                <span className="mc-dashboard-stat-value">{courses.length}</span>
+                <span className="mc-dashboard-stat-label">Courses</span>
+              </div>
+              <div className="mc-dashboard-stat">
+                <span className="mc-dashboard-stat-value">{totalChapters}</span>
+                <span className="mc-dashboard-stat-label">Chapters</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="mycourses-main">
         <div className="mycourses-header">
-          <div>
-            <h1>My Courses</h1>
-            <p>Danh sách khóa học bạn đang sở hữu/quản lý.</p>
-          </div>
+          <div />
           <div className="mycourses-actions">
-            <Link to="/" className="mycourses-btn mycourses-btn-ghost">
-              ← Trang chủ
-            </Link>
+            <Link to="/" className="mycourses-btn mycourses-btn-ghost">← Trang chủ</Link>
             {canView && (
-              <button type="button" className="mycourses-btn mycourses-btn-primary" onClick={openCreate}>
-                + Tạo khóa học
-              </button>
+              <button type="button" className="mycourses-btn mycourses-btn-primary" onClick={openCreate}>+ Tạo khóa học</button>
             )}
           </div>
         </div>
@@ -284,6 +303,11 @@ const MyCourses = () => {
           <div className="mycourses-grid">
             {courses.map((c) => (
               <article key={getCourseKey(c)} className="mycourses-card">
+                {getCourseImage(c) && (
+                  <div className="mc-card-thumb">
+                    <img src={getCourseImage(c)} alt="" className="mc-card-thumb-img" />
+                  </div>
+                )}
                 <div className="mycourses-card-top">
                   <div className="mycourses-card-title">{getCourseTitle(c)}</div>
                   {c?.status && <span className="mycourses-pill">{String(c.status)}</span>}
@@ -327,6 +351,7 @@ const MyCourses = () => {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   )
 }

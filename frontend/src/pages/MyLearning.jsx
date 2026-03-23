@@ -1,9 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Header from '../components/layout/Header'
+import Footer from '../components/layout/Footer'
 import { enrollmentApi, processApi, chapterApi, certificateApi, userApi, feedbackApi } from '../api'
+import { useAuth } from '../contexts/useAuth'
 import FeedbackModal from '../components/feedback/FeedbackModal'
 import './MyLearning.css'
+
+const getGreeting = () => {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
+}
 
 const extractList = (payload) => {
   if (!payload) return []
@@ -24,6 +33,7 @@ const unwrap = (res) => res?.data?.data ?? res?.data ?? res
 
 const MyLearning = () => {
   const navigate = useNavigate()
+  const { user: authUser } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [enrollments, setEnrollments] = useState([])
@@ -36,6 +46,19 @@ const MyLearning = () => {
   const [canFeedbackByCourse, setCanFeedbackByCourse] = useState({})
   const [activeCommentCourseId, setActiveCommentCourseId] = useState('')
   const [feedbackSubmittingByCourse, setFeedbackSubmittingByCourse] = useState({})
+  const [activeTab, setActiveTab] = useState('ALL')
+
+  const TABS = [
+    { key: 'ALL', label: 'Tất cả' },
+    { key: 'IN_PROGRESS', label: 'Đang học' },
+    { key: 'COMPLETED', label: 'Hoàn thành' },
+    { key: 'NOT_STARTED', label: 'Chưa bắt đầu' },
+  ]
+
+  const filteredEnrollments = useMemo(() => {
+    if (activeTab === 'ALL') return enrollments
+    return enrollments.filter(e => e.statusCourse === activeTab)
+  }, [enrollments, activeTab])
 
   useEffect(() => {
     let cancelled = false
@@ -226,20 +249,105 @@ const MyLearning = () => {
     }
   }
 
+  const inProgressCourses = useMemo(() =>
+    enrollments.filter(e => (e.statusCourse === 'IN_PROGRESS') && (progressByEnrollment[e.enrollmentId] ?? 0) < 99.99)
+      .sort((a, b) => new Date(b.enrolledAt || 0) - new Date(a.enrolledAt || 0)),
+    [enrollments, progressByEnrollment]
+  )
+  const continueCourse = inProgressCourses[0]
+  const displayName = authUser?.name || authUser?.username || authUser?.email?.split('@')[0] || 'Learner'
+  const completedCount = enrollments.filter(e => (progressByEnrollment[e.enrollmentId] ?? 0) >= 99.99).length
+
   return (
     <div className="mylearning">
       <Header />
       <main className="mylearning-main">
+        {/* ═══ WELCOME BANNER ═══ */}
+        <div className="ml-welcome">
+          <div className="ml-welcome-left">
+            <h1 className="ml-welcome-greeting">{getGreeting()}, {displayName}! 👋</h1>
+            <p className="ml-welcome-sub">
+              {enrollments.length > 0
+                ? `Bạn đang theo dõi ${enrollments.length} khóa học${completedCount > 0 ? ` — đã hoàn thành ${completedCount}` : ''}`
+                : 'Bắt đầu hành trình học tập của bạn ngay hôm nay.'
+              }
+            </p>
+          </div>
+          <div className="ml-welcome-stats">
+            <div className="ml-welcome-stat">
+              <span className="ml-welcome-stat-value">{enrollments.length}</span>
+              <span className="ml-welcome-stat-label">Enrolled</span>
+            </div>
+            <div className="ml-welcome-stat">
+              <span className="ml-welcome-stat-value">{completedCount}</span>
+              <span className="ml-welcome-stat-label">Completed</span>
+            </div>
+            <div className="ml-welcome-stat">
+              <span className="ml-welcome-stat-value">{certifiedCourseIds.size}</span>
+              <span className="ml-welcome-stat-label">Certificates</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ CONTINUE LEARNING HERO ═══ */}
+        {continueCourse && (() => {
+          const cc = continueCourse.courseResponse || {}
+          const pct = Math.round(progressByEnrollment[continueCourse.enrollmentId] ?? 0)
+          return (
+            <div className="ml-continue">
+              <div className="ml-continue-left">
+                {(cc.image || cc.imageUrl || cc.thumbnail) && (
+                  <img src={cc.image || cc.imageUrl || cc.thumbnail} alt="" className="ml-continue-thumb" />
+                )}
+              </div>
+              <div className="ml-continue-right">
+                <span className="ml-continue-label">Continue Learning</span>
+                <h2 className="ml-continue-title">{cc.title || 'Khóa học'}</h2>
+                <div className="ml-continue-progress">
+                  <div className="ml-continue-bar-bg">
+                    <div className="ml-continue-bar-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="ml-continue-pct">{pct}% complete</span>
+                </div>
+                <button
+                  type="button"
+                  className="ml-continue-btn"
+                  onClick={() => handleContinueLearning(continueCourse)}
+                >
+                  Resume →
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+
         <div className="mylearning-header">
           <div>
-            <h1>My Learning</h1>
-            <p>Các khóa học bạn đã ghi danh và đang học.</p>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>All Courses</h2>
           </div>
           <div className="mylearning-actions">
             <Link to="/courses" className="mylearning-btn mylearning-btn-ghost">
-              ← Khám phá thêm khóa học
+              ← Explore more
             </Link>
           </div>
+        </div>
+
+        {/* ── Coursera-style Tabs ── */}
+        <div className="mylearning-tabs">
+          {TABS.map(tab => (
+            <button
+              key={tab.key}
+              className={`mylearning-tab${activeTab === tab.key ? ' mylearning-tab--active' : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+              <span className="mylearning-tab-count">
+                {tab.key === 'ALL'
+                  ? enrollments.length
+                  : enrollments.filter(e => e.statusCourse === tab.key).length}
+              </span>
+            </button>
+          ))}
         </div>
 
         {!!issueMessage && (
@@ -263,7 +371,7 @@ const MyLearning = () => {
 
         {!loading && !error && enrollments.length > 0 && (
           <div className="mylearning-grid">
-            {enrollments.map((e) => {
+            {filteredEnrollments.map((e) => {
               const course = e.courseResponse || {}
               const percent = progressByEnrollment[e.enrollmentId] ?? 0
               const courseId = getCourseId(e)
@@ -276,6 +384,18 @@ const MyLearning = () => {
                   : 'is-not-started'
               return (
                 <article key={e.enrollmentId} className={`mylearning-card ${statusClass}`}>
+                  <div className="mylearning-card-thumb">
+                    {(course.image || course.imageUrl || course.thumbnail) ? (
+                      <img
+                        src={course.image || course.imageUrl || course.thumbnail}
+                        alt={course.title || ''}
+                        className="mylearning-card-thumb-img"
+                        onError={(ev) => { ev.target.style.display = 'none' }}
+                      />
+                    ) : (
+                      <div className="mylearning-card-thumb-placeholder">📚</div>
+                    )}
+                  </div>
                   <div className="mylearning-card-top">
                     <div className="mylearning-card-title">{course.title || 'Khóa học'}</div>
                     <span className={`mylearning-pill ${statusClass}`}>{displayStatus}</span>
@@ -356,6 +476,7 @@ const MyLearning = () => {
         onClose={() => setActiveCommentCourseId('')}
         onSubmit={(payload) => handleSubmitFeedback(activeCommentCourseId, payload)}
       />
+      <Footer />
     </div>
   )
 }

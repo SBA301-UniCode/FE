@@ -25,7 +25,7 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// 401 → xóa token và chuyển về login
+// 401 → xóa token và dispatch event (SPA-safe, không reload page)
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -34,7 +34,7 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('refreshToken')
       sessionStorage.removeItem('accessToken')
       sessionStorage.removeItem('refreshToken')
-      window.location.href = '/login'
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
     }
     return Promise.reject(error)
   }

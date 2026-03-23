@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700;900&display=swap');
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════
+   UniCode Design Tokens — Tailwind CSS v4 Theme
+   ═══════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Page Backgrounds ── */
+  --color-bg-deep: #F5F7F8;
+  --color-bg-page: #FFFFFF;
+
+  /* ── Surface / Card ── */
+  --color-bg-card: #FFFFFF;
+  --color-bg-card-hover: #FAFAFA;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-input: #FFFFFF;
+
+  /* ── Primary (Coursera Blue) ── */
+  --color-primary-400: #1A73E8;
+  --color-primary-500: #0056D2;
+  --color-primary-600: #003E99;
+  --color-primary-700: #002D6D;
+  --color-primary-800: #002553;
+
+  /* ── Text (Coursera: dark text on light bg) ── */
+  --color-text-main: #1F1F1F;
+  --color-text-secondary: #515254;
+  --color-text-muted: #726F72;
+  --color-text-dim: #9B9B9B;
+
+  /* ── Semantic: Success ── */
+  --color-success-500: #0F7B0F;
+  --color-success-600: #0A5E0A;
+
+  /* ── Semantic: Danger ── */
+  --color-danger-500: #D32F2F;
+
+  /* ── Semantic: Warning ── */
+  --color-warning-500: #E65100;
+
+  /* ── Borders ── */
+  --color-border-subtle: #E8E8E8;
+  --color-border-medium: #D1D7DC;
+  --color-border-strong: #B0B8BF;
+
+  /* ── Rating ── */
+  --color-star-active: #F2D049;
+  --color-star-inactive: #D1D7DC;
+
+  /* ── Border Radius ── */
+  --radius-btn: 8px;
+  --radius-btn-sm: 6px;
+  --radius-btn-lg: 10px;
+
+  /* ── Font ── */
+  --font-sans: 'Source Sans 3', 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+/* ── Global Resets ── */
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--color-bg-deep);
+  color: var(--color-text-main);
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(0, 86, 210, 0.2);
+  color: #000;
+}
+
+/* ── Custom Keyframes for pages ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes faqSlide {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

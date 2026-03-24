@@ -4,6 +4,7 @@ import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import { courseApi, paymentApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
+import { useTranslation } from 'react-i18next'
 
 type AnyObj = Record<string, unknown>
 const formatPrice = (price: unknown) => { if (price === null || price === undefined || price === '') return ''; const n = Number(price); return Number.isNaN(n) ? String(price) : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n) }
@@ -14,6 +15,7 @@ const Payment = () => {
   const [searchParams] = useSearchParams()
   const courseId = searchParams.get('courseId')
   const { user, isAuthenticated } = useAuth()
+  const { t } = useTranslation()
   const [course, setCourse] = useState<AnyObj | null>(null)
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
@@ -22,11 +24,11 @@ const Payment = () => {
   useEffect(() => {
     const stateCourse = (location.state as { course?: AnyObj })?.course
     if (stateCourse && (stateCourse.courseId === courseId || String(stateCourse.courseId) === courseId)) { setCourse(stateCourse); setLoading(false); return }
-    if (!courseId) { setLoading(false); setError('Thiếu thông tin khóa học.'); return }
+    if (!courseId) { setLoading(false); setError(t('payment.missingCourse')); return }
     let cancelled = false
     courseApi.getById(courseId)
       .then((res) => { const d = res.data?.data ?? res.data; if (!cancelled) setCourse(d as AnyObj) })
-      .catch((err: { response?: { status?: number } }) => { if (!cancelled) setError(err.response?.status === 404 ? 'Không tìm thấy khóa học.' : 'Không tải được thông tin khóa học.') })
+      .catch((err: { response?: { status?: number } }) => { if (!cancelled) setError(err.response?.status === 404 ? t('payment.notFound') : t('payment.loadFailed')) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [courseId, location.state])
@@ -37,8 +39,8 @@ const Payment = () => {
       const result = await paymentApi.buySubscription(courseId)
       const payUrl = typeof result === 'string' ? result : ((result as AnyObj)?.data ?? (result as AnyObj)?.message)
       if (payUrl && typeof payUrl === 'string' && (payUrl as string).startsWith('http')) { window.location.href = payUrl as string; return }
-      setError('Backend không trả về link thanh toán MoMo.')
-    } catch (e: unknown) { setError((e as Error).message || 'Không thể tạo giao dịch MoMo.') }
+      setError(t('payment.noPayUrl'))
+    } catch (e: unknown) { setError((e as Error).message || t('payment.momoFailed')) }
     finally { setPaying(false) }
   }
 
@@ -60,7 +62,7 @@ const Payment = () => {
         {!loading && error && !course && (
           <div className="max-w-[500px] mx-auto my-8 text-center p-8 bg-white rounded-[14px] border border-border-medium text-red-600">
             ⚠️ {error}
-            <Link to="/courses" className="block mt-3 text-primary-500 no-underline font-semibold">← Quay lại</Link>
+            <Link to="/courses" className="block mt-3 text-primary-500 no-underline font-semibold">{t('payment.backToCourses')}</Link>
           </div>
         )}
 
@@ -73,7 +75,7 @@ const Payment = () => {
                 <div className="flex gap-4 mb-5 pb-5 border-b border-border-subtle">
                   {getCourseImage(course) && <img src={getCourseImage(course)} alt="" className="w-[120px] h-20 rounded-[10px] object-cover shrink-0" />}
                   <div className="flex-1">
-                    <h3 className="m-0 mb-1 text-[1.05rem] font-bold leading-snug">{(course.title as string) || 'Khóa học'}</h3>
+                    <h3 className="m-0 mb-1 text-[1.05rem] font-bold leading-snug">{(course.title as string) || t('payment.courseDefault')}</h3>
                     {!!course.instructorName && <p className="m-0 mb-2 text-text-muted text-[0.85rem]">by {String(course.instructorName)}</p>}
                     <div className="flex gap-2">
                       <span className="text-[0.72rem] font-semibold text-text-secondary bg-border-subtle px-2 py-0.5 rounded-md">📗 Full Course</span>
@@ -105,7 +107,7 @@ const Payment = () => {
                 {error && <div className="px-4 py-3 mb-4 rounded-[10px] text-[0.88rem] bg-red-50 border border-red-200 text-red-600" role="alert">{error}</div>}
                 <button type="button" className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-base no-underline border-none cursor-pointer font-[inherit] transition-all bg-[linear-gradient(135deg,#ae2070_0%,#d63384_50%,#7b1fa2_100%)] text-white shadow-[0_4px_16px_rgba(174,32,112,0.3)] hover:not-disabled:-translate-y-0.5 hover:not-disabled:shadow-[0_8px_24px_rgba(174,32,112,0.35)] disabled:opacity-70 disabled:cursor-not-allowed" onClick={handlePayWithMoMo} disabled={paying}>
                   <span className="flex items-center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#fff" fillOpacity="0.2" /><text x="12" y="16" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="bold">M</text></svg></span>
-                  {paying ? 'Đang chuyển hướng...' : 'Pay with MoMo'}
+                  {paying ? t('payment.redirecting') : 'Pay with MoMo'}
                 </button>
                 <p className="mt-2 text-[0.78rem] text-text-muted text-center">You'll be redirected to MoMo to complete the payment securely.</p>
                 <div className="flex items-center gap-3 my-4 text-text-muted text-[0.82rem] before:content-[''] before:flex-1 before:h-px before:bg-border-subtle after:content-[''] after:flex-1 after:h-px after:bg-border-subtle"><span>or</span></div>

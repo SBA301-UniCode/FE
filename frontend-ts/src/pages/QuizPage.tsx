@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '../components/layout/Header'
 import { processApi, questionBankApi, contentApi } from '../api'
+import { useTranslation } from 'react-i18next'
 
 type AnyObj = Record<string, unknown>
 const unwrap = (res: unknown) => { const r = res as { data?: { data?: unknown } }; return r?.data?.data ?? r?.data ?? r }
@@ -32,6 +33,7 @@ const QuizPage = () => {
   const chapterId = searchParams.get('chapterId') || ''
   const selectedContentId = searchParams.get('contentId') || contentId || ''
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -46,9 +48,9 @@ const QuizPage = () => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    if (!lessonId) { setLoadError('Không tìm thấy bài giảng.'); setLoading(false); return }
+    if (!lessonId) { setLoadError(t('quiz.noQuestionsLesson')); setLoading(false); return }
     setLoading(true); setLoadError('')
-    const loadQ = questionBankApi.getByLessonId(lessonId, 0, 100).then((res) => { const raw = unwrap(res) as AnyObj; const items = (raw?.content ?? raw?.items ?? (Array.isArray(raw) ? raw : [])) as AnyObj[]; if (!items.length) { setLoadError('Bài giảng này chưa có câu hỏi nào.'); return }; setQuestions(items.map((q) => ({ questionBankId: q.questionBankId as string, text: q.questionText as string, imageUrl: q.imageUrl as string | undefined, type: (q.questionType as string) || 'MULTIPLE_CHOICE', options: ((q.options as AnyObj[]) || []).map((o) => ({ optionId: o.optionId as string, text: o.answerText as string, isCorrect: (o.isCorrect || o.correct) as boolean })) }))) }).catch((err: { response?: { data?: { message?: string } }; message?: string }) => setLoadError(err.response?.data?.message || err.message || 'Không tải được câu hỏi.'))
+    const loadQ = questionBankApi.getByLessonId(lessonId, 0, 100).then((res) => { const raw = unwrap(res) as AnyObj; const items = (raw?.content ?? raw?.items ?? (Array.isArray(raw) ? raw : [])) as AnyObj[]; if (!items.length) { setLoadError(t('quiz.noQuestionsLesson')); return }; setQuestions(items.map((q) => ({ questionBankId: q.questionBankId as string, text: q.questionText as string, imageUrl: q.imageUrl as string | undefined, type: (q.questionType as string) || 'MULTIPLE_CHOICE', options: ((q.options as AnyObj[]) || []).map((o) => ({ optionId: o.optionId as string, text: o.answerText as string, isCorrect: (o.isCorrect || o.correct) as boolean })) }))) }).catch((err: { response?: { data?: { message?: string } }; message?: string }) => setLoadError(err.response?.data?.message || err.message || t('quiz.cantLoadQuestions')))
     const resolveId = contentApi.getByLessonId(lessonId).then((res) => { const list = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; const quiz = list.find((c) => c.contentType === 'QUIZ'); const id = getContentId(quiz as AnyObj); if (isUuid(id)) setRealContentId(id) }).catch(() => {})
     Promise.all([loadQ, resolveId]).finally(() => setLoading(false))
   }, [lessonId])
@@ -76,18 +78,18 @@ const QuizPage = () => {
   /* ─── LOADING / ERROR ─── */
   const IntroCard = ({ children }: { children: React.ReactNode }) => <div className="max-w-[580px] mx-auto bg-white border border-border-medium rounded-[20px] p-10 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">{children}</div>
 
-  if (loading) return <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-5xl mx-auto px-6 py-8 pb-16"><IntroCard><p className="text-center py-8">Đang tải câu hỏi...</p></IntroCard></main></div>
-  if (loadError || questions.length === 0) return <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-5xl mx-auto px-6 py-8 pb-16"><IntroCard><div className="text-5xl mb-2">⚠️</div><h1 className="m-0 mb-6 text-2xl font-extrabold">Chưa có bài kiểm tra</h1><p className="text-text-muted text-center">{loadError || 'Bài giảng này chưa có câu hỏi nào.'}</p><div className="flex flex-col gap-2.5 items-center mt-6"><button type="button" className={btnGhost} onClick={goBack}>Quay lại</button></div></IntroCard></main></div>
+  if (loading) return <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-5xl mx-auto px-6 py-8 pb-16"><IntroCard><p className="text-center py-8">{t('quiz.loading')}</p></IntroCard></main></div>
+  if (loadError || questions.length === 0) return <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-5xl mx-auto px-6 py-8 pb-16"><IntroCard><div className="text-5xl mb-2">⚠️</div><h1 className="m-0 mb-6 text-2xl font-extrabold">{t('quiz.noQuiz')}</h1><p className="text-text-muted text-center">{loadError || t('quiz.noQuestionsLesson')}</p><div className="flex flex-col gap-2.5 items-center mt-6"><button type="button" className={btnGhost} onClick={goBack}>{t('quiz.goBack')}</button></div></IntroCard></main></div>
 
   /* ─── INTRO ─── */
   if (phase === 'intro') return (
     <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-5xl mx-auto px-6 py-8 pb-16">
       <IntroCard>
         <div className="text-5xl mb-2">📝</div>
-        <h1 className="m-0 mb-6 text-2xl font-extrabold">Bài kiểm tra</h1>
-        <div className="flex justify-center gap-6 mb-6">{[{ l: 'Số câu hỏi', v: questions.length }, { l: 'Thời gian', v: formatTime(DURATION) }, { l: 'Điểm đạt', v: `${PASS_SCORE}%` }].map((m) => <div key={m.l} className="flex flex-col items-center gap-0.5"><span className="text-[0.78rem] text-text-muted uppercase tracking-wider">{m.l}</span><span className="text-xl font-bold text-primary-500">{m.v}</span></div>)}</div>
-        <div className="text-left bg-bg-deep border border-border-subtle rounded-[14px] p-4 mb-6"><h3 className="m-0 mb-2 text-sm text-text-main">Lưu ý trước khi làm bài</h3><ul className="m-0 pl-5">{['Đồng hồ sẽ bắt đầu đếm ngay khi bạn nhấn "Bắt đầu".', 'Bạn có thể đánh dấu câu hỏi để xem lại sau.', 'Bài kiểm tra sẽ tự động nộp khi hết thời gian.', 'Mỗi câu hỏi chỉ có một đáp án đúng.'].map((t) => <li key={t} className="text-[0.88rem] text-text-secondary mb-1 leading-relaxed">{t}</li>)}</ul></div>
-        <div className="flex flex-col gap-2.5 items-center"><button type="button" className={`${btnPrimary} ${btnLg}`} onClick={startQuiz}>Bắt đầu làm bài</button><button type="button" className={btnGhost} onClick={goBack}>Quay lại</button></div>
+        <h1 className="m-0 mb-6 text-2xl font-extrabold">{t('quiz.title')}</h1>
+        <div className="flex justify-center gap-6 mb-6">{[{ l: 'Questions', v: questions.length }, { l: 'Time', v: formatTime(DURATION) }, { l: 'Pass', v: `${PASS_SCORE}%` }].map((m) => <div key={m.l} className="flex flex-col items-center gap-0.5"><span className="text-[0.78rem] text-text-muted uppercase tracking-wider">{m.l}</span><span className="text-xl font-bold text-primary-500">{m.v}</span></div>)}</div>
+        <div className="text-left bg-bg-deep border border-border-subtle rounded-[14px] p-4 mb-6"><h3 className="m-0 mb-2 text-sm text-text-main">{t('quiz.notesTitle')}</h3><ul className="m-0 pl-5">{[t('quiz.note1'), t('quiz.note2'), t('quiz.note3'), t('quiz.note4')].map((note) => <li key={note} className="text-[0.88rem] text-text-secondary mb-1 leading-relaxed">{note}</li>)}</ul></div>
+        <div className="flex flex-col gap-2.5 items-center"><button type="button" className={`${btnPrimary} ${btnLg}`} onClick={startQuiz}>{t('quiz.startBtn')}</button><button type="button" className={btnGhost} onClick={goBack}>{t('quiz.goBack')}</button></div>
       </IntroCard>
     </main></div>
   )
@@ -97,25 +99,25 @@ const QuizPage = () => {
     <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-5xl mx-auto px-6 py-8 pb-16">
       <div className="max-w-[720px] mx-auto bg-white border border-border-medium rounded-[20px] p-10 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <div className="text-[3.5rem] mb-1">{result.passed ? '🎉' : '😔'}</div>
-        <h1 className="m-0 mb-1 text-2xl font-extrabold">{result.passed ? 'Chúc mừng! Bạn đã đạt!' : 'Chưa đạt yêu cầu'}</h1>
-        <p className="m-0 mb-6 text-text-muted text-sm">{result.passed ? 'Bạn đã vượt qua bài kiểm tra thành công.' : `Bạn cần đạt tối thiểu ${PASS_SCORE}% để vượt qua.`}</p>
+        <h1 className="m-0 mb-1 text-2xl font-extrabold">{result.passed ? t('quiz.resultPassed') : t('quiz.resultFailed')}</h1>
+        <p className="m-0 mb-6 text-text-muted text-sm">{result.passed ? t('quiz.resultPassedDesc') : t('quiz.resultFailedDesc', { score: PASS_SCORE })}</p>
         {/* Score ring */}
         <div className="flex items-center justify-center gap-10 mb-8 flex-wrap">
           <div className="relative w-[120px] h-[120px]"><svg viewBox="0 0 120 120" className="w-full h-full -rotate-90"><circle cx="60" cy="60" r="52" fill="none" stroke="#E5E7EB" strokeWidth="10" /><circle cx="60" cy="60" r="52" fill="none" strokeWidth="10" strokeLinecap="round" className={result.passed ? 'stroke-green-500' : 'stroke-red-500'} strokeDasharray={`${(result.score / 100) * 327} 327`} style={{ transition: 'stroke-dasharray 0.8s ease' }} /></svg><div className="absolute inset-0 flex items-center justify-center"><span className="text-[2rem] font-extrabold">{result.score}</span><span className="text-base text-text-muted ml-px">%</span></div></div>
-          <div className="flex gap-6">{[{ v: result.correct, l: 'Đúng', c: 'text-green-600' }, { v: result.total - result.correct, l: 'Sai', c: 'text-red-600' }, { v: result.total, l: 'Tổng câu', c: 'text-text-main' }].map((d) => <div key={d.l} className="flex flex-col items-center"><span className={`text-2xl font-extrabold ${d.c}`}>{d.v}</span><span className="text-[0.78rem] text-text-muted uppercase tracking-wider">{d.l}</span></div>)}</div>
+          <div className="flex gap-6">{[{ v: result.correct, l: t('quiz.correct'), c: 'text-green-600' }, { v: result.total - result.correct, l: t('quiz.incorrect'), c: 'text-red-600' }, { v: result.total, l: 'Total', c: 'text-text-main' }].map((d) => <div key={d.l} className="flex flex-col items-center"><span className={`text-2xl font-extrabold ${d.c}`}>{d.v}</span><span className="text-[0.78rem] text-text-muted uppercase tracking-wider">{d.l}</span></div>)}</div>
         </div>
         {/* Review answers */}
         <div className="text-left mt-6">
-          <h3 className="m-0 mb-4 text-lg font-bold text-center">Đáp án chi tiết</h3>
+          <h3 className="m-0 mb-4 text-lg font-bold text-center">{t('quiz.detailAnswers')}</h3>
           {questions.map((q, i) => { const ua = answers[q.questionBankId]; const co = q.options.find((o) => o.isCorrect); const ok = ua && co && String(ua) === String(co.optionId); return (
             <div key={q.questionBankId} className={`bg-bg-deep border border-border-medium rounded-[14px] p-4 mb-3 ${ok ? 'border-l-[3px] border-l-green-500' : 'border-l-[3px] border-l-red-500'}`}>
-              <div className="flex justify-between items-center mb-1"><span className="text-[0.82rem] font-bold text-text-muted">Câu {i + 1}</span><span className={`text-[0.72rem] font-bold px-2 py-0.5 rounded-md ${ok ? 'bg-emerald-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{ok ? 'Đúng' : 'Sai'}</span></div>
+              <div className="flex justify-between items-center mb-1"><span className="text-[0.82rem] font-bold text-text-muted">{t('quiz.questionNum', { num: i + 1 })}</span><span className={`text-[0.72rem] font-bold px-2 py-0.5 rounded-md ${ok ? 'bg-emerald-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{ok ? t('quiz.correct') : t('quiz.incorrect')}</span></div>
               <p className="m-0 mb-2.5 text-sm font-semibold text-text-main leading-relaxed">{q.text}</p>
               <div className="flex flex-col gap-1">{q.options.map((opt) => { let cls = 'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[0.88rem] text-text-secondary'; if (opt.isCorrect) cls += ' bg-emerald-50 text-green-600'; if (String(opt.optionId) === String(ua) && !opt.isCorrect) cls += ' bg-red-50 text-red-600'; return <div key={opt.optionId} className={cls}><span className="w-[18px] text-center font-bold text-[0.85rem] shrink-0">{opt.isCorrect ? '✓' : String(opt.optionId) === String(ua) ? '✗' : ''}</span><span>{opt.text}</span></div> })}</div>
             </div>
           ) })}
         </div>
-        <div className="flex justify-center gap-3 mt-6"><button type="button" className={btnPrimary} onClick={startQuiz}>Làm lại</button><button type="button" className={btnGhost} onClick={goBack}>Quay lại khóa học</button></div>
+        <div className="flex justify-center gap-3 mt-6"><button type="button" className={btnPrimary} onClick={startQuiz}>{t('quiz.retry')}</button><button type="button" className={btnGhost} onClick={goBack}>{t('quiz.backToCourse')}</button></div>
       </div>
     </main></div>
   )
@@ -127,9 +129,9 @@ const QuizPage = () => {
       <div className="grid grid-cols-[minmax(0,1fr)_260px] gap-5 items-start max-[768px]:grid-cols-1">
         {/* Question panel */}
         <div className="bg-white border border-border-medium rounded-[20px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-          <div className="flex justify-between items-center mb-3"><div className="text-base font-bold">Câu {currentIdx + 1} <span className="font-normal text-text-muted">/ {questions.length}</span></div><div className={`flex items-center gap-1 text-base font-bold px-3 py-1.5 rounded-[10px] ${timeLeft <= 60 ? 'text-red-600 bg-red-600/8 animate-pulse' : 'text-primary-500 bg-primary-500/8'}`}>⏱ {formatTime(timeLeft)}</div></div>
-          {currentQ.type === 'TRUE_FALSE' && <span className="inline-block text-[0.72rem] font-semibold uppercase tracking-widest bg-purple-50 text-violet-600 px-2.5 py-0.5 rounded-md mb-3">Đúng / Sai</span>}
-          {currentQ.type === 'MULTIPLE_CHOICE' && <span className="inline-block text-[0.72rem] font-semibold uppercase tracking-widest bg-purple-50 text-violet-600 px-2.5 py-0.5 rounded-md mb-3">Trắc nghiệm</span>}
+          <div className="flex justify-between items-center mb-3"><div className="text-base font-bold">{t('quiz.questionNum', { num: currentIdx + 1 })} <span className="font-normal text-text-muted">/ {questions.length}</span></div><div className={`flex items-center gap-1 text-base font-bold px-3 py-1.5 rounded-[10px] ${timeLeft <= 60 ? 'text-red-600 bg-red-600/8 animate-pulse' : 'text-primary-500 bg-primary-500/8'}`}>⏱ {formatTime(timeLeft)}</div></div>
+          {currentQ.type === 'TRUE_FALSE' && <span className="inline-block text-[0.72rem] font-semibold uppercase tracking-widest bg-purple-50 text-violet-600 px-2.5 py-0.5 rounded-md mb-3">{t('quiz.trueFalse')}</span>}
+          {currentQ.type === 'MULTIPLE_CHOICE' && <span className="inline-block text-[0.72rem] font-semibold uppercase tracking-widest bg-purple-50 text-violet-600 px-2.5 py-0.5 rounded-md mb-3">{t('quiz.multipleChoice')}</span>}
           <div className="text-[1.08rem] font-semibold leading-relaxed mb-5 text-text-main">{currentQ.text}</div>
           {currentQ.imageUrl && <img src={currentQ.imageUrl} alt="" className="max-w-full rounded-xl mb-5" />}
           <div className="flex flex-col gap-2.5 mb-5">{currentQ.options.map((opt, i) => { const sel = String(answers[currentQ.questionBankId]) === String(opt.optionId); return (
@@ -139,20 +141,20 @@ const QuizPage = () => {
             </button>
           ) })}</div>
           <div className="flex justify-between items-center flex-wrap gap-2 border-t border-border-subtle pt-4">
-            <button type="button" className={`${btnGhost} text-[0.82rem] px-3 py-1.5`} onClick={toggleFlag}>{flagged[currentQ.questionBankId] ? '🚩 Bỏ đánh dấu' : '🏳️ Đánh dấu xem lại'}</button>
+            <button type="button" className={`${btnGhost} text-[0.82rem] px-3 py-1.5`} onClick={toggleFlag}>{flagged[currentQ.questionBankId] ? t('quiz.unflag') : t('quiz.flag')}</button>
             <div className="flex gap-2">
-              <button type="button" className={btnOutline} disabled={currentIdx === 0} onClick={() => setCurrentIdx((p) => p - 1)}>← Trước</button>
-              {currentIdx < questions.length - 1 ? <button type="button" className={btnPrimary} onClick={() => setCurrentIdx((p) => p + 1)}>Tiếp →</button> : <button type="button" className={btnSubmit} onClick={() => { if (window.confirm(`Bạn đã trả lời ${answeredCount}/${questions.length} câu. Nộp bài?`)) submitQuiz() }}>Nộp bài</button>}
+              <button type="button" className={btnOutline} disabled={currentIdx === 0} onClick={() => setCurrentIdx((p) => p - 1)}>{t('quiz.prevQuestion')}</button>
+              {currentIdx < questions.length - 1 ? <button type="button" className={btnPrimary} onClick={() => setCurrentIdx((p) => p + 1)}>{t('quiz.nextQuestion')}</button> : <button type="button" className={btnSubmit} onClick={() => { if (window.confirm(t('quiz.submitConfirm', { answered: answeredCount, total: questions.length }))) submitQuiz() }}>{t('quiz.submitQuiz')}</button>}
             </div>
           </div>
         </div>
         {/* Sidebar */}
         <div className="bg-white border border-border-medium rounded-[20px] p-5 sticky top-20 shadow-[0_2px_8px_rgba(0,0,0,0.04)] max-[768px]:static max-[768px]:-order-1">
-          <h3 className="m-0 mb-0.5 text-[0.95rem] font-bold">Danh sách câu hỏi</h3>
-          <div className="text-[0.8rem] text-text-muted mb-3">{answeredCount}/{questions.length} đã trả lời</div>
+          <h3 className="m-0 mb-0.5 text-[0.95rem] font-bold">{t('quiz.questionList')}</h3>
+          <div className="text-[0.8rem] text-text-muted mb-3">{answeredCount}/{questions.length}</div>
           <div className="grid grid-cols-5 gap-1.5 mb-3 max-[768px]:grid-cols-8">{questions.map((q, i) => { let cls = 'relative w-full aspect-square flex items-center justify-center rounded-[10px] border text-[0.82rem] font-semibold cursor-pointer transition-all'; if (i === currentIdx) cls += ' border-primary-500 bg-[rgba(0,86,210,0.08)] text-primary-500'; else if (answers[q.questionBankId]) cls += ' bg-emerald-50 border-emerald-200 text-green-600'; else cls += ' bg-white border-border-medium text-text-muted hover:bg-bg-deep'; if (flagged[q.questionBankId]) cls += ' !border-amber-500'; return <button key={q.questionBankId} type="button" className={cls} onClick={() => setCurrentIdx(i)}>{i + 1}{flagged[q.questionBankId] && <span className="absolute -top-0.5 -right-0.5 text-[0.55rem]">🚩</span>}</button> })}</div>
-          <div className="flex flex-wrap gap-x-3 gap-y-2 mb-4">{[{ cls: 'bg-[rgba(0,86,210,0.3)] border border-primary-500', label: 'Đang xem' }, { cls: 'bg-emerald-50 border border-green-600', label: 'Đã trả lời' }, { cls: 'bg-transparent border border-amber-500', label: 'Đánh dấu' }, { cls: 'bg-bg-deep border border-border-medium', label: 'Chưa trả lời' }].map((d) => <div key={d.label} className="flex items-center gap-1 text-[0.72rem] text-text-muted"><span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${d.cls}`} />{d.label}</div>)}</div>
-          <button type="button" className={`${btnSubmit} w-full`} onClick={() => { if (window.confirm(`Bạn đã trả lời ${answeredCount}/${questions.length} câu. Nộp bài?`)) submitQuiz() }}>Nộp bài ({answeredCount}/{questions.length})</button>
+          <div className="flex flex-wrap gap-x-3 gap-y-2 mb-4">{[{ cls: 'bg-[rgba(0,86,210,0.3)] border border-primary-500', label: 'Current' }, { cls: 'bg-emerald-50 border border-green-600', label: 'Answered' }, { cls: 'bg-transparent border border-amber-500', label: 'Flagged' }, { cls: 'bg-bg-deep border border-border-medium', label: 'Unanswered' }].map((d) => <div key={d.label} className="flex items-center gap-1 text-[0.72rem] text-text-muted"><span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${d.cls}`} />{d.label}</div>)}</div>
+          <button type="button" className={`${btnSubmit} w-full`} onClick={() => { if (window.confirm(t('quiz.submitConfirm', { answered: answeredCount, total: questions.length }))) submitQuiz() }}>{t('quiz.submitCount', { answered: answeredCount, total: questions.length })}</button>
         </div>
       </div>
     </main></div>

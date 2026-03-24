@@ -6,7 +6,7 @@ export const DELETED_CONTENT_STORAGE_KEY = 'unicode_deleted_content_ids_v1'
 export const readJsonStorage = (key: string, fallback: AnyObj) => { try { const raw = localStorage.getItem(key); if (!raw) return fallback; const parsed = JSON.parse(raw); return parsed && typeof parsed === 'object' ? parsed : fallback } catch { return fallback } }
 export const readDeletedContentIdMap = () => readJsonStorage(DELETED_CONTENT_STORAGE_KEY, {}) as Record<string, string[]>
 export const writeDeletedContentIdMap = (map: Record<string, string[]>) => localStorage.setItem(DELETED_CONTENT_STORAGE_KEY, JSON.stringify(map))
-export const CONTENT_LABELS: Record<string, string> = { VIDEO: '▶ Video', DOCUMENT: '📄 Tài liệu', QUIZ: '✏️ Bài kiểm tra', PRACTICE: '💻 Bài thực hành' }
+export const CONTENT_LABELS: Record<string, string> = { VIDEO: '▶ Video', DOCUMENT: '📄 Document', QUIZ: '✏️ Quiz', PRACTICE: '💻 Practice' }
 export const isHlsUrl = (url: string) => String(url || '').toLowerCase().includes('.m3u8')
 export const defaultPracticeInputTypes = 'int, int'
 export const defaultPracticeReturnType = 'int'
@@ -21,7 +21,7 @@ export const getVideoDurationSecondsFromFile = (file: File): Promise<number> => 
 
 export const safeList = (res: unknown) => { const d = unwrap(res); return Array.isArray(d) ? d as AnyObj[] : [] }
 
-export const uploadFileToS3WithProgress = (uploadUrl: string, file: File, onProgress: (p: number) => void): Promise<void> => new Promise((resolve, reject) => { const xhr = new XMLHttpRequest(); xhr.open('PUT', uploadUrl, true); xhr.setRequestHeader('Content-Type', file.type || 'video/mp4'); xhr.upload.onprogress = (event) => { if (!event.lengthComputable) return; onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100))) }; xhr.onload = () => { if (xhr.status >= 200 && xhr.status < 300) { onProgress(100); resolve(); return }; reject(new Error(`Upload S3 thất bại (${xhr.status}).`)) }; xhr.onerror = () => reject(new Error('Lỗi mạng khi upload.')); xhr.onabort = () => reject(new Error('Upload đã bị hủy.')); xhr.send(file) })
+export const uploadFileToS3WithProgress = (uploadUrl: string, file: File, onProgress: (p: number) => void): Promise<void> => new Promise((resolve, reject) => { const xhr = new XMLHttpRequest(); xhr.open('PUT', uploadUrl, true); xhr.setRequestHeader('Content-Type', file.type || 'video/mp4'); xhr.upload.onprogress = (event) => { if (!event.lengthComputable) return; onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100))) }; xhr.onload = () => { if (xhr.status >= 200 && xhr.status < 300) { onProgress(100); resolve(); return }; reject(new Error(`Upload S3 failed (${xhr.status}).`)) }; xhr.onerror = () => reject(new Error('Network error during upload.')); xhr.onabort = () => reject(new Error('Upload was cancelled.')); xhr.send(file) })
 
 export interface QuizQuestion { id: string; text: string; type: string; options: { id: string; text: string }[]; correctId: string }
 export interface PracticeCase { id: string; inputValues: string[]; expectedOutput: string; outputType: string; hidden: boolean; description: string }
@@ -37,6 +37,6 @@ export const inputC = 'bg-bg-deep border border-border-medium rounded-[10px] px-
 export const sectionC = 'bg-white border border-border-medium rounded-[18px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] mb-4'
 export const hint = 'text-[0.85rem] text-text-muted m-0'
 export const gk = (c: AnyObj) => String(c?.chapterId ?? c?.id ?? '')
-export const gt = (c: AnyObj) => (c?.title ?? c?.chapterTitle ?? 'Chương') as string
+export const gt = (c: AnyObj) => (c?.title ?? c?.chapterTitle ?? 'Chapter') as string
 export const lk = (l: AnyObj) => String(l?.lessonId ?? l?.id ?? '')
-export const lt = (l: AnyObj) => (l?.title ?? l?.lessonTitle ?? 'Bài giảng') as string
+export const lt = (l: AnyObj) => (l?.title ?? l?.lessonTitle ?? 'Lesson') as string

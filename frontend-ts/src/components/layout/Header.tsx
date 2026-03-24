@@ -1,16 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/useAuth'
-
-const ROLE_LABELS: Record<string, string> = {
-  ADMIN: 'Admin',
-  INSTRUCTOR: 'Lecturer',
-  LEARNER: 'Student',
-}
+import { useTranslation } from 'react-i18next'
 
 const Header = () => {
   const navigate = useNavigate()
   const { isAuthenticated, user, logout } = useAuth()
+  const { t, i18n } = useTranslation()
   const [showRoleMenu, setShowRoleMenu] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
@@ -23,9 +19,13 @@ const Header = () => {
     }
   }
 
+  const toggleLang = () => {
+    i18n.changeLanguage(i18n.language === 'vi' ? 'en' : 'vi')
+  }
+
   const primaryRole = user?.roles?.[0]
   const roleCode = primaryRole?.roleCode || 'LEARNER'
-  const roleLabel = ROLE_LABELS[roleCode] ?? roleCode
+  const roleLabel = roleCode === 'ADMIN' ? t('header.role.admin') : roleCode === 'INSTRUCTOR' ? t('header.role.instructor') : t('header.role.learner')
   const isLecturer = roleCode === 'INSTRUCTOR'
   const isAdmin = roleCode === 'ADMIN'
 
@@ -73,7 +73,7 @@ const Header = () => {
           <input
             type="text"
             className="border-none bg-transparent outline-none text-[0.9rem] font-[inherit] text-text-main w-full py-0.5 placeholder:text-text-muted"
-            placeholder="Tìm khóa học..."
+            placeholder={t('header.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearch}
@@ -91,34 +91,44 @@ const Header = () => {
 
         {/* Nav */}
         <nav className="flex items-center gap-1 flex-wrap max-md:hidden">
-          <NavLink to="/courses">Courses</NavLink>
+          <NavLink to="/courses">{t('header.courses')}</NavLink>
           {isAuthenticated ? (
             isAdmin ? (
               <>
-                <NavLink to="/admin">Admin Panel</NavLink>
-                <NavLink to="/my-courses">My Courses</NavLink>
-                <NavLink to="/syllabuses">Syllabuses</NavLink>
-                <NavLink to="/verify-content">🛡️ Verify</NavLink>
+                <NavLink to="/admin">{t('header.adminPanel')}</NavLink>
+                <NavLink to="/my-courses">{t('header.myCourses')}</NavLink>
+                <NavLink to="/syllabuses">{t('header.syllabuses')}</NavLink>
+                <NavLink to="/verify-content">{t('header.verify')}</NavLink>
               </>
             ) : isLecturer ? (
               <>
-                <NavLink to="/my-courses">My Courses</NavLink>
-                <NavLink to="/syllabuses">Syllabuses</NavLink>
-                <NavLink to="/verify-content">🛡️ Verify</NavLink>
+                <NavLink to="/my-courses">{t('header.myCourses')}</NavLink>
+                <NavLink to="/syllabuses">{t('header.syllabuses')}</NavLink>
+                <NavLink to="/verify-content">{t('header.verify')}</NavLink>
               </>
             ) : (
               <>
-                <NavLink to="/my-learning">My Learning</NavLink>
-                <NavLink to="/my-certificates">Certificates</NavLink>
+                <NavLink to="/my-learning">{t('header.myLearning')}</NavLink>
+                <NavLink to="/my-certificates">{t('header.certificates')}</NavLink>
               </>
             )
           ) : (
-            <NavLink to="/verify-certificate">Verify Certificate</NavLink>
+            <NavLink to="/verify-certificate">{t('header.verifyCert')}</NavLink>
           )}
         </nav>
 
         {/* Actions */}
         <div className="flex items-center gap-3">
+          {/* Language toggle */}
+          <button
+            type="button"
+            onClick={toggleLang}
+            className="px-2.5 py-1.5 rounded-full text-xs font-bold border border-border-medium bg-white cursor-pointer transition-all hover:bg-[#F5F7F8] hover:shadow-sm"
+            title={i18n.language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+          >
+            🌐 {i18n.language === 'vi' ? 'EN' : 'VN'}
+          </button>
+
           {isAuthenticated ? (
             <>
               {/* Role badge */}
@@ -133,13 +143,13 @@ const Header = () => {
                 </button>
                 {showRoleMenu && (
                   <div className="absolute top-[calc(100%+6px)] right-0 min-w-[200px] bg-white rounded-[var(--radius-btn-lg)] shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-border-medium p-3 z-[101]">
-                    <div className="text-sm font-semibold text-text-main">Current Role: {roleLabel}</div>
+                    <div className="text-sm font-semibold text-text-main">{t('header.role', { role: roleLabel })}</div>
                     <button
                       type="button"
                       className="mt-2 py-1 text-xs text-text-muted bg-transparent border-none cursor-pointer"
                       onClick={() => setShowRoleMenu(false)}
                     >
-                      Đóng
+                      {t('header.close')}
                     </button>
                   </div>
                 )}
@@ -151,15 +161,7 @@ const Header = () => {
                   to="/my-courses"
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-btn)] text-sm font-semibold no-underline border-none cursor-pointer transition-all bg-primary-500 text-white hover:-translate-y-px hover:bg-primary-600"
                 >
-                  <span className="text-base">+</span> Create Course
-                </Link>
-              )}
-              {!isLecturer && (
-                <Link
-                  to="/courses"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-btn)] text-sm font-semibold no-underline border-none cursor-pointer transition-all bg-primary-500 text-white hover:-translate-y-px hover:shadow-[0_2px_8px_rgba(0,86,210,0.25)]"
-                >
-                  <span className="text-base">📖</span> Browse Courses
+                  <span className="text-base">+</span> {t('header.createCourse')}
                 </Link>
               )}
 
@@ -169,7 +171,7 @@ const Header = () => {
                   type="button"
                   className="w-10 h-10 rounded-full border border-border-medium bg-[#F5F7F8] text-text-secondary cursor-pointer flex items-center justify-center transition-colors hover:bg-[#E8E8E8] hover:border-border-strong"
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  aria-label="Menu người dùng"
+                  aria-label={t('header.userMenu')}
                 >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="8" r="4" />
@@ -181,17 +183,17 @@ const Header = () => {
                     <div className="px-4 py-3 border-b border-border-subtle flex flex-col gap-1">
                       <strong className="text-text-main text-[0.95rem]">{user?.name || user?.email || 'User'}</strong>
                       <span className="text-xs text-text-muted">{user?.email}</span>
-                      <span className="text-[0.75rem] text-text-dim">Role: {roleLabel}</span>
+                      <span className="text-[0.75rem] text-text-dim">{t('header.role', { role: roleLabel })}</span>
                     </div>
-                    <DropdownItem to="/courses" onClick={() => setShowUserMenu(false)}>Courses</DropdownItem>
+                    <DropdownItem to="/courses" onClick={() => setShowUserMenu(false)}>{t('header.courses')}</DropdownItem>
                     {!isLecturer && !isAdmin && (
-                      <DropdownItem to="/my-certificates" onClick={() => setShowUserMenu(false)}>My Certificates</DropdownItem>
+                      <DropdownItem to="/my-certificates" onClick={() => setShowUserMenu(false)}>{t('header.myCertificates')}</DropdownItem>
                     )}
                     {(isAdmin || isLecturer) && (
-                      <DropdownItem to="/verify-content" onClick={() => setShowUserMenu(false)}>🛡️ Verify Content</DropdownItem>
+                      <DropdownItem to="/verify-content" onClick={() => setShowUserMenu(false)}>{t('header.verifyContent')}</DropdownItem>
                     )}
-                    <DropdownItem to="/profile" onClick={() => setShowUserMenu(false)}>👤 Hồ sơ</DropdownItem>
-                    <DropdownItem onClick={handleLogout} className="text-danger-500 font-semibold">Đăng xuất</DropdownItem>
+                    <DropdownItem to="/profile" onClick={() => setShowUserMenu(false)}>{t('header.profile')}</DropdownItem>
+                    <DropdownItem onClick={handleLogout} className="text-danger-500 font-semibold">{t('header.logout')}</DropdownItem>
                   </div>
                 )}
               </div>
@@ -202,13 +204,7 @@ const Header = () => {
                 to="/login"
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-btn)] text-sm font-semibold no-underline cursor-pointer transition-all bg-transparent text-primary-500 border border-primary-500 hover:bg-[rgba(0,86,210,0.06)]"
               >
-                Đăng nhập
-              </Link>
-              <Link
-                to="/courses"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-btn)] text-sm font-semibold no-underline border-none cursor-pointer transition-all bg-primary-500 text-white hover:-translate-y-px hover:shadow-[0_2px_8px_rgba(0,86,210,0.25)]"
-              >
-                <span className="text-base">📖</span> Browse Courses
+                {t('header.login')}
               </Link>
             </>
           )}
@@ -218,7 +214,7 @@ const Header = () => {
             type="button"
             className="hidden max-md:flex w-10 h-10 rounded-[var(--radius-btn)] border border-border-medium bg-transparent text-text-secondary cursor-pointer items-center justify-center text-xl transition-colors shrink-0 hover:bg-[#F5F7F8]"
             onClick={() => setShowMobileMenu(true)}
-            aria-label="Open menu"
+            aria-label={t('header.openMenu')}
           >
             ☰
           </button>
@@ -242,28 +238,28 @@ const Header = () => {
               ✕
             </button>
 
-            <MobileNavLink to="/courses" onClick={() => setShowMobileMenu(false)}>Courses</MobileNavLink>
+            <MobileNavLink to="/courses" onClick={() => setShowMobileMenu(false)}>{t('header.courses')}</MobileNavLink>
             {isAuthenticated ? (
               <>
                 {isAdmin && (
                   <>
-                    <MobileNavLink to="/admin" onClick={() => setShowMobileMenu(false)}>Admin Panel</MobileNavLink>
-                    <MobileNavLink to="/my-courses" onClick={() => setShowMobileMenu(false)}>My Courses</MobileNavLink>
-                    <MobileNavLink to="/syllabuses" onClick={() => setShowMobileMenu(false)}>Syllabuses</MobileNavLink>
-                    <MobileNavLink to="/verify-content" onClick={() => setShowMobileMenu(false)}>🛡️ Verify</MobileNavLink>
+                    <MobileNavLink to="/admin" onClick={() => setShowMobileMenu(false)}>{t('header.adminPanel')}</MobileNavLink>
+                    <MobileNavLink to="/my-courses" onClick={() => setShowMobileMenu(false)}>{t('header.myCourses')}</MobileNavLink>
+                    <MobileNavLink to="/syllabuses" onClick={() => setShowMobileMenu(false)}>{t('header.syllabuses')}</MobileNavLink>
+                    <MobileNavLink to="/verify-content" onClick={() => setShowMobileMenu(false)}>{t('header.verify')}</MobileNavLink>
                   </>
                 )}
                 {isLecturer && !isAdmin && (
                   <>
-                    <MobileNavLink to="/my-courses" onClick={() => setShowMobileMenu(false)}>My Courses</MobileNavLink>
-                    <MobileNavLink to="/syllabuses" onClick={() => setShowMobileMenu(false)}>Syllabuses</MobileNavLink>
-                    <MobileNavLink to="/verify-content" onClick={() => setShowMobileMenu(false)}>🛡️ Verify</MobileNavLink>
+                    <MobileNavLink to="/my-courses" onClick={() => setShowMobileMenu(false)}>{t('header.myCourses')}</MobileNavLink>
+                    <MobileNavLink to="/syllabuses" onClick={() => setShowMobileMenu(false)}>{t('header.syllabuses')}</MobileNavLink>
+                    <MobileNavLink to="/verify-content" onClick={() => setShowMobileMenu(false)}>{t('header.verify')}</MobileNavLink>
                   </>
                 )}
                 {!isLecturer && !isAdmin && (
                   <>
-                    <MobileNavLink to="/my-learning" onClick={() => setShowMobileMenu(false)}>My Learning</MobileNavLink>
-                    <MobileNavLink to="/my-certificates" onClick={() => setShowMobileMenu(false)}>Certificates</MobileNavLink>
+                    <MobileNavLink to="/my-learning" onClick={() => setShowMobileMenu(false)}>{t('header.myLearning')}</MobileNavLink>
+                    <MobileNavLink to="/my-certificates" onClick={() => setShowMobileMenu(false)}>{t('header.certificates')}</MobileNavLink>
                   </>
                 )}
                 <div className="h-px bg-border-subtle my-2" />
@@ -272,11 +268,11 @@ const Header = () => {
                   className="block text-red-300 border-none bg-transparent text-left cursor-pointer font-[inherit] px-3 py-2.5 rounded-[var(--radius-btn)] text-[0.95rem] font-semibold transition-colors hover:bg-[rgba(0,86,210,0.06)] hover:text-primary-500"
                   onClick={handleLogout}
                 >
-                  Đăng xuất
+                  {t('header.logout')}
                 </button>
               </>
             ) : (
-              <MobileNavLink to="/login" onClick={() => setShowMobileMenu(false)}>Đăng nhập</MobileNavLink>
+              <MobileNavLink to="/login" onClick={() => setShowMobileMenu(false)}>{t('header.login')}</MobileNavLink>
             )}
           </nav>
         </>

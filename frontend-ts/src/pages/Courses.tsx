@@ -6,6 +6,7 @@ import { courseApi, enrollmentApi, feedbackApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import { toSlug, setSlugMap, courseSlugOrId } from '../utils/slug'
 import StarRating from '../components/StarRating'
+import { useTranslation } from 'react-i18next'
 
 /* ── helpers ── */
 const extractList = (p: unknown): unknown[] => {
@@ -33,8 +34,9 @@ const buildRatingSummary = (feedbacks: AnyObj[] = []) => {
   if (ratings.length === 0) return { count: 0, avg: 0 }
   return { count: ratings.length, avg: ratings.reduce((a, b) => a + b, 0) / ratings.length }
 }
-const formatPrice = (price: unknown) => {
-  if (price === null || price === undefined || price === '') return ''
+const isFree = (price: unknown) => price === null || price === undefined || price === '' || Number(price) === 0
+const formatPrice = (price: unknown, freeLabel = 'Free') => {
+  if (isFree(price)) return freeLabel
   const num = Number(price); if (Number.isNaN(num)) return String(price)
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
 }
@@ -73,6 +75,7 @@ const SkeletonCard = () => (
 const Courses = () => {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [courses, setCourses] = useState<AnyObj[]>([])
@@ -151,7 +154,8 @@ const Courses = () => {
     if (!courseId || !isAuthenticated) { setCanFeedbackByCourse((p) => ({ ...p, [courseId]: false })); return }
     try { const r = unwrap(await feedbackApi.canFeedback(courseId)); setCanFeedbackByCourse((p) => ({ ...p, [courseId]: r === true || r === 'true' })) } catch { setCanFeedbackByCourse((p) => ({ ...p, [courseId]: false })) }
   }
-  const handleBuy = (c: AnyObj) => { const id = (c?.courseId || c?.id) as string; if (!id) return; if (!isAuthenticated) { navigate('/login', { state: { from: '/courses', returnTo: `/payment?courseId=${id}` } }); return }; navigate(`/payment?courseId=${id}`, { state: { course: c } }) }
+  const [joiningId, setJoiningId] = useState('')
+  const handleBuy = async (c: AnyObj) => { const id = (c?.courseId || c?.id) as string; if (!id) return; if (!isAuthenticated) { navigate('/login', { state: { from: '/courses', returnTo: isFree(c?.price) ? `/courses` : `/payment?courseId=${id}` } }); return }; if (isFree(c?.price)) { try { setJoiningId(id); await enrollmentApi.join(id); setEnrolledMap((p) => ({ ...p, [id]: true })) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; alert(err.response?.data?.message || err.message || 'Tham gia thất bại') } finally { setJoiningId('') }; return }; navigate(`/payment?courseId=${id}`, { state: { course: c } }) }
   const handleOpenDetail = (courseId: string, title?: string) => { if (courseId) navigate(`/courses/${courseSlugOrId(courseId, title)}`) }
   const handleCreateFeedback = async (courseId: string) => { const draft = draftByCourse[courseId] || { comment: '', rating: 5 }; if (!draft.comment?.trim()) return; try { await feedbackApi.create(courseId, { comment: draft.comment.trim(), rating: clampRating(draft.rating) }); setDraftByCourse((p) => ({ ...p, [courseId]: { comment: '', rating: 5 } })); await Promise.all([loadFeedbackDetail(courseId), loadCanFeedback(courseId)]) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackErrorByCourse((p) => ({ ...p, [courseId]: err.response?.data?.message || err.message || 'Gửi bình luận thất bại.' })) } }
   const handleSaveEdit = async (courseId: string) => { const edit = editingByCourse[courseId]; if (!edit?.feedbackId || !edit.comment?.trim()) return; try { await feedbackApi.update(edit.feedbackId, { comment: edit.comment.trim(), rating: clampRating(edit.rating) }); setEditingByCourse((p) => ({ ...p, [courseId]: null })); await loadFeedbackDetail(courseId) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackErrorByCourse((p) => ({ ...p, [courseId]: err.response?.data?.message || err.message || 'Cập nhật bình luận thất bại.' })) } }
@@ -164,8 +168,8 @@ const Courses = () => {
       <Header />
       <main className="max-w-7xl mx-auto px-6 py-9 pb-16">
         <div className="mb-6">
-          <h1 className="m-0 text-[clamp(2rem,3.5vw,2.4rem)] font-black tracking-tight">Khóa học</h1>
-          <p className="mt-1 text-text-secondary">Chọn khóa học và thanh toán qua MoMo để bắt đầu học.</p>
+          <h1 className="m-0 text-[clamp(2rem,3.5vw,2.4rem)] font-black tracking-tight">{t('courses.pageTitle')}</h1>
+          <p className="mt-1 text-text-secondary">{t('courses.pageSubtitle')}</p>
         </div>
 
         {!loading && !error && courses.length > 0 && (
@@ -174,18 +178,18 @@ const Courses = () => {
             <div className="flex items-center gap-3 mb-6 flex-wrap">
               <div className="flex-1 min-w-[220px] flex items-center gap-2 bg-white border border-border-medium rounded-[var(--radius-btn)] px-3 py-2.5 transition-all focus-within:border-primary-500 focus-within:shadow-[0_0_0_3px_rgba(0,86,210,0.1)]">
                 <svg className="shrink-0 text-text-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg>
-                <input type="text" className="flex-1 bg-transparent border-none outline-none text-text-main text-[0.92rem] font-[inherit] placeholder:text-text-dim" placeholder="Tìm kiếm khóa học..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                <input type="text" className="flex-1 bg-transparent border-none outline-none text-text-main text-[0.92rem] font-[inherit] placeholder:text-text-dim" placeholder={t('courses.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                 {searchQuery && <button type="button" className="bg-transparent border-none text-text-muted cursor-pointer text-[0.85rem] px-1 rounded-md transition-colors hover:text-text-main" onClick={() => setSearchQuery('')}>✕</button>}
               </div>
               <select className="bg-white border border-border-medium rounded-[var(--radius-btn)] px-3 py-2.5 text-text-main text-[0.88rem] font-[inherit] cursor-pointer outline-none min-w-[160px] focus:border-primary-500" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                <option value="default">Sắp xếp mặc định</option>
-                <option value="name-asc">Tên A → Z</option>
-                <option value="name-desc">Tên Z → A</option>
-                <option value="price-asc">Giá tăng dần</option>
-                <option value="price-desc">Giá giảm dần</option>
-                <option value="rating">Đánh giá cao nhất</option>
+                <option value="default">{t('courses.sortDefault')}</option>
+                <option value="name-asc">{t('courses.sortNameAsc')}</option>
+                <option value="name-desc">{t('courses.sortNameDesc')}</option>
+                <option value="price-asc">{t('courses.sortPriceAsc')}</option>
+                <option value="price-desc">{t('courses.sortPriceDesc')}</option>
+                <option value="rating">{t('courses.sortRating')}</option>
               </select>
-              <span className="text-[0.85rem] text-text-muted whitespace-nowrap">{filteredCourses.length} khóa học</span>
+              <span className="text-[0.85rem] text-text-muted whitespace-nowrap">{t('courses.courseCount', { count: filteredCourses.length })}</span>
             </div>
 
             {/* Filter pills */}
@@ -193,7 +197,7 @@ const Courses = () => {
               {FILTER_LEVELS.map((level) => (
                 <button key={level} type="button" className={`px-4 py-1.5 rounded-full text-[0.88rem] font-semibold font-[inherit] border cursor-pointer whitespace-nowrap transition-all ${filterLevel === level ? 'bg-primary-500 text-white border-primary-500 hover:bg-primary-600' : 'bg-white text-text-secondary border-border-medium hover:bg-[#F5F7F8] hover:border-text-muted'}`}
                   onClick={() => { setFilterLevel(level); setCurrentPage(0) }}>
-                  {level === 'All' ? 'Tất cả' : level === 'Free' ? 'Miễn phí' : level}
+                  {level === 'All' ? t('courses.filterAll') : level === 'Free' ? t('courses.filterFree') : level}
                 </button>
               ))}
             </div>
@@ -206,8 +210,8 @@ const Courses = () => {
         {!loading && !error && courses.length === 0 && (
           <div className="text-center py-16 px-6 bg-white border border-border-medium rounded-[20px]">
             <span className="text-6xl block mb-4">🎓</span>
-            <h3 className="text-xl font-bold m-0 mb-2">Chưa có khóa học nào</h3>
-            <p className="text-text-muted m-0">Hãy quay lại sau để khám phá các khóa học mới nhất!</p>
+            <h3 className="text-xl font-bold m-0 mb-2">{t('courses.noCourses')}</h3>
+            <p className="text-text-muted m-0">{t('courses.noCoursesDesc')}</p>
           </div>
         )}
 
@@ -246,7 +250,7 @@ const Courses = () => {
                       </div>
                       <div className="flex items-start justify-between gap-3">
                         <Link to={`/courses/${courseSlugOrId(id, title)}`} className="no-underline text-inherit"><div className="font-extrabold text-lg leading-snug tracking-tight line-clamp-2">{title}</div></Link>
-                        {enrolled && <span className="text-[0.73rem] px-2.5 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-600 whitespace-nowrap font-bold">Đã đăng ký</span>}
+                        {enrolled && <span className="text-[0.73rem] px-2.5 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-600 whitespace-nowrap font-bold">{t('courses.enrolled')}</span>}
                       </div>
                       {extractSkills(c).length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-0.5">{extractSkills(c).map((s) => <span key={s} className="text-[0.72rem] font-semibold bg-blue-50 text-primary-500 px-2 py-0.5 rounded whitespace-nowrap">{s}</span>)}</div>
@@ -259,14 +263,16 @@ const Courses = () => {
                       </div>
                       <div className="mt-0.5"><span className="text-[0.78rem] text-text-muted">👥 {estimateLearners(id).toLocaleString()} enrolled</span></div>
                       <div className="flex items-center justify-between gap-3 mt-1.5 pt-2.5 border-t border-border-subtle">
-                        <span className="font-extrabold text-text-main text-lg">{formatPrice(c.price)}</span>
-                        {Number(c?.chapterCount) >= 0 && <span className="text-[0.88rem] text-text-muted">{c.chapterCount as number} chương</span>}
+                        <span className={`font-extrabold text-lg ${isFree(c.price) ? 'text-green-600' : 'text-text-main'}`}>{formatPrice(c.price, t('common.free'))}</span>
+                        {Number(c?.chapterCount) >= 0 && <span className="text-[0.88rem] text-text-muted">{t('courses.chapterCount', { count: c.chapterCount as number })}</span>}
                       </div>
-                      <button type="button" className="mt-1 py-2.5 px-3 rounded-[var(--radius-btn)] border border-border-medium bg-transparent text-text-secondary font-bold cursor-pointer transition-colors hover:bg-[#F5F7F8] hover:border-border-strong" onClick={() => handleOpenDetail(id)}>Xem mô tả & bình luận</button>
+                      <button type="button" className="mt-1 py-2.5 px-3 rounded-[var(--radius-btn)] border border-border-medium bg-transparent text-text-secondary font-bold cursor-pointer transition-colors hover:bg-[#F5F7F8] hover:border-border-strong" onClick={() => handleOpenDetail(id)}>{t('courses.viewDesc')}</button>
                       {enrolled ? (
-                        <Link to={`/learning/${id}`} className="mt-1 py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white no-underline text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)]">Vào học</Link>
+                        <Link to={`/learning/${id}`} className="mt-1 py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white no-underline text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)]">{t('courses.enterCourse')}</Link>
+                      ) : isFree(c.price) ? (
+                        <button type="button" className="mt-1 py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)] disabled:opacity-60" onClick={() => handleBuy(c)} disabled={joiningId === id}>{joiningId === id ? t('courses.joining') : t('courses.joinFree')}</button>
                       ) : (
-                        <button type="button" className="mt-1 py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-primary-500 text-white text-center transition-all shadow-[0_2px_8px_rgba(0,86,210,0.25)] hover:-translate-y-px hover:bg-primary-600" onClick={() => handleBuy(c)}>Mua ngay</button>
+                        <button type="button" className="mt-1 py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-primary-500 text-white text-center transition-all shadow-[0_2px_8px_rgba(0,86,210,0.25)] hover:-translate-y-px hover:bg-primary-600" onClick={() => handleBuy(c)}>{t('courses.buyNow')}</button>
                       )}
                     </div>
                   </article>
@@ -277,13 +283,13 @@ const Courses = () => {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-8 py-4">
-                <button className="px-4 py-2 text-sm font-semibold font-[inherit] text-primary-500 bg-transparent border border-border-medium rounded-[var(--radius-btn)] cursor-pointer transition-colors hover:bg-[rgba(0,86,210,0.05)] hover:border-primary-500 disabled:opacity-40 disabled:cursor-not-allowed" disabled={currentPage === 0} onClick={() => setCurrentPage((p) => p - 1)}>← Trước</button>
+                <button className="px-4 py-2 text-sm font-semibold font-[inherit] text-primary-500 bg-transparent border border-border-medium rounded-[var(--radius-btn)] cursor-pointer transition-colors hover:bg-[rgba(0,86,210,0.05)] hover:border-primary-500 disabled:opacity-40 disabled:cursor-not-allowed" disabled={currentPage === 0} onClick={() => setCurrentPage((p) => p - 1)}>{t('courses.prev')}</button>
                 <div className="flex gap-1">
                   {Array.from({ length: totalPages }, (_, i) => (
                     <button key={i} className={`w-9 h-9 flex items-center justify-center text-sm font-semibold font-[inherit] rounded-[var(--radius-btn)] border border-transparent cursor-pointer transition-all ${currentPage === i ? 'bg-primary-500 text-white border-primary-500 hover:bg-primary-600' : 'text-text-secondary bg-transparent hover:bg-[#F5F7F8]'}`} onClick={() => setCurrentPage(i)}>{i + 1}</button>
                   ))}
                 </div>
-                <button className="px-4 py-2 text-sm font-semibold font-[inherit] text-primary-500 bg-transparent border border-border-medium rounded-[var(--radius-btn)] cursor-pointer transition-colors hover:bg-[rgba(0,86,210,0.05)] hover:border-primary-500 disabled:opacity-40 disabled:cursor-not-allowed" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage((p) => p + 1)}>Sau →</button>
+                <button className="px-4 py-2 text-sm font-semibold font-[inherit] text-primary-500 bg-transparent border border-border-medium rounded-[var(--radius-btn)] cursor-pointer transition-colors hover:bg-[rgba(0,86,210,0.05)] hover:border-primary-500 disabled:opacity-40 disabled:cursor-not-allowed" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage((p) => p + 1)}>{t('courses.next')}</button>
               </div>
             )}
           </>

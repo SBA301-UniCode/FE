@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/layout/Header'
+import { useTranslation } from 'react-i18next'
 
 const LANGUAGES = [
   { name: 'JavaScript', courses: 156, icon: '🟧', color: '#F7DF1E' },
@@ -15,29 +16,30 @@ const LANGUAGES = [
 
 const PARTNERS = ['FPT Software', 'VNG Corporation', 'Shopee', 'Tiki', 'VinGroup', 'Samsung Vietnam', 'Momo', 'Grab Vietnam']
 
-const FEATURES = [
-  { icon: '🎯', title: 'Hands-on Projects', desc: 'Build real portfolio projects from day one with guided instructions and code reviews.' },
-  { icon: '📜', title: 'Verified Certificates', desc: 'Earn industry-recognized certificates to showcase your skills to employers.' },
-  { icon: '👨‍🏫', title: 'Expert Instructors', desc: 'Learn from senior developers with 10+ years of experience in top tech companies.' },
-  { icon: '🔄', title: 'Lifetime Access', desc: 'Access all course materials anytime, anywhere. Learn at your own pace with no deadlines.' },
-]
-
-const TESTIMONIALS = [
-  { name: 'Nguyễn Minh Tuấn', role: 'Frontend Developer at FPT', quote: 'Sau khi hoàn thành khóa React, tôi đã tự tin apply vào FPT và được nhận ngay vòng đầu.', rating: 5, course: 'ReactJS Frontend' },
-  { name: 'Trần Thị Hồng', role: 'Data Analyst at VNG', quote: 'Python Data Science course đã thay đổi career path của tôi hoàn toàn. Từ marketing chuyển sang data!', rating: 5, course: 'Python Data Science' },
-  { name: 'Lê Văn Đức', role: 'Backend Developer at Shopee', quote: 'Java Masterclass cung cấp kiến thức sâu về OOP và Spring Boot. Đúng là khóa học đáng đầu tư nhất.', rating: 5, course: 'Java Masterclass' },
-]
-
-const FAQS = [
-  { q: 'How do certificates work?', a: 'After completing all chapters, quizzes, and assignments, you can request a certificate with a unique verification code.' },
-  { q: 'Can I access courses on mobile?', a: 'Yes! Our platform is fully responsive and works on all devices — desktop, tablet, and mobile.' },
-  { q: 'What payment methods do you accept?', a: 'We accept MoMo e-wallet for quick and secure payments. Instant access after payment.' },
-  { q: 'Do courses have deadlines?', a: 'No! All courses are self-paced with lifetime access. Learn at your own schedule.' },
-  { q: 'Can I get a refund?', a: 'We offer a full refund within 7 days of purchase if you are not satisfied. No questions asked.' },
-]
-
 const LandingPage = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const { t } = useTranslation()
+
+  const FEATURES = [
+    { icon: '🎯', title: t('landing.feat1Title'), desc: t('landing.feat1Desc') },
+    { icon: '📜', title: t('landing.feat2Title'), desc: t('landing.feat2Desc') },
+    { icon: '👨‍🏫', title: t('landing.feat3Title'), desc: t('landing.feat3Desc') },
+    { icon: '🔄', title: t('landing.feat4Title'), desc: t('landing.feat4Desc') },
+  ]
+
+  const TESTIMONIALS = [
+    { name: 'Nguyễn Minh Tuấn', role: 'Frontend Developer at FPT', quote: 'Sau khi hoàn thành khóa React, tôi đã tự tin apply vào FPT và được nhận ngay vòng đầu.', rating: 5, course: 'ReactJS Frontend' },
+    { name: 'Trần Thị Hồng', role: 'Data Analyst at VNG', quote: 'Python Data Science course đã thay đổi career path của tôi hoàn toàn. Từ marketing chuyển sang data!', rating: 5, course: 'Python Data Science' },
+    { name: 'Lê Văn Đức', role: 'Backend Developer at Shopee', quote: 'Java Masterclass cung cấp kiến thức sâu về OOP và Spring Boot. Đúng là khóa học đáng đầu tư nhất.', rating: 5, course: 'Java Masterclass' },
+  ]
+
+  const FAQS = [
+    { q: t('landing.faq1Q'), a: t('landing.faq1A') },
+    { q: t('landing.faq2Q'), a: t('landing.faq2A') },
+    { q: t('landing.faq3Q'), a: t('landing.faq3A') },
+    { q: t('landing.faq4Q'), a: t('landing.faq4A') },
+    { q: t('landing.faq5Q'), a: t('landing.faq5A') },
+  ]
 
   return (
     <div className="min-h-screen bg-bg-page text-text-main">
@@ -47,18 +49,18 @@ const LandingPage = () => {
         <div className="grid grid-cols-2 gap-12 items-center min-h-[calc(100vh-140px)] pb-8 max-[900px]:grid-cols-1 max-[900px]:text-center max-[900px]:min-h-0 max-[900px]:pt-4">
           <section className="flex flex-col gap-5 max-[900px]:items-center">
             <div className="inline-flex items-center gap-2 self-start px-3.5 py-1.5 bg-blue-50 text-primary-500 rounded-full text-[0.85rem] font-semibold max-[900px]:self-center">
-              <span className="text-base">💡</span> New: 50+ courses added this month
+              {t('landing.badge')}
             </div>
-            <h1 className="text-[clamp(2.2rem,4.5vw,3.2rem)] font-extrabold leading-[1.12] tracking-tight m-0">Learn to Code.<br />Build Your Future.</h1>
-            <p className="text-lg leading-relaxed text-text-secondary max-w-[480px] m-0 max-[900px]:text-center">Master programming with interactive courses, real-world projects, and guidance from industry experts.</p>
+            <h1 className="text-[clamp(2.2rem,4.5vw,3.2rem)] font-extrabold leading-[1.12] tracking-tight m-0">{t('landing.heroTitle1')}<br />{t('landing.heroTitle2')}</h1>
+            <p className="text-lg leading-relaxed text-text-secondary max-w-[480px] m-0 max-[900px]:text-center">{t('landing.heroSubtitle')}</p>
             <div className="flex gap-3 items-center flex-wrap max-[900px]:justify-center max-[640px]:flex-col">
               <Link to="/courses" className="inline-flex items-center gap-2 px-6 py-3.5 bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white rounded-xl text-base font-bold no-underline shadow-[0_4px_20px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_28px_rgba(0,86,210,0.25)]">
-                Explore Courses <span className="text-xl">→</span>
+                {t('landing.exploreCourses')} <span className="text-xl">→</span>
               </Link>
-              <Link to="/register" className="inline-flex items-center px-6 py-3.5 bg-transparent text-primary-500 border-2 border-primary-500 rounded-xl text-base font-bold no-underline transition-colors hover:bg-[rgba(0,86,210,0.06)]">Join for Free</Link>
+              <Link to="/register" className="inline-flex items-center px-6 py-3.5 bg-transparent text-primary-500 border-2 border-primary-500 rounded-xl text-base font-bold no-underline transition-colors hover:bg-[rgba(0,86,210,0.06)]">{t('landing.joinFree')}</Link>
             </div>
             <div className="flex gap-10 mt-2 max-[900px]:justify-center max-[640px]:gap-6">
-              {[['500K+', 'Active Learners'], ['850+', 'Courses'], ['98%', 'Success Rate']].map(([v, l]) => (
+              {[['500K+', t('landing.activeLearners')], ['850+', t('landing.coursesCount')], ['98%', t('landing.successRate')]].map(([v, l]) => (
                 <div key={l} className="flex flex-col gap-0.5">
                   <span className="text-[1.75rem] font-extrabold">{v}</span>
                   <span className="text-[0.85rem] text-text-muted">{l}</span>
@@ -73,7 +75,7 @@ const LandingPage = () => {
 
         {/* ═══ PARTNERS ═══ */}
         <section className="border-y border-border-subtle py-7 text-center">
-          <p className="m-0 mb-4 text-[0.85rem] font-semibold text-text-muted uppercase tracking-wider">Trusted by leading companies in Vietnam</p>
+          <p className="m-0 mb-4 text-[0.85rem] font-semibold text-text-muted uppercase tracking-wider">{t('landing.partners')}</p>
           <div className="flex flex-wrap gap-x-10 gap-y-6 justify-center items-center">
             {PARTNERS.map((name) => (<span key={name} className="text-[0.95rem] font-bold text-text-muted opacity-55 whitespace-nowrap transition-opacity hover:opacity-90">{name}</span>))}
           </div>
@@ -81,13 +83,13 @@ const LandingPage = () => {
 
         {/* ═══ LANGUAGES ═══ */}
         <section className="py-16">
-          <SectionHeader title="Popular Programming Languages" subtitle="Choose your path and start learning today." />
+          <SectionHeader title={t('landing.langTitle')} subtitle={t('landing.langSubtitle')} />
           <div className="grid grid-cols-4 gap-4 max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
             {LANGUAGES.map((lang) => (
-              <Link to="/courses" key={lang.name} className="bg-white border border-border-medium rounded-[14px] p-4 no-underline text-text-main flex flex-col gap-1 transition-all hover:-translate-y-[3px] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:border-primary-500">
+              <Link to={`/courses?q=${encodeURIComponent(lang.name)}`} key={lang.name} className="bg-white border border-border-medium rounded-[14px] p-4 no-underline text-text-main flex flex-col gap-1 transition-all hover:-translate-y-[3px] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:border-primary-500">
                 <span className="text-3xl">{lang.icon}</span>
                 <span className="text-base font-bold">{lang.name}</span>
-                <span className="text-[0.82rem] text-text-muted">{lang.courses} courses</span>
+                <span className="text-[0.82rem] text-text-muted">{lang.courses} {t('landing.coursesUnit')}</span>
                 <div className="h-1 bg-gray-200 rounded-full overflow-hidden mt-0.5">
                   <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.round(lang.courses / 1.56)}%`, background: lang.color }} />
                 </div>
@@ -98,7 +100,7 @@ const LandingPage = () => {
 
         {/* ═══ FEATURES ═══ */}
         <section className="py-12">
-          <SectionHeader title="Why UniCode?" subtitle="Everything you need to launch your tech career." />
+          <SectionHeader title={t('landing.featTitle')} subtitle={t('landing.featSubtitle')} />
           <div className="grid grid-cols-4 gap-5 max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
             {FEATURES.map((f) => (
               <div key={f.title} className="bg-white border border-border-medium rounded-2xl py-6 px-5 text-center transition-all hover:-translate-y-[3px] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
@@ -112,20 +114,20 @@ const LandingPage = () => {
 
         {/* ═══ TESTIMONIALS ═══ */}
         <section className="py-12">
-          <SectionHeader title="Student Success Stories" subtitle="See what our learners have achieved." />
+          <SectionHeader title={t('landing.testTitle')} subtitle={t('landing.testSubtitle')} />
           <div className="grid grid-cols-3 gap-5 max-[900px]:grid-cols-1">
-            {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="bg-white border border-border-medium rounded-2xl p-6 flex flex-col gap-3 transition-all hover:-translate-y-[3px] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
-                <div className="text-amber-600 text-base tracking-[2px]">{'★'.repeat(t.rating)}</div>
-                <p className="text-[0.92rem] leading-relaxed text-text-secondary italic m-0 flex-1">&ldquo;{t.quote}&rdquo;</p>
+            {TESTIMONIALS.map((tm) => (
+              <div key={tm.name} className="bg-white border border-border-medium rounded-2xl p-6 flex flex-col gap-3 transition-all hover:-translate-y-[3px] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+                <div className="text-amber-600 text-base tracking-[2px]">{'★'.repeat(tm.rating)}</div>
+                <p className="text-[0.92rem] leading-relaxed text-text-secondary italic m-0 flex-1">&ldquo;{tm.quote}&rdquo;</p>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-[linear-gradient(135deg,var(--color-primary-500),var(--color-primary-700))] shrink-0" />
                   <div className="flex flex-col">
-                    <strong className="text-[0.88rem]">{t.name}</strong>
-                    <span className="text-[0.78rem] text-text-muted">{t.role}</span>
+                    <strong className="text-[0.88rem]">{tm.name}</strong>
+                    <span className="text-[0.78rem] text-text-muted">{tm.role}</span>
                   </div>
                 </div>
-                <span className="text-[0.78rem] font-semibold text-primary-500 bg-[rgba(0,86,210,0.06)] px-2.5 py-1 rounded-md self-start">📚 {t.course}</span>
+                <span className="text-[0.78rem] font-semibold text-primary-500 bg-[rgba(0,86,210,0.06)] px-2.5 py-1 rounded-md self-start">📚 {tm.course}</span>
               </div>
             ))}
           </div>
@@ -133,7 +135,7 @@ const LandingPage = () => {
 
         {/* ═══ FAQ ═══ */}
         <section className="py-12 max-w-[760px] mx-auto">
-          <SectionHeader title="Frequently Asked Questions" subtitle="Everything you need to know about UniCode." />
+          <SectionHeader title={t('landing.faqTitle')} subtitle={t('landing.faqSubtitle')} />
           <div className="flex flex-col">
             {FAQS.map((faq, i) => (
               <div key={i} className="border-b border-border-medium">
@@ -154,11 +156,11 @@ const LandingPage = () => {
         {/* ═══ CTA BANNER ═══ */}
         <section className="py-8 pb-16">
           <div className="text-center bg-[linear-gradient(135deg,#003E99_0%,#0056D2_50%,#1A73E8_100%)] rounded-[20px] py-14 px-8 text-white">
-            <h2 className="m-0 mb-3 text-3xl font-extrabold text-white">Ready to Start Learning?</h2>
-            <p className="m-0 mb-7 text-lg text-white/85">Join 500,000+ learners and transform your career with UniCode.</p>
+            <h2 className="m-0 mb-3 text-3xl font-extrabold text-white">{t('landing.ctaTitle')}</h2>
+            <p className="m-0 mb-7 text-lg text-white/85">{t('landing.ctaSubtitle')}</p>
             <div className="flex gap-4 justify-center flex-wrap max-[640px]:flex-col max-[640px]:items-center">
-              <Link to="/courses" className="px-8 py-3.5 rounded-xl text-base font-bold no-underline transition-all bg-white hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)]" style={{ color: '#0056D2' }}>Browse Courses</Link>
-              <Link to="/register" className="px-8 py-3.5 rounded-xl text-base font-bold no-underline transition-all bg-transparent border-2 border-white/50 hover:border-white hover:bg-white/10" style={{ color: '#fff' }}>Create Free Account</Link>
+              <Link to="/courses" className="px-8 py-3.5 rounded-xl text-base font-bold no-underline transition-all bg-white hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)]" style={{ color: '#0056D2' }}>{t('landing.ctaBrowse')}</Link>
+              <Link to="/register" className="px-8 py-3.5 rounded-xl text-base font-bold no-underline transition-all bg-transparent border-2 border-white/50 hover:border-white hover:bg-white/10" style={{ color: '#fff' }}>{t('landing.ctaCreate')}</Link>
             </div>
           </div>
         </section>
@@ -172,7 +174,7 @@ const LandingPage = () => {
               <span className="inline-flex items-center justify-center w-9 h-9 bg-primary-500 text-white rounded-lg text-[0.9rem] font-extrabold">&lt;/&gt;</span>
               <span className="text-lg font-extrabold">UniCode.com</span>
             </div>
-            <p className="m-0 text-[0.88rem] text-white/65 leading-relaxed max-w-[300px]">Learn to code with interactive courses and real-world projects.</p>
+            <p className="m-0 text-[0.88rem] text-white/65 leading-relaxed max-w-[300px]">{t('footer.learnCode')}</p>
             <div className="flex gap-2 mt-1">
               {['f', '▶', 'in', '⌂'].map((icon, i) => (
                 <a key={i} href="/" className="w-8 h-8 rounded-lg bg-white/8 text-white/60 flex items-center justify-center no-underline text-xs font-bold transition-colors hover:bg-white/15 hover:text-white">{icon}</a>
@@ -180,13 +182,13 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="grid grid-cols-3 gap-8 max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
-            <FooterCol title="Courses" links={[['Browse All', '/courses'], ['JavaScript', '/courses'], ['Python', '/courses'], ['React', '/courses']]} />
-            <FooterCol title="Resources" links={[['Learning Paths', '/'], ['Documentation', '/'], ['Blog', '/'], ['FAQs', '/']]} />
-            <FooterCol title="Company" links={[['About Us', '/'], ['Careers', '/'], ['Verify Certificate', '/verify-certificate'], ['Terms', '/'], ['Privacy', '/']]} />
+            <FooterCol title={t('footer.coursesCol')} links={[[t('footer.browseAll'), '/courses'], ['JavaScript', '/courses'], ['Python', '/courses'], ['React', '/courses']]} />
+            <FooterCol title={t('footer.resources')} links={[[t('footer.learningPaths'), '/'], [t('footer.docs'), '/'], [t('footer.blog'), '/'], [t('footer.faqs'), '/']]} />
+            <FooterCol title={t('footer.company')} links={[[t('footer.aboutUs'), '/'], [t('footer.careers'), '/'], [t('footer.verifyCert'), '/verify-certificate'], [t('footer.terms'), '/'], [t('footer.privacy'), '/']]} />
           </div>
         </div>
         <div className="max-w-7xl mx-auto py-5 text-center">
-          <p className="m-0 text-[0.82rem] text-white/45">© {new Date().getFullYear()} UniCode.com — All rights reserved.</p>
+          <p className="m-0 text-[0.82rem] text-white/45">{t('footer.allRights', { year: new Date().getFullYear() })}</p>
         </div>
       </footer>
     </div>

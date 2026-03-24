@@ -4,6 +4,7 @@ import { resolveToId, isUuid, setSlugMap } from '../utils/slug'
 import ForceGraph2D from 'react-force-graph-2d'
 import { mindmapApi } from '../api/mindmap'
 import Header from '../components/layout/Header'
+import { useTranslation } from 'react-i18next'
 
 type AnyObj = Record<string, unknown>
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,6 +37,7 @@ function CourseMindMap() {
   const { courseSlug } = useParams()
   const [courseId, setCourseId] = useState(resolveToId(courseSlug || ''))
   const navigate = useNavigate()
+  const { t } = useTranslation()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const graphRef = useRef<any>(null)
   const [graphData, setGraphData] = useState<{ nodes: GNode[]; links: GLink[] }>({ nodes: [], links: [] })
@@ -58,7 +60,7 @@ function CourseMindMap() {
       const links = rawLinks.map((l) => ({ source: typeof l.source === 'object' ? (l.source as AnyObj).id as string : l.source as string, target: typeof l.target === 'object' ? (l.target as AnyObj).id as string : l.target as string }))
       const cn = nodes.find((n) => n.type === 'COURSE'); if (cn) setCourseName(cn.label)
       setGraphData({ nodes, links }); setNotes((raw.notes || {}) as Record<string, string>)
-    } catch { showToast('Không tải được mind-map', 'error') }
+    } catch { showToast(t('mindmap.loadFailed'), 'error') }
     finally { setLoading(false) }
   }, [courseId, showToast])
 
@@ -85,15 +87,15 @@ function CourseMindMap() {
       const cleanNodes = graphData.nodes.map(({ id, label, type, group, parentId, noteText: nt }) => ({ id, label, type, group, ...(parentId ? { parentId } : {}), ...(nt ? { noteText: nt } : {}) }))
       const cleanLinks = graphData.links.map((l) => ({ source: typeof l.source === 'object' ? (l.source as AnyObj).id : l.source, target: typeof l.target === 'object' ? (l.target as AnyObj).id : l.target }))
       await mindmapApi.saveTree(courseId!, { nodes: cleanNodes, links: cleanLinks, notes, nodePositions: {} } as unknown as Parameters<typeof mindmapApi.saveTree>[1])
-      showToast('Đã lưu mind-map!')
-    } catch { showToast('Lưu thất bại', 'error') }
+      showToast(t('mindmap.saved'))
+    } catch { showToast(t('mindmap.saveFailed'), 'error') }
   }, [courseId, graphData, notes, showToast])
 
-  const handleReset = useCallback(async () => { if (!window.confirm('Reset về cây mặc định?')) return; try { await mindmapApi.resetTree(courseId!); setSelectedNode(null); await loadTree(); showToast('Đã reset!') } catch { showToast('Reset thất bại', 'error') } }, [courseId, loadTree, showToast])
+  const handleReset = useCallback(async () => { if (!window.confirm(t('mindmap.confirmReset'))) return; try { await mindmapApi.resetTree(courseId!); setSelectedNode(null); await loadTree(); showToast(t('mindmap.resetSuccess')) } catch { showToast(t('mindmap.resetFailed'), 'error') } }, [courseId, loadTree, showToast, t])
 
   const handleNodeClick = useCallback((node: GNode) => { setSelectedNode(node); setNoteText(notes[node.id] || ''); if (graphRef.current) { graphRef.current.centerAt(node.x, node.y, 400); graphRef.current.zoom(2.5, 400) } }, [notes])
-  const handleSaveNote = useCallback(() => { if (!selectedNode) return; setNotes((p) => { const n = { ...p }; noteText.trim() ? (n[selectedNode.id] = noteText) : delete n[selectedNode.id]; return n }); showToast('Đã cập nhật ghi chú') }, [selectedNode, noteText, showToast])
-  const handleAddNote = useCallback(() => { if (!selectedNode) return; const id = `note-${Date.now()}`; setGraphData((p) => ({ nodes: [...p.nodes, { id, label: 'Ghi chú mới', type: 'USER_NOTE', group: (selectedNode.group || 0) + 1 }], links: [...p.links, { source: selectedNode.id, target: id }] })); setNotes((p) => ({ ...p, [id]: '' })); showToast('Đã thêm ghi chú') }, [selectedNode, showToast])
+  const handleSaveNote = useCallback(() => { if (!selectedNode) return; setNotes((p) => { const n = { ...p }; noteText.trim() ? (n[selectedNode.id] = noteText) : delete n[selectedNode.id]; return n }); showToast(t('mindmap.noteUpdated')) }, [selectedNode, noteText, showToast, t])
+  const handleAddNote = useCallback(() => { if (!selectedNode) return; const id = `note-${Date.now()}`; setGraphData((p) => ({ nodes: [...p.nodes, { id, label: t('mindmap.newNote'), type: 'USER_NOTE', group: (selectedNode.group || 0) + 1 }], links: [...p.links, { source: selectedNode.id, target: id }] })); setNotes((p) => ({ ...p, [id]: '' })); showToast(t('mindmap.noteAdded')) }, [selectedNode, showToast, t])
 
   const extractId = (nid: string) => { const p = nid.split('-'); return p.length > 1 ? p.slice(1).join('-') : nid }
   const getNodeUrl = useCallback((node: GNode) => { if (!node || !courseId) return null; const eid = extractId(node.id); const b = `/learning/${courseId}`; switch (node.type) { case 'CHAPTER': return `${b}?chapterId=${eid}`; case 'LESSON': return `${b}?lessonId=${eid}`; case 'VIDEO': case 'DOCUMENT': case 'QUIZ': return `${b}?contentId=${eid}`; default: return null } }, [courseId])
@@ -130,20 +132,20 @@ function CourseMindMap() {
   const selectedCfg = selectedNode ? NODE_CFG[selectedNode.type] || NODE_CFG.UNKNOWN : null
   const typeColors: Record<string, string> = { COURSE: 'bg-indigo-500/20 text-indigo-300', CHAPTER: 'bg-amber-500/20 text-amber-200', LESSON: 'bg-green-500/20 text-green-300', VIDEO: 'bg-red-500/20 text-red-300', DOCUMENT: 'bg-blue-500/20 text-blue-300', QUIZ: 'bg-purple-500/20 text-purple-300', USER_NOTE: 'bg-yellow-500/20 text-yellow-200' }
 
-  if (loading) return <div className="min-h-screen bg-[radial-gradient(ellipse_at_50%_30%,#111639_0%,#0a0e27_70%)] text-slate-200 flex flex-col"><Header /><div className="flex-1 flex items-center justify-center text-slate-500">Đang tải mind-map...</div></div>
+  if (loading) return <div className="min-h-screen bg-[radial-gradient(ellipse_at_50%_30%,#111639_0%,#0a0e27_70%)] text-slate-200 flex flex-col"><Header /><div className="flex-1 flex items-center justify-center text-slate-500">{t('mindmap.loading')}</div></div>
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_50%_30%,#111639_0%,#0a0e27_70%)] text-slate-200 font-[Inter,'Segoe_UI',sans-serif] flex flex-col">
       <Header />
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-5 py-3 bg-[rgba(17,22,57,0.85)] backdrop-blur-2xl border-b border-indigo-500/20 z-10 shrink-0">
-        <Link to={`/learning/${courseId}`} className={`${btn} no-underline inline-flex items-center gap-1`}>← Quay lại</Link>
+        <Link to={`/learning/${courseId}`} className={`${btn} no-underline inline-flex items-center gap-1`}>{t('mindmap.back')}</Link>
         <span className="text-base font-semibold text-indigo-200 mr-auto whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px]">🗺️ {courseName || 'Mind Map'}</span>
         <button className={btn} onClick={handleZoomIn}>🔍+</button>
         <button className={btn} onClick={handleZoomOut}>🔍−</button>
         <button className={btn} onClick={handleZoomFit}>⊞ Fit</button>
-        <button className={btnSave} onClick={handleSave}>💾 Lưu</button>
-        <button className={btnDanger} onClick={handleReset}>🔄 Reset</button>
+        <button className={btnSave} onClick={handleSave}>{t('mindmap.save')}</button>
+        <button className={btnDanger} onClick={handleReset}>{t('mindmap.reset')}</button>
       </div>
 
       {/* Main */}
@@ -160,15 +162,15 @@ function CourseMindMap() {
           {selectedNode ? (
             <>
               <div className="p-4 border-b border-indigo-500/15"><h3 className="m-0 mb-1 text-[0.95rem] text-indigo-200">{selectedNode.label}</h3><span className={`inline-block px-2 py-px rounded text-[0.72rem] font-semibold uppercase tracking-wider ${typeColors[selectedNode.type] || ''}`}>{selectedCfg?.icon} {selectedNode.type}</span></div>
-              <div className="p-4 flex-1"><label className="block text-[0.78rem] text-slate-400 mb-1.5 uppercase tracking-wider">Ghi chú</label><textarea className="w-full min-h-[150px] p-2.5 border border-indigo-500/20 rounded-lg bg-[rgba(15,23,42,0.6)] text-slate-200 font-mono text-[0.82rem] leading-relaxed resize-y outline-none transition-border focus:border-indigo-500/50 focus:shadow-[0_0_8px_rgba(99,102,241,0.15)]" value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Viết ghi chú ở đây..." /></div>
+              <div className="p-4 flex-1"><label className="block text-[0.78rem] text-slate-400 mb-1.5 uppercase tracking-wider">{t('mindmap.noteLabel')}</label><textarea className="w-full min-h-[150px] p-2.5 border border-indigo-500/20 rounded-lg bg-[rgba(15,23,42,0.6)] text-slate-200 font-mono text-[0.82rem] leading-relaxed resize-y outline-none transition-border focus:border-indigo-500/50 focus:shadow-[0_0_8px_rgba(99,102,241,0.15)]" value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder={t('mindmap.notePlaceholder')} /></div>
               <div className="p-3 border-t border-indigo-500/10 flex flex-col gap-2">
-                <button className={`${btnSave} w-full text-center`} onClick={handleSaveNote}>📝 Lưu ghi chú</button>
-                <button className={`${btn} w-full text-center`} onClick={handleAddNote}>➕ Thêm ghi chú con</button>
-                {getNodeUrl(selectedNode) && <button className={`${btnActive} w-full text-center`} onClick={handleGoToContent}>📎 Xem nội dung</button>}
-                <button className={`${btn} w-full text-center`} onClick={() => setSelectedNode(null)}>✕ Đóng</button>
+                <button className={`${btnSave} w-full text-center`} onClick={handleSaveNote}>{t('mindmap.saveNote')}</button>
+                <button className={`${btn} w-full text-center`} onClick={handleAddNote}>{t('mindmap.addChildNote')}</button>
+                {getNodeUrl(selectedNode) && <button className={`${btnActive} w-full text-center`} onClick={handleGoToContent}>{t('mindmap.viewContent')}</button>}
+                <button className={`${btn} w-full text-center`} onClick={() => setSelectedNode(null)}>{t('mindmap.close')}</button>
               </div>
             </>
-          ) : <div className="p-6 text-center text-slate-600 text-[0.85rem]">Click vào một node để xem chi tiết và ghi chú</div>}
+          ) : <div className="p-6 text-center text-slate-600 text-[0.85rem]">{t('mindmap.clickNode')}</div>}
         </div>
       </div>
 

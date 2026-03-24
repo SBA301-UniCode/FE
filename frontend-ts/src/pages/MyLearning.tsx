@@ -5,6 +5,7 @@ import Footer from '../components/layout/Footer'
 import { enrollmentApi, processApi, chapterApi, certificateApi, userApi, feedbackApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import FeedbackModal from '../components/feedback/FeedbackModal'
+import { useTranslation } from 'react-i18next'
 
 type AnyObj = Record<string, unknown>
 const getGreeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
@@ -12,11 +13,10 @@ const extractList = (p: unknown): AnyObj[] => { if (!p) return []; if (Array.isA
 const getCourseId = (e: AnyObj) => ((e?.courseId || (e?.courseResponse as AnyObj)?.courseId || (e?.courseResponse as AnyObj)?.id || (e?.course as AnyObj)?.courseId || (e?.course as AnyObj)?.id || '') as string)
 const unwrap = (res: unknown) => { const r = res as { data?: { data?: unknown } }; return r?.data?.data ?? r?.data ?? r }
 
-const TABS = [{ key: 'ALL', label: 'Tất cả' }, { key: 'IN_PROGRESS', label: 'Đang học' }, { key: 'COMPLETED', label: 'Hoàn thành' }, { key: 'NOT_STARTED', label: 'Chưa bắt đầu' }]
-
 const MyLearning = () => {
   const navigate = useNavigate()
   const { user: authUser } = useAuth()
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [enrollments, setEnrollments] = useState<AnyObj[]>([])
@@ -31,6 +31,8 @@ const MyLearning = () => {
   const [feedbackSubmittingByCourse, setFeedbackSubmittingByCourse] = useState<Record<string, boolean>>({})
   const [activeTab, setActiveTab] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
+
+  const TABS = [{ key: 'ALL', label: t('myLearning.tabAll') }, { key: 'IN_PROGRESS', label: t('myLearning.tabInProgress') }, { key: 'COMPLETED', label: t('myLearning.tabCompleted') }, { key: 'NOT_STARTED', label: t('myLearning.tabNotStarted') }]
 
   const filteredEnrollments = useMemo(() => {
     let list = activeTab === 'ALL' ? enrollments : enrollments.filter((e) => e.statusCourse === activeTab)
@@ -63,7 +65,7 @@ const MyLearning = () => {
         }))
         if (!cancelled) { setEnrollments(unique); setProgressByEnrollment(pMap); setChapterCountByCourse(chMap) }
         try { const me = unwrap(await userApi.getMe()) as AnyObj; const uid = (me?.userId || me?.id || '') as string; if (!cancelled) setLearnerId(uid); const cl = unwrap(await certificateApi.getMyList()); const certs = Array.isArray(cl) ? cl : []; if (!cancelled) setCertifiedCourseIds(new Set(certs.map((c: AnyObj) => c?.courseId as string).filter(Boolean))) } catch {}
-      } catch (e: unknown) { const err = e as { response?: { data?: { message?: string; errorCode?: string } }; message?: string }; if (!cancelled) setError(err.response?.data?.message || err.response?.data?.errorCode || err.message || 'Không thể tải danh sách khóa học.') }
+      } catch (e: unknown) { const err = e as { response?: { data?: { message?: string; errorCode?: string } }; message?: string }; if (!cancelled) setError(err.response?.data?.message || err.response?.data?.errorCode || err.message || 'Error') }
       finally { if (!cancelled) setLoading(false) }
     }; run(); return () => { cancelled = true }
   }, [])
@@ -77,16 +79,16 @@ const MyLearning = () => {
   const handleContinueLearning = (en: AnyObj) => { const cid = getCourseId(en); const eid = en?.enrollmentId as string; if (cid && eid) navigate(`/learning/${cid}?enrollmentId=${encodeURIComponent(eid)}`) }
   const handleIssueCertificate = async (courseId: string) => {
     if (!learnerId || !courseId) return; setIssuingCourseId(courseId); setIssueMessage('')
-    try { await certificateApi.create({ learnerId, courseId }); setIssueMessage('Đã cấp chứng chỉ thành công!'); setCertifiedCourseIds((p) => new Set([...p, courseId])) }
-    catch (e: unknown) { const err = e as { response?: { data?: { errorCode?: string; message?: string } }; message?: string }; const code = err.response?.data?.errorCode || ''; if (code.includes('CERTIFICATE_ALREADY_EXISTS')) { setIssueMessage('Chứng chỉ đã tồn tại.'); setCertifiedCourseIds((p) => new Set([...p, courseId])) } else if (code.includes('COURSE_NOT_COMPLETED')) setIssueMessage('Chưa hoàn thành 100% khóa học.'); else setIssueMessage(`Cấp chứng chỉ thất bại: ${err.response?.data?.message || err.message}`) }
+    try { await certificateApi.create({ learnerId, courseId }); setIssueMessage(t('myLearning.certSuccess')); setCertifiedCourseIds((p) => new Set([...p, courseId])) }
+    catch (e: unknown) { const err = e as { response?: { data?: { errorCode?: string; message?: string } }; message?: string }; const code = err.response?.data?.errorCode || ''; if (code.includes('CERTIFICATE_ALREADY_EXISTS')) { setIssueMessage(t('myLearning.certExists')); setCertifiedCourseIds((p) => new Set([...p, courseId])) } else if (code.includes('COURSE_NOT_COMPLETED')) setIssueMessage(t('myLearning.certNotCompleted')); else setIssueMessage(`${err.response?.data?.message || err.message}`) }
     finally { setIssuingCourseId('') }
   }
   const formatPercent = (v: unknown) => { const n = Number(v); return Number.isNaN(n) ? '0%' : `${Math.round(n)}%` }
   const handleSubmitFeedback = async (courseId: string, payload: { comment: string; rating: number; fileList?: File[] }) => {
     if (!courseId || !payload?.comment?.trim()) return
     setFeedbackSubmittingByCourse((p) => ({ ...p, [courseId]: true }))
-    try { await feedbackApi.create(courseId, { comment: payload.comment.trim(), rating: Number(payload.rating) || 5 }, payload.fileList || []); setActiveCommentCourseId(''); setCanFeedbackByCourse((p) => ({ ...p, [courseId]: false })); setIssueMessage('Gửi bình luận thành công!') }
-    catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setIssueMessage(`Gửi bình luận thất bại: ${err.response?.data?.message || err.message}`) }
+    try { await feedbackApi.create(courseId, { comment: payload.comment.trim(), rating: Number(payload.rating) || 5 }, payload.fileList || []); setActiveCommentCourseId(''); setCanFeedbackByCourse((p) => ({ ...p, [courseId]: false })); setIssueMessage(t('myLearning.feedbackSuccess')) }
+    catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setIssueMessage(`${err.response?.data?.message || err.message}`) }
     finally { setFeedbackSubmittingByCourse((p) => ({ ...p, [courseId]: false })) }
   }
 
@@ -104,8 +106,8 @@ const MyLearning = () => {
         {/* Welcome */}
         <div className="bg-[linear-gradient(135deg,#003E99_0%,#0056D2_50%,#1A73E8_100%)] rounded-2xl px-8 py-6 text-white flex items-center justify-between gap-6 mb-5 max-[640px]:flex-col max-[640px]:text-center">
           <div>
-            <h1 className="m-0 text-2xl font-extrabold">{getGreeting()}, {displayName}! 👋</h1>
-            <p className="mt-1 text-[0.92rem] text-white/80">{enrollments.length > 0 ? `Bạn đang theo dõi ${enrollments.length} khóa học${completedCount > 0 ? ` — đã hoàn thành ${completedCount}` : ''}` : 'Bắt đầu hành trình học tập của bạn ngay hôm nay.'}</p>
+            <h1 className="m-0 text-2xl font-extrabold">{t('myLearning.greeting', { greeting: getGreeting(), name: displayName })}</h1>
+            <p className="mt-1 text-[0.92rem] text-white/80">{enrollments.length > 0 ? t('myLearning.trackingDesc', { total: enrollments.length, completed: completedCount }) : t('myLearning.startDesc')}</p>
           </div>
           <div className="flex gap-6">
             {[{ v: enrollments.length, l: 'Enrolled' }, { v: completedCount, l: 'Completed' }, { v: certifiedCourseIds.size, l: 'Certificates' }].map((s) => (
@@ -119,24 +121,24 @@ const MyLearning = () => {
           <div className="bg-white border border-border-medium rounded-2xl flex gap-5 overflow-hidden mb-6 transition-shadow hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] max-[640px]:flex-col">
             <div className="w-60 min-h-[140px] shrink-0 bg-blue-50 max-[640px]:w-full max-[640px]:h-40">{!!(cc.image || cc.imageUrl || cc.thumbnail) && <img src={(cc.image || cc.imageUrl || cc.thumbnail) as string} alt="" className="w-full h-full object-cover block" />}</div>
             <div className="flex-1 py-5 pr-5 flex flex-col justify-center gap-2 max-[640px]:px-5">
-              <span className="text-[0.75rem] font-bold text-primary-500 uppercase tracking-widest">Continue Learning</span>
-              <h2 className="m-0 text-xl font-extrabold leading-snug">{(cc.title as string) || 'Khóa học'}</h2>
-              <div className="flex items-center gap-3"><div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-[260px]"><div className="h-full rounded-full bg-[linear-gradient(90deg,#22c55e,#84cc16)] transition-all duration-300" style={{ width: `${pct}%` }} /></div><span className="text-[0.82rem] font-semibold text-text-secondary">{pct}% complete</span></div>
-              <button type="button" className="self-start px-5 py-2.5 bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white border-none rounded-[10px] font-bold text-sm cursor-pointer font-[inherit] shadow-[0_4px_12px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-0.5" onClick={() => handleContinueLearning(continueCourse)}>Resume →</button>
+              <span className="text-[0.75rem] font-bold text-primary-500 uppercase tracking-widest">{t('myLearning.continueLearning')}</span>
+              <h2 className="m-0 text-xl font-extrabold leading-snug">{(cc.title as string) || t('courses.pageTitle')}</h2>
+              <div className="flex items-center gap-3"><div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-[260px]"><div className="h-full rounded-full bg-[linear-gradient(90deg,#22c55e,#84cc16)] transition-all duration-300" style={{ width: `${pct}%` }} /></div><span className="text-[0.82rem] font-semibold text-text-secondary">{t('myLearning.complete', { percent: pct })}</span></div>
+              <button type="button" className="self-start px-5 py-2.5 bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white border-none rounded-[10px] font-bold text-sm cursor-pointer font-[inherit] shadow-[0_4px_12px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-0.5" onClick={() => handleContinueLearning(continueCourse)}>{t('myLearning.resume')}</button>
             </div>
           </div>
         )})()}
 
         {/* Header + Tabs */}
         <div className="flex items-end justify-between gap-5 mb-3 max-[640px]:flex-col max-[640px]:items-start">
-          <h2 className="m-0 text-xl font-extrabold">All Courses</h2>
-          <Link to="/courses" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main no-underline inline-flex items-center transition-all hover:-translate-y-px">← Explore more</Link>
+          <h2 className="m-0 text-xl font-extrabold">{t('myLearning.allCourses')}</h2>
+          <Link to="/courses" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main no-underline inline-flex items-center transition-all hover:-translate-y-px">{t('myLearning.exploreMore')}</Link>
         </div>
         {/* Search */}
         {!loading && !error && enrollments.length > 0 && (
           <div className="flex items-center gap-2 bg-white border border-border-medium rounded-xl px-4 py-2.5 mb-4 max-w-[400px]">
             <span className="text-text-muted">🔍</span>
-            <input type="text" className="flex-1 bg-transparent border-none outline-none text-text-main text-[0.92rem] font-[inherit]" placeholder="Tìm khóa học đang học..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <input type="text" className="flex-1 bg-transparent border-none outline-none text-text-main text-[0.92rem] font-[inherit]" placeholder={t('myLearning.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             {searchQuery && <button type="button" className="bg-transparent border-none text-text-muted cursor-pointer text-sm" onClick={() => setSearchQuery('')}>✕</button>}
           </div>
         )}
@@ -148,9 +150,9 @@ const MyLearning = () => {
         </div>
 
         {!!issueMessage && <div className="bg-white border border-border-medium rounded-[18px] px-5 py-4 text-text-muted mb-4">{issueMessage}</div>}
-        {loading && <div className="bg-white border border-border-medium rounded-[18px] px-5 py-4 text-text-muted">Đang tải khóa học...</div>}
-        {!loading && error && <div className="bg-red-50 border border-red-200 rounded-[18px] px-5 py-4 text-red-600"><strong>Lỗi tải My Learning</strong><div>{error}</div></div>}
-        {!loading && !error && enrollments.length === 0 && <div className="bg-white border border-border-medium rounded-[18px] px-5 py-4 text-text-muted">Bạn chưa có khóa học nào. Hãy chọn một khóa ở trang Courses và thanh toán để bắt đầu học.</div>}
+        {loading && <div className="bg-white border border-border-medium rounded-[18px] px-5 py-4 text-text-muted">{t('myLearning.loadingCourses')}</div>}
+        {!loading && error && <div className="bg-red-50 border border-red-200 rounded-[18px] px-5 py-4 text-red-600"><strong>{t('myLearning.errorLoading')}</strong><div>{error}</div></div>}
+        {!loading && !error && enrollments.length === 0 && <div className="bg-white border border-border-medium rounded-[18px] px-5 py-4 text-text-muted">{t('myLearning.noEnrollments')}</div>}
 
         {!loading && !error && enrollments.length > 0 && (
           <div className="mt-5 grid grid-cols-[repeat(auto-fill,minmax(290px,1fr))] gap-4 max-[640px]:grid-cols-1">
@@ -166,18 +168,18 @@ const MyLearning = () => {
                     {(course.image || course.imageUrl || course.thumbnail) ? <img src={(course.image || course.imageUrl || course.thumbnail) as string} alt={(course.title as string) || ''} className="w-full h-full object-cover block" onError={(ev) => { (ev.target as HTMLImageElement).style.display = 'none' }} /> : <div className="w-full h-full flex items-center justify-center text-[2.5rem] opacity-50">📚</div>}
                   </div>
                   <div className="flex items-start justify-between gap-3">
-                    <div className="font-black text-[1.08rem] leading-snug tracking-tight line-clamp-2">{(course.title as string) || 'Khóa học'}</div>
+                    <div className="font-black text-[1.08rem] leading-snug tracking-tight line-clamp-2">{(course.title as string) || t('courses.pageTitle')}</div>
                     <span className={`text-[0.72rem] font-extrabold tracking-wide px-2.5 py-0.5 rounded-full border whitespace-nowrap uppercase ${statusColors[displayStatus] || statusColors.IN_PROGRESS}`}>{displayStatus}</span>
                   </div>
-                  {!!course.instructorName && <p className="m-0 text-[0.85rem] text-text-muted">GV: {String(course.instructorName)}</p>}
+                  {!!course.instructorName && <p className="m-0 text-[0.85rem] text-text-muted">{t('myLearning.instructor', { name: String(course.instructorName) })}</p>}
                   {!!course.description && <p className="m-0 text-text-secondary leading-relaxed text-[0.92rem] line-clamp-3">{String(course.description)}</p>}
-                  <div className="flex items-center justify-between gap-3 mt-auto pt-1">{Number(chapterCount) >= 0 && <span className="text-[0.85rem] text-text-muted">{chapterCount} chương</span>}<span className="text-[0.85rem] text-text-main font-semibold">Tiến trình: {formatPercent(percent)}</span></div>
+                  <div className="flex items-center justify-between gap-3 mt-auto pt-1">{Number(chapterCount) >= 0 && <span className="text-[0.85rem] text-text-muted">{t('courses.chapterCount', { count: chapterCount })}</span>}<span className="text-[0.85rem] text-text-main font-semibold">{t('myLearning.progress', { percent: formatPercent(percent) })}</span></div>
                   <div className="mt-1"><div className="w-full h-[7px] rounded-full bg-gray-200 overflow-hidden"><div className="h-full rounded-full bg-[linear-gradient(90deg,#22c55e_0%,#84cc16_100%)] transition-all duration-300" style={{ width: formatPercent(percent) }} /></div></div>
                   <div className="flex flex-col gap-2 mt-2">
-                    {canFeedbackByCourse[courseId] && <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => setActiveCommentCourseId(courseId)}>Comment</button>}
-                    <button type="button" className="px-4 py-2.5 rounded-xl font-bold border-none bg-primary-500 text-white cursor-pointer shadow-[0_4px_12px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-px hover:bg-primary-600" onClick={() => handleContinueLearning(e)}>Tiếp tục học</button>
-                    <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => navigate(`/learning/${courseId}/mindmap`)}>🗺️ Mind Map</button>
-                    {percent >= 99.99 && <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px disabled:opacity-60 disabled:cursor-not-allowed" onClick={() => handleIssueCertificate(courseId)} disabled={!learnerId || issuingCourseId === courseId || certifiedCourseIds.has(courseId)}>{certifiedCourseIds.has(courseId) ? 'Đã có chứng chỉ' : issuingCourseId === courseId ? 'Đang cấp...' : 'Nhận chứng chỉ'}</button>}
+                    {canFeedbackByCourse[courseId] && <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => setActiveCommentCourseId(courseId)}>{t('myLearning.comment')}</button>}
+                    <button type="button" className="px-4 py-2.5 rounded-xl font-bold border-none bg-primary-500 text-white cursor-pointer shadow-[0_4px_12px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-px hover:bg-primary-600" onClick={() => handleContinueLearning(e)}>{t('myLearning.continueBtn')}</button>
+                    <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => navigate(`/learning/${courseId}/mindmap`)}>{t('myLearning.mindMap')}</button>
+                    {percent >= 99.99 && <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px disabled:opacity-60 disabled:cursor-not-allowed" onClick={() => handleIssueCertificate(courseId)} disabled={!learnerId || issuingCourseId === courseId || certifiedCourseIds.has(courseId)}>{certifiedCourseIds.has(courseId) ? t('myLearning.hasCert') : issuingCourseId === courseId ? t('myLearning.issuingCert') : t('myLearning.getCert')}</button>}
                   </div>
                 </article>
               )
@@ -185,7 +187,7 @@ const MyLearning = () => {
           </div>
         )}
       </main>
-      <FeedbackModal open={Boolean(activeCommentCourseId)} title="Tạo bình luận khóa học" submitText="Gửi comment" submitting={Boolean(feedbackSubmittingByCourse[activeCommentCourseId])} onClose={() => setActiveCommentCourseId('')} onSubmit={(payload) => handleSubmitFeedback(activeCommentCourseId, payload)} />
+      <FeedbackModal open={Boolean(activeCommentCourseId)} title={t('myLearning.feedbackTitle')} submitText={t('myLearning.feedbackSubmit')} submitting={Boolean(feedbackSubmittingByCourse[activeCommentCourseId])} onClose={() => setActiveCommentCourseId('')} onSubmit={(payload) => handleSubmitFeedback(activeCommentCourseId, payload)} />
       <Footer />
     </div>
   )

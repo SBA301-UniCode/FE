@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/useAuth'
+import { useTranslation } from 'react-i18next'
 
 const errorMessages: Record<string, string> = {
   google_login_failed: 'Đăng nhập Google thất bại. Vui lòng thử lại.',
@@ -18,6 +19,7 @@ const Login = () => {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const { login, isAuthenticated } = useAuth()
+  const { t } = useTranslation()
   const returnTo = (location.state as { returnTo?: string })?.returnTo || '/'
   const [formData, setFormData] = useState({ username: '', password: '' })
   const [rememberMe, setRememberMe] = useState(false)
@@ -107,16 +109,16 @@ const Login = () => {
         <div className="w-full bg-white p-12 max-[480px]:p-8">
           <div className="text-center mb-10">
             <h1 className="text-4xl font-bold bg-[linear-gradient(135deg,#0056D2,#003E99)] bg-clip-text text-transparent mb-2 tracking-tight max-[480px]:text-[28px]">UniCode</h1>
-            <p className="text-gray-500 text-base max-[480px]:text-sm">Chào mừng trở lại!</p>
+            <p className="text-gray-500 text-base max-[480px]:text-sm">{t('login.title')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            <FormGroup label="Tên đăng nhập hoặc Email" htmlFor="username">
-              <input type="text" id="username" name="username" value={formData.username} onChange={handleChange} placeholder="Nhập tên đăng nhập hoặc email" required autoComplete="username" disabled={loading}
+            <FormGroup label={t('login.email')} htmlFor="username">
+              <input type="text" id="username" name="username" value={formData.username} onChange={handleChange} placeholder={t('login.email')} required autoComplete="username" disabled={loading}
                 className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl text-[15px] transition-all bg-gray-50 font-[inherit] focus:outline-none focus:border-primary-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(0,86,210,0.1)] disabled:opacity-60 disabled:cursor-not-allowed placeholder:text-gray-400" />
             </FormGroup>
 
-            <FormGroup label="Mật khẩu" htmlFor="password">
+            <FormGroup label={t('login.password')} htmlFor="password">
               <div className="relative flex items-center">
                 <input type={showPassword ? 'text' : 'password'} id="password" name="password" value={formData.password} onChange={handleChange} placeholder="Nhập mật khẩu" required autoComplete="current-password" disabled={loading}
                   className="w-full px-4 py-3.5 pr-12 border-2 border-gray-200 rounded-xl text-[15px] transition-all bg-gray-50 font-[inherit] focus:outline-none focus:border-primary-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(0,86,210,0.1)] disabled:opacity-60 disabled:cursor-not-allowed placeholder:text-gray-400" />
@@ -139,7 +141,7 @@ const Login = () => {
             </div>
 
             <button type="submit" className="w-full py-4 bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white border-none rounded-xl text-base font-semibold cursor-pointer transition-all flex items-center justify-center gap-2 font-[inherit] shadow-[0_4px_14px_rgba(0,86,210,0.25)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,86,210,0.25)] disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0" disabled={loading}>
-              {loading ? (<><svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.25" /><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg><span>Đang đăng nhập...</span></>) : (<span>Đăng nhập</span>)}
+              {loading ? (<><svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.25" /><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg><span>{t('login.loading')}</span></>) : (<span>{t('login.submit')}</span>)}
             </button>
 
             <div className="flex items-center text-center text-gray-400 text-sm my-2 before:content-[''] before:flex-1 before:border-b before:border-gray-200 after:content-[''] after:flex-1 after:border-b after:border-gray-200">
@@ -162,7 +164,7 @@ const Login = () => {
           </form>
 
           <div className="mt-8 text-center text-sm text-gray-500">
-            <p>Chưa có tài khoản? <Link to="/register" className="text-primary-500 no-underline font-semibold transition-colors hover:text-primary-600 hover:underline">Đăng ký ngay</Link></p>
+            <p>{t('login.noAccount')} <Link to="/register" className="text-primary-500 no-underline font-semibold transition-colors hover:text-primary-600 hover:underline">{t('login.register')}</Link></p>
           </div>
         </div>
       </div>

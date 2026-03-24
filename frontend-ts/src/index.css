@@ -102,3 +102,9 @@ a {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Fix select dropdown option visibility ── */
+select option {
+  background: #fff;
+  color: #1F1F1F;
+}

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { userApi } from '../api'
+import { useTranslation } from 'react-i18next'
 
 const Register = () => {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -15,10 +17,10 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (!name.trim()) return setError('Vui lòng nhập họ tên.')
-    if (!email.trim()) return setError('Vui lòng nhập email.')
-    if (password.length < 6) return setError('Mật khẩu phải có ít nhất 6 ký tự.')
-    if (password !== confirmPassword) return setError('Mật khẩu xác nhận không khớp.')
+    if (!name.trim()) return setError(t('register.errorName'))
+    if (!email.trim()) return setError(t('register.errorEmail'))
+    if (password.length < 6) return setError(t('register.errorPasswordMin'))
+    if (password !== confirmPassword) return setError(t('register.errorPasswordMatch'))
 
     setLoading(true)
     try {
@@ -26,9 +28,9 @@ const Register = () => {
       navigate('/login', { state: { registered: true } })
     } catch (err: unknown) {
       const axErr = err as { response?: { data?: { message?: string; errorCode?: string } }; message?: string }
-      const msg = axErr.response?.data?.message || axErr.response?.data?.errorCode || axErr.message || 'Đăng ký thất bại.'
+      const msg = axErr.response?.data?.message || axErr.response?.data?.errorCode || axErr.message || t('register.errorFailed')
       if (msg.toLowerCase().includes('exist') || msg.toLowerCase().includes('duplicate')) {
-        setError('Email này đã được sử dụng. Vui lòng dùng email khác.')
+        setError(t('register.errorDuplicate'))
       } else {
         setError(msg)
       }
@@ -39,10 +41,10 @@ const Register = () => {
 
   const getPasswordStrength = () => {
     if (!password) return { level: 0, text: '', color: '' }
-    if (password.length < 6) return { level: 1, text: 'Yếu', color: '#dc2626' }
-    if (password.length < 10 && /^[a-zA-Z]+$/.test(password)) return { level: 2, text: 'Trung bình', color: '#d97706' }
-    if (password.length >= 10 || /(?=.*[0-9])(?=.*[a-zA-Z])/.test(password)) return { level: 3, text: 'Mạnh', color: '#16a34a' }
-    return { level: 2, text: 'Trung bình', color: '#d97706' }
+    if (password.length < 6) return { level: 1, text: t('register.strengthWeak'), color: '#dc2626' }
+    if (password.length < 10 && /^[a-zA-Z]+$/.test(password)) return { level: 2, text: t('register.strengthMedium'), color: '#d97706' }
+    if (password.length >= 10 || /(?=.*[0-9])(?=.*[a-zA-Z])/.test(password)) return { level: 3, text: t('register.strengthStrong'), color: '#16a34a' }
+    return { level: 2, text: t('register.strengthMedium'), color: '#d97706' }
   }
   const strength = getPasswordStrength()
 
@@ -81,27 +83,27 @@ const Register = () => {
         {/* Card */}
         <div className="w-full bg-white p-12 max-[480px]:p-8">
           <div className="text-center mb-10">
-            <h1 className="text-4xl font-bold bg-[linear-gradient(135deg,#0056D2,#003E99)] bg-clip-text text-transparent mb-2 tracking-tight">Tạo tài khoản</h1>
-            <p className="text-gray-500 text-base">Bắt đầu hành trình học tập của bạn</p>
+            <h1 className="text-4xl font-bold bg-[linear-gradient(135deg,#0056D2,#003E99)] bg-clip-text text-transparent mb-2 tracking-tight">{t('register.title')}</h1>
+            <p className="text-gray-500 text-base">{t('register.subtitle')}</p>
           </div>
 
           {error && <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm text-center mb-4">{error}</div>}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
-              <label htmlFor="reg-name" className="text-sm font-medium text-gray-700">Họ và tên</label>
-              <input id="reg-name" type="text" placeholder="Nhập họ và tên" value={name} onChange={(e) => setName(e.target.value)} disabled={loading} autoComplete="name" className={inputCls} />
+              <label htmlFor="reg-name" className="text-sm font-medium text-gray-700">{t('register.name')}</label>
+              <input id="reg-name" type="text" placeholder={t('register.namePlaceholder')} value={name} onChange={(e) => setName(e.target.value)} disabled={loading} autoComplete="name" className={inputCls} />
             </div>
 
             <div className="flex flex-col gap-2">
-              <label htmlFor="reg-email" className="text-sm font-medium text-gray-700">Email</label>
+              <label htmlFor="reg-email" className="text-sm font-medium text-gray-700">{t('register.email')}</label>
               <input id="reg-email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} autoComplete="email" className={inputCls} />
             </div>
 
             <div className="flex flex-col gap-2">
-              <label htmlFor="reg-password" className="text-sm font-medium text-gray-700">Mật khẩu</label>
+              <label htmlFor="reg-password" className="text-sm font-medium text-gray-700">{t('register.password')}</label>
               <div className="relative flex items-center">
-                <input id="reg-password" type={showPassword ? 'text' : 'password'} placeholder="Ít nhất 6 ký tự" value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} autoComplete="new-password" className={`${inputCls} pr-12`} />
+                <input id="reg-password" type={showPassword ? 'text' : 'password'} placeholder={t('register.passwordPlaceholder')} value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} autoComplete="new-password" className={`${inputCls} pr-12`} />
                 <button type="button" className="absolute right-3 bg-transparent border-none cursor-pointer text-gray-500 p-2 flex items-center justify-center rounded-lg transition-colors hover:text-primary-500 hover:bg-gray-100" onClick={() => setShowPassword(!showPassword)} disabled={loading} tabIndex={-1}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     {showPassword ? (<><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></>) : (<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>)}
@@ -119,20 +121,20 @@ const Register = () => {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label htmlFor="reg-confirm" className="text-sm font-medium text-gray-700">Xác nhận mật khẩu</label>
-              <input id="reg-confirm" type={showPassword ? 'text' : 'password'} placeholder="Nhập lại mật khẩu" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={loading} autoComplete="new-password" className={inputCls} />
+              <label htmlFor="reg-confirm" className="text-sm font-medium text-gray-700">{t('register.confirm')}</label>
+              <input id="reg-confirm" type={showPassword ? 'text' : 'password'} placeholder={t('register.confirmPlaceholder')} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={loading} autoComplete="new-password" className={inputCls} />
               {confirmPassword && password !== confirmPassword && (
-                <span className="block mt-1 text-xs text-red-600 font-medium">Mật khẩu không khớp</span>
+                <span className="block mt-1 text-xs text-red-600 font-medium">{t('register.passwordMismatch')}</span>
               )}
             </div>
 
             <button type="submit" className="w-full py-4 bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white border-none rounded-xl text-base font-semibold cursor-pointer transition-all flex items-center justify-center gap-2 font-[inherit] shadow-[0_4px_14px_rgba(0,86,210,0.25)] hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed" disabled={loading}>
-              {loading ? (<><span>⏳</span> Đang đăng ký...</>) : 'Tạo tài khoản miễn phí'}
+              {loading ? (<><span>⏳</span> {t('register.loading')}</>) : t('register.submit')}
             </button>
           </form>
 
           <div className="mt-8 text-center text-sm text-gray-500">
-            <p>Đã có tài khoản? <Link to="/login" className="text-primary-500 no-underline font-semibold transition-colors hover:text-primary-600 hover:underline">Đăng nhập</Link></p>
+            <p>{t('register.hasAccount')} <Link to="/login" className="text-primary-500 no-underline font-semibold transition-colors hover:text-primary-600 hover:underline">{t('register.login')}</Link></p>
           </div>
         </div>
       </div>

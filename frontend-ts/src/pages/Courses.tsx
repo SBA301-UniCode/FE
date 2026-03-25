@@ -4,7 +4,7 @@ import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import { courseApi, enrollmentApi, feedbackApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
-import { toSlug, setSlugMap, courseSlugOrId } from '../utils/slug'
+import { courseSlugOrId } from '../utils/slug'
 import StarRating from '../components/StarRating'
 import { useTranslation } from 'react-i18next'
 

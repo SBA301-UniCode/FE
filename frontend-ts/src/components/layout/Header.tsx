@@ -95,14 +95,14 @@ const Header = () => {
           {isAuthenticated ? (
             isAdmin ? (
               <>
-                <NavLink to="/admin">{t('header.adminPanel')}</NavLink>
-                <NavLink to="/my-courses">{t('header.myCourses')}</NavLink>
+                <NavLink to="/admin">{t('header.dashboard')}</NavLink>
+                <NavLink to="/my-courses">{t('header.management')}</NavLink>
                 <NavLink to="/syllabuses">{t('header.syllabuses')}</NavLink>
                 <NavLink to="/verify-content">{t('header.verify')}</NavLink>
               </>
             ) : isLecturer ? (
               <>
-                <NavLink to="/my-courses">{t('header.myCourses')}</NavLink>
+                <NavLink to="/my-courses">{t('header.management')}</NavLink>
                 <NavLink to="/syllabuses">{t('header.syllabuses')}</NavLink>
                 <NavLink to="/verify-content">{t('header.verify')}</NavLink>
               </>
@@ -192,7 +192,7 @@ const Header = () => {
                     {(isAdmin || isLecturer) && (
                       <DropdownItem to="/verify-content" onClick={() => setShowUserMenu(false)}>{t('header.verifyContent')}</DropdownItem>
                     )}
-                    <DropdownItem to="/profile" onClick={() => setShowUserMenu(false)}>{t('header.profile')}</DropdownItem>
+                    <DropdownItem to="/profile" onClick={() => setShowUserMenu(false)}>{t('header.profileLabel')}</DropdownItem>
                     <DropdownItem onClick={handleLogout} className="text-danger-500 font-semibold">{t('header.logout')}</DropdownItem>
                   </div>
                 )}
@@ -243,15 +243,15 @@ const Header = () => {
               <>
                 {isAdmin && (
                   <>
-                    <MobileNavLink to="/admin" onClick={() => setShowMobileMenu(false)}>{t('header.adminPanel')}</MobileNavLink>
-                    <MobileNavLink to="/my-courses" onClick={() => setShowMobileMenu(false)}>{t('header.myCourses')}</MobileNavLink>
+                    <MobileNavLink to="/admin" onClick={() => setShowMobileMenu(false)}>{t('header.dashboard')}</MobileNavLink>
+                    <MobileNavLink to="/my-courses" onClick={() => setShowMobileMenu(false)}>{t('header.management')}</MobileNavLink>
                     <MobileNavLink to="/syllabuses" onClick={() => setShowMobileMenu(false)}>{t('header.syllabuses')}</MobileNavLink>
                     <MobileNavLink to="/verify-content" onClick={() => setShowMobileMenu(false)}>{t('header.verify')}</MobileNavLink>
                   </>
                 )}
                 {isLecturer && !isAdmin && (
                   <>
-                    <MobileNavLink to="/my-courses" onClick={() => setShowMobileMenu(false)}>{t('header.myCourses')}</MobileNavLink>
+                    <MobileNavLink to="/my-courses" onClick={() => setShowMobileMenu(false)}>{t('header.management')}</MobileNavLink>
                     <MobileNavLink to="/syllabuses" onClick={() => setShowMobileMenu(false)}>{t('header.syllabuses')}</MobileNavLink>
                     <MobileNavLink to="/verify-content" onClick={() => setShowMobileMenu(false)}>{t('header.verify')}</MobileNavLink>
                   </>

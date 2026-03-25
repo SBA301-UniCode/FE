@@ -4,7 +4,7 @@ import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import { courseApi, enrollmentApi, feedbackApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
-import { toSlug, setSlugMap, courseSlugOrId } from '../utils/slug'
+import { courseSlugOrId } from '../utils/slug'
 import StarRating from '../components/StarRating'
 import { useTranslation } from 'react-i18next'
 
@@ -114,7 +114,7 @@ const Courses = () => {
 
   useEffect(() => {
     let cancelled = false; setLoading(true); setError('')
-    courseApi.getMyCourses().then((res) => { if (!cancelled) setCourses(extractList(res.data?.data ?? res.data) as AnyObj[]) })
+    courseApi.getAll(0, 500).then((res) => { if (!cancelled) setCourses(extractList(res.data?.data ?? res.data) as AnyObj[]) })
       .catch((e: unknown) => { if (!cancelled) { const err = e as { response?: { status?: number; data?: { message?: string } }; message?: string }; if (err.response?.status === 400 || err.response?.status === 404) setCourses([]); else setError(err.response?.data?.message || err.message || 'Không tải được danh sách khóa học.') } })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -226,7 +226,7 @@ const Courses = () => {
                 const title = getCourseTitle(c)
                 const ratingSummary = ratingSummaryByCourse[id] || { count: 0, avg: 0 }
                 return (
-                  <article key={id} className="bg-white border border-border-medium rounded-2xl flex flex-col shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-200 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:border-primary-500 group">
+                  <article key={id} className="bg-white border border-border-medium rounded-2xl flex flex-col min-h-[480px] shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-200 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:border-primary-500 group">
                     {/* Image */}
                     <div className="relative w-full aspect-video overflow-hidden border-b border-border-subtle">
                       {showImage ? (
@@ -243,7 +243,7 @@ const Courses = () => {
                       <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(15,23,42,0.34),transparent_42%)] pointer-events-none" />
                     </div>
                     {/* Body */}
-                    <div className="p-3.5 flex flex-col gap-1.5">
+                    <div className="p-3.5 flex flex-col gap-1.5 flex-1">
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <span className="text-xs font-extrabold text-primary-500 bg-[rgba(0,86,210,0.08)] px-1.5 py-0.5 rounded leading-none">&lt;/&gt;</span>
                         <span className="text-[0.78rem] font-semibold text-text-muted">UniCode</span>
@@ -262,7 +262,7 @@ const Courses = () => {
                         <span className="text-border-medium">·</span><span>Course</span>
                       </div>
                       <div className="mt-0.5"><span className="text-[0.78rem] text-text-muted">👥 {estimateLearners(id).toLocaleString()} enrolled</span></div>
-                      <div className="flex items-center justify-between gap-3 mt-1.5 pt-2.5 border-t border-border-subtle">
+                      <div className="flex items-center justify-between gap-3 mt-auto pt-2.5 border-t border-border-subtle">
                         <span className={`font-extrabold text-lg ${isFree(c.price) ? 'text-green-600' : 'text-text-main'}`}>{formatPrice(c.price, t('common.free'))}</span>
                         {Number(c?.chapterCount) >= 0 && <span className="text-[0.88rem] text-text-muted">{t('courses.chapterCount', { count: c.chapterCount as number })}</span>}
                       </div>

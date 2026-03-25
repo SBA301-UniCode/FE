@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { resolveToId, setSlugMap, toSlug, isUuid } from '../utils/slug'
+import { resolveToId, setSlugMap, isUuid } from '../utils/slug'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import FeedbackModal from '../components/feedback/FeedbackModal'

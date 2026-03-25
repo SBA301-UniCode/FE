@@ -83,7 +83,7 @@ export default function AIHintsPanel({ code, language, description, testResults,
           {/* Mode buttons */}
           <div className="grid grid-cols-2 gap-2 mb-3 max-[640px]:grid-cols-1">
             {MODE_CONFIG.map((cfg) => {
-              const disabled = cfg.needResults && !hasTestResults
+              const disabled = ('needResults' in cfg && cfg.needResults) && !hasTestResults
               return (
                 <button
                   key={cfg.mode}

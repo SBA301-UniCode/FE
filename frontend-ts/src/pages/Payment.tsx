@@ -76,8 +76,10 @@ const Payment = () => {
                   {getCourseImage(course) && <img src={getCourseImage(course)} alt="" className="w-[120px] h-20 rounded-[10px] object-cover shrink-0" />}
                   <div className="flex-1">
                     <h3 className="m-0 mb-1 text-[1.05rem] font-bold leading-snug">{(course.title as string) || t('payment.courseDefault')}</h3>
-                    {!!course.instructorName && <p className="m-0 mb-2 text-text-muted text-[0.85rem]">by {String(course.instructorName)}</p>}
-                    <div className="flex gap-2">
+                    {!!course.instructorName && <p className="m-0 mb-1 text-text-muted text-[0.85rem] font-medium">by {String(course.instructorName)}</p>}
+                    {!!course.description && <p className="m-0 mb-2 text-text-secondary text-[0.82rem] line-clamp-2 leading-relaxed">{String(course.description)}</p>}
+                    <div className="flex gap-2 flex-wrap">
+                      {!!course.chapterCount && <span className="text-[0.72rem] font-semibold text-text-secondary bg-border-subtle px-2 py-0.5 rounded-md">📚 {Number(course.chapterCount)} Chapters</span>}
                       <span className="text-[0.72rem] font-semibold text-text-secondary bg-border-subtle px-2 py-0.5 rounded-md">📗 Full Course</span>
                       <span className="text-[0.72rem] font-semibold text-text-secondary bg-border-subtle px-2 py-0.5 rounded-md">📜 Certificate</span>
                     </div>
@@ -88,15 +90,7 @@ const Payment = () => {
                   <div className="flex justify-between border-t border-border-subtle pt-3 mt-1 font-bold text-text-main"><span>Total</span><span className="text-xl font-extrabold text-primary-500">{formatPrice(course.price)}</span></div>
                 </div>
               </div>
-              {/* Trust */}
-              <div className="flex flex-col gap-3">
-                {[{ icon: '🔒', title: 'Secure Checkout', sub: 'SSL encrypted payment' }, { icon: '🔄', title: '30-Day Guarantee', sub: 'Full refund if unsatisfied' }, { icon: '♾️', title: 'Lifetime Access', sub: 'Learn at your own pace' }].map((t) => (
-                  <div key={t.title} className="flex items-center gap-3 px-4 py-3 bg-white border border-border-subtle rounded-[10px]">
-                    <span className="text-xl shrink-0">{t.icon}</span>
-                    <div className="flex flex-col"><strong className="text-[0.85rem] font-bold">{t.title}</strong><span className="text-[0.78rem] text-text-muted">{t.sub}</span></div>
-                  </div>
-                ))}
-              </div>
+
             </div>
 
             {/* Payment method */}

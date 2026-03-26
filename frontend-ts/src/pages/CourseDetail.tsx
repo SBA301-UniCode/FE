@@ -47,10 +47,12 @@ const CourseDetail = () => {
   const [lessonsByChapter, setLessonsByChapter] = useState<Record<string, AnyObj[]>>({})
   const [openChapters, setOpenChapters] = useState<Record<string, boolean>>({})
   const [activeSection, setActiveSection] = useState('overview')
+  const [isEnrolled, setIsEnrolled] = useState(false)
 
   const loadCanEdit = async (list: AnyObj[]) => { const m: Record<string, boolean> = {}; await Promise.all(list.map(async (fb) => { const fid = getFeedbackId(fb); if (!fid) return; try { const res = await feedbackApi.canEdit(fid); const d = unwrap(res); m[fid] = d === true || d === 'true' } catch { m[fid] = false } })); setCanEditMap(m) }
   const loadFeedback = async () => { if (!courseId) return; setFeedbackLoading(true); setFeedbackError(''); try { const res = await feedbackApi.getByCourse(courseId, 1, 50); const list = toFeedbackList(unwrap(res)); setFeedbacks(list); await loadCanEdit(list) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackError(err.response?.data?.message || err.message || t('courseDetail.loadFeedbackFailed')) } finally { setFeedbackLoading(false) } }
   const loadCanFeedback = async () => { if (!courseId || !isAuthenticated) { setCanFeedback(false); return }; try { const res = await feedbackApi.canFeedback(courseId); const d = unwrap(res); setCanFeedback(d === true || d === 'true') } catch { setCanFeedback(false) } }
+  const loadIsEnrolled = async () => { if (!courseId || !isAuthenticated) { setIsEnrolled(false); return }; try { const res = await enrollmentApi.isEnrolled(courseId); const d = unwrap(res); setIsEnrolled(d === true || d === 'true') } catch { setIsEnrolled(false) } }
 
   useEffect(() => {
     if (!courseSlug) return
@@ -87,11 +89,11 @@ const CourseDetail = () => {
     }).finally(() => { if (!c) setLoading(false) })
     return () => { c = true }
   }, [courseSlug])
-  useEffect(() => { loadFeedback(); loadCanFeedback() }, [courseId, isAuthenticated])
-  useEffect(() => { if (!courseId) return; chapterApi.getByCourseId(courseId).then((res) => { const arr = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; setChapters(arr); if (arr.length > 0) setOpenChapters({ [(arr[0].chapterId || arr[0].id) as string]: true }) }).catch(() => {}) }, [courseId])
+  useEffect(() => { loadFeedback(); loadCanFeedback(); loadIsEnrolled() }, [courseId, isAuthenticated])
+  useEffect(() => { if (!courseId) return; chapterApi.getByCourseId(courseId).then((res) => { const arr = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; setChapters(arr); if (arr.length > 0) setOpenChapters({ [(arr[0].chapterId || arr[0].id) as string]: true }) }).catch(() => { }) }, [courseId])
 
   const toggleChapter = (chId: string) => { setOpenChapters((p) => ({ ...p, [chId]: !p[chId] })); if (!lessonsByChapter[chId]) { lessonApi.getByChapterId(chId).then((res) => { const arr = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; setLessonsByChapter((p) => ({ ...p, [chId]: arr })) }).catch(() => setLessonsByChapter((p) => ({ ...p, [chId]: [] }))) } }
-  useEffect(() => { if (!chapters.length) return; const fid = (chapters[0].chapterId || chapters[0].id) as string; if (fid && !lessonsByChapter[fid]) lessonApi.getByChapterId(fid).then((res) => { const arr = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; setLessonsByChapter((p) => ({ ...p, [fid]: arr })) }).catch(() => {}) }, [chapters])
+  useEffect(() => { if (!chapters.length) return; const fid = (chapters[0].chapterId || chapters[0].id) as string; if (fid && !lessonsByChapter[fid]) lessonApi.getByChapterId(fid).then((res) => { const arr = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; setLessonsByChapter((p) => ({ ...p, [fid]: arr })) }).catch(() => { }) }, [chapters])
 
   const ratings = useMemo(() => feedbacks.map((f) => Number(f?.rating) || 0).filter((x) => x > 0), [feedbacks])
   const avgRating = useMemo(() => ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0, [ratings])
@@ -114,26 +116,24 @@ const CourseDetail = () => {
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       {/* Hero */}
-      <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_40%,#4338ca_100%)] px-6 py-8 text-white">
-        <div className="w-full mx-auto flex items-start gap-8 max-[768px]:flex-col">
-          <div className="flex-1">
-            <div className="flex items-center gap-1.5 text-[0.82rem] mb-3 text-white/60"><Link to="/" className="text-white/75 no-underline hover:underline">Home</Link><span>›</span><Link to="/courses" className="text-white/75 no-underline hover:underline">Courses</Link><span>›</span><span className="text-white/90">{(course?.title as string) || 'Course'}</span></div>
-            <h1 className="m-0 text-[1.75rem] font-extrabold leading-tight">{(course?.title as string) || t('courseDetail.untitled')}</h1>
-            <p className="mt-2 mb-0 text-white/75 leading-relaxed max-w-[620px] text-sm line-clamp-3">{(course?.description as string) || t('courseDetail.noDescription')}</p>
-            <div className="flex items-center gap-3 flex-wrap mt-3">
-              {avgRating > 0 && <span className="flex items-center gap-1.5"><StarDisplay rating={avgRating} size="0.95rem" /><strong>{avgRating.toFixed(1)}</strong><span className="text-white/60 text-[0.82rem]">({t('courseDetail.ratingCount', { count: ratings.length })})</span></span>}
-              <span className="px-2.5 py-0.5 rounded-md bg-white/15 text-[0.78rem] font-semibold">{level}</span>
-              {chapters.length > 0 && <span className="text-white/70 text-[0.82rem]">📗 {t('courseDetail.chapterCount', { count: chapters.length })}</span>}
-              {totalLessons > 0 && <span className="text-white/70 text-[0.82rem]">📄 {t('courseDetail.lessonCount', { count: totalLessons })}</span>}
-            </div>
-            <div className="flex items-center gap-2 mt-3 text-white/60 text-[0.82rem]"><span className="font-bold text-white/80 bg-white/10 rounded px-1.5 py-px">&lt;/&gt;</span><span>Offered by <strong className="text-white/90">UniCode</strong></span></div>
+      <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_40%,#4338ca_100%)] px-6 py-10 text-white">
+        <div className="w-full mx-auto">
+          <div className="flex items-center gap-1.5 text-[0.82rem] mb-4 text-white/60"><Link to="/" className="text-white/75 no-underline hover:underline">Home</Link><span>›</span><Link to="/courses" className="text-white/75 no-underline hover:underline">Courses</Link><span>›</span><span className="text-white/90">{(course?.title as string) || 'Course'}</span></div>
+          <h1 className="m-0 max-w-[800px] text-[2rem] font-extrabold leading-tight">{(course?.title as string) || t('courseDetail.untitled')}</h1>
+          <p className="mt-3 mb-0 text-white/75 leading-relaxed max-w-[700px] text-base line-clamp-3">{(course?.description as string) || t('courseDetail.noDescription')}</p>
+          <div className="flex items-center gap-4 flex-wrap mt-4">
+            {avgRating > 0 && <span className="flex items-center gap-1.5"><StarDisplay rating={avgRating} size="1rem" /><strong>{avgRating.toFixed(1)}</strong><span className="text-white/60 text-[0.85rem]">({t('courseDetail.ratingCount', { count: ratings.length })})</span></span>}
+            <span className="px-3 py-1 rounded-md bg-white/15 text-[0.82rem] font-semibold">{level}</span>
+            {chapters.length > 0 && <span className="text-white/70 text-[0.85rem]">📗 {t('courseDetail.chapterCount', { count: chapters.length })}</span>}
+            {totalLessons > 0 && <span className="text-white/70 text-[0.85rem]">📄 {t('courseDetail.lessonCount', { count: totalLessons })}</span>}
           </div>
-          {getCourseImage(course) && <div className="shrink-0 w-[300px] h-[180px] rounded-2xl overflow-hidden border-2 border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.3)] max-[768px]:w-full max-[768px]:h-[200px]"><img src={getCourseImage(course)} alt="" className="w-full h-full object-cover" /></div>}
+          <div className="flex items-center gap-2 mt-4 text-white/60 text-[0.85rem]"><span className="font-bold text-white/80 bg-white/10 rounded px-1.5 py-px">&lt;/&gt;</span><span>Offered by <strong className="text-white/90">UniCode</strong></span></div>
         </div>
       </div>
 
       {/* Sticky nav */}
-      <nav className="sticky top-16 z-30 bg-white/95 backdrop-blur border-b border-border-subtle shadow-[0_1px_4px_rgba(0,0,0,0.04)]"><div className="w-full mx-auto px-6 flex gap-1">{['overview', 'syllabus', 'reviews'].map((s) => <button key={s} type="button" className={`px-5 py-3 text-sm font-semibold border-none bg-transparent cursor-pointer transition-all ${activeSection === s ? 'text-primary-500 border-b-2 border-primary-500' : 'text-text-muted hover:text-text-main'}`} onClick={() => scrollToSection(s)}>{s === 'overview' ? 'Overview' : s === 'syllabus' ? 'Syllabus' : 'Reviews'}</button>)}</div></nav>
+      {/* Sticky nav */}
+      <nav className="sticky top-16 z-30 bg-white/95 backdrop-blur border-b border-border-subtle shadow-[0_1px_4px_rgba(0,0,0,0.04)]"><div className="w-full mx-auto px-6 flex justify-center gap-6">{['overview', 'syllabus', 'reviews'].map((s) => <button key={s} type="button" className={`px-6 py-4 text-[0.95rem] font-semibold border-none bg-transparent cursor-pointer transition-all border-b-2 -mb-px ${activeSection === s ? 'text-primary-500 border-primary-500' : 'text-text-muted border-transparent hover:text-text-main hover:border-border-medium'}`} onClick={() => scrollToSection(s)}>{s === 'overview' ? 'Overview' : s === 'syllabus' ? 'Syllabus' : 'Reviews'}</button>)}</div></nav>
 
       <main className="w-full mx-auto px-6 py-8 pb-16">
         <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-8 items-start max-[900px]:grid-cols-1">
@@ -151,15 +151,17 @@ const CourseDetail = () => {
             <section id="cd-section-syllabus" className="bg-white border border-border-medium rounded-[18px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
               <h2 className="m-0 mb-4 text-lg font-extrabold">{t('courseDetail.syllabus')} — {t('courseDetail.chapterCount', { count: chapters.length })}</h2>
               {chapters.length === 0 && <p className="text-text-muted text-sm m-0">{t('courseDetail.noSyllabus')}</p>}
-              <div className="flex flex-col gap-1">{chapters.map((ch, ci) => { const chId = (ch.chapterId || ch.id) as string; const isOpen = openChapters[chId]; const lessons = lessonsByChapter[chId] || []; return (
-                <div key={chId} className="border border-border-subtle rounded-xl overflow-hidden">
-                  <button type="button" className="w-full flex items-center justify-between px-4 py-3 border-none bg-bg-deep cursor-pointer transition-colors hover:bg-gray-100 text-left" onClick={() => toggleChapter(chId)}>
-                    <div className="flex items-center gap-2"><span className="text-text-muted text-sm">{isOpen ? '▾' : '▸'}</span><div><span className="text-[0.72rem] text-text-muted uppercase tracking-wider">{t('courseDetail.chapterLabel', { n: ci + 1 })}</span><div className="font-semibold text-sm text-text-main">{(ch.title || ch.chapterTitle || t('courseDetail.chapterLabel', { n: ci + 1 })) as string}</div></div></div>
-                    {lessons.length > 0 && <span className="text-[0.78rem] text-text-muted shrink-0">{t('courseDetail.lessonCount', { count: lessons.length })}</span>}
-                  </button>
-                  {isOpen && <div className="px-4 py-2 border-t border-border-subtle">{lessons.length === 0 && <p className="text-text-muted text-sm m-0 py-2">{t('courseDetail.loadingLessons')}</p>}{lessons.map((l) => <div key={(l.lessonId || l.id) as string} className="flex items-center gap-2 py-1.5 text-sm text-text-secondary"><span className="text-[0.75rem]">📄</span><span>{(l.title || l.lessonTitle || t('courseDetail.lesson')) as string}</span></div>)}</div>}
-                </div>
-              ) })}</div>
+              <div className="flex flex-col gap-1">{chapters.map((ch, ci) => {
+                const chId = (ch.chapterId || ch.id) as string; const isOpen = openChapters[chId]; const lessons = lessonsByChapter[chId] || []; return (
+                  <div key={chId} className="border border-border-subtle rounded-xl overflow-hidden">
+                    <button type="button" className="w-full flex items-center justify-between px-4 py-3 border-none bg-bg-deep cursor-pointer transition-colors hover:bg-gray-100 text-left" onClick={() => toggleChapter(chId)}>
+                      <div className="flex items-center gap-2"><span className="text-text-muted text-sm">{isOpen ? '▾' : '▸'}</span><div><span className="text-[0.72rem] text-text-muted uppercase tracking-wider">{t('courseDetail.chapterLabel', { n: ci + 1 })}</span><div className="font-semibold text-sm text-text-main">{(ch.title || ch.chapterTitle || t('courseDetail.chapterLabel', { n: ci + 1 })) as string}</div></div></div>
+                      {lessons.length > 0 && <span className="text-[0.78rem] text-text-muted shrink-0">{t('courseDetail.lessonCount', { count: lessons.length })}</span>}
+                    </button>
+                    {isOpen && <div className="px-4 py-2 border-t border-border-subtle">{lessons.length === 0 && <p className="text-text-muted text-sm m-0 py-2">{t('courseDetail.loadingLessons')}</p>}{lessons.map((l) => <div key={(l.lessonId || l.id) as string} className="flex items-center gap-2 py-1.5 text-sm text-text-secondary"><span className="text-[0.75rem]">📄</span><span>{(l.title || l.lessonTitle || t('courseDetail.lesson')) as string}</span></div>)}</div>}
+                  </div>
+                )
+              })}</div>
             </section>
 
             {/* Reviews */}
@@ -169,14 +171,16 @@ const CourseDetail = () => {
               {feedbackLoading && <p className="text-text-muted text-sm">{t('courseDetail.loadingReviews')}</p>}
               {!feedbackLoading && feedbackError && <p className="text-red-600 text-sm">{feedbackError}</p>}
               {!feedbackLoading && !feedbackError && feedbacks.length === 0 && <p className="text-text-muted text-sm">{t('courseDetail.noReviews')}</p>}
-              <div className="flex flex-col gap-4 mt-2">{feedbacks.map((fb) => { const fid = getFeedbackId(fb); const imgs = getImageList(fb); const canEdit = canEditMap[fid]; return (
-                <article key={fid || `${fb.comment}-${getFeedbackDate(fb)}`} className="border border-border-subtle rounded-xl p-4">
-                  <div className="flex items-center gap-3 mb-2"><div className="w-9 h-9 rounded-full bg-primary-500 text-white flex items-center justify-center font-bold text-sm">{getFeedbackUser(fb).charAt(0).toUpperCase()}</div><div className="flex-1"><strong className="text-sm">{getFeedbackUser(fb)}</strong><span className="text-[0.78rem] text-text-muted ml-2">{formatDate(getFeedbackDate(fb))}</span></div><StarDisplay rating={Number(fb?.rating || 0)} size="0.85rem" /></div>
-                  <p className="m-0 text-sm text-text-secondary leading-relaxed">{(fb?.comment || '') as string}</p>
-                  {imgs.length > 0 && <div className="flex gap-2 flex-wrap mt-2">{imgs.map((img) => <img key={img.imageId || img.imageUrl} src={img.imageUrl} alt="feedback" loading="lazy" className="h-16 rounded-lg cursor-pointer object-cover hover:opacity-80" onClick={() => setLightboxImageUrl(img.imageUrl)} />)}</div>}
-                  {canEdit && <div className="flex gap-2 mt-2"><button type="button" className="text-[0.82rem] text-primary-500 bg-primary-500/8 px-2.5 py-1 rounded-lg border-none cursor-pointer hover:bg-primary-500/15" onClick={() => setEditingFeedback(fb)}>{t('common.edit')}</button><button type="button" className="text-[0.82rem] text-red-600 bg-red-500/8 px-2.5 py-1 rounded-lg border-none cursor-pointer hover:bg-red-500/15" onClick={() => handleDeleteFeedback(fid)}>{t('common.delete')}</button></div>}
-                </article>
-              ) })}</div>
+              <div className="flex flex-col gap-4 mt-2">{feedbacks.map((fb) => {
+                const fid = getFeedbackId(fb); const imgs = getImageList(fb); const canEdit = canEditMap[fid]; return (
+                  <article key={fid || `${fb.comment}-${getFeedbackDate(fb)}`} className="border border-border-subtle rounded-xl p-4">
+                    <div className="flex items-center gap-3 mb-2"><div className="w-9 h-9 rounded-full bg-primary-500 text-white flex items-center justify-center font-bold text-sm">{getFeedbackUser(fb).charAt(0).toUpperCase()}</div><div className="flex-1"><strong className="text-sm">{getFeedbackUser(fb)}</strong><span className="text-[0.78rem] text-text-muted ml-2">{formatDate(getFeedbackDate(fb))}</span></div><StarDisplay rating={Number(fb?.rating || 0)} size="0.85rem" /></div>
+                    <p className="m-0 text-sm text-text-secondary leading-relaxed">{(fb?.comment || '') as string}</p>
+                    {imgs.length > 0 && <div className="flex gap-2 flex-wrap mt-2">{imgs.map((img) => <img key={img.imageId || img.imageUrl} src={img.imageUrl} alt="feedback" loading="lazy" className="h-16 rounded-lg cursor-pointer object-cover hover:opacity-80" onClick={() => setLightboxImageUrl(img.imageUrl)} />)}</div>}
+                    {canEdit && <div className="flex gap-2 mt-2"><button type="button" className="text-[0.82rem] text-primary-500 bg-primary-500/8 px-2.5 py-1 rounded-lg border-none cursor-pointer hover:bg-primary-500/15" onClick={() => setEditingFeedback(fb)}>{t('common.edit')}</button><button type="button" className="text-[0.82rem] text-red-600 bg-red-500/8 px-2.5 py-1 rounded-lg border-none cursor-pointer hover:bg-red-500/15" onClick={() => handleDeleteFeedback(fid)}>{t('common.delete')}</button></div>}
+                  </article>
+                )
+              })}</div>
             </section>
           </div>
 
@@ -188,6 +192,8 @@ const CourseDetail = () => {
                 <div className="text-2xl font-extrabold mb-3">{isFree(course?.price) ? <span className="text-green-600">{t('common.free')}</span> : <span className="text-primary-500">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(course?.price))}</span>}</div>
                 {!isAuthenticated ? (
                   <Link to="/login" className="block w-full text-center py-3 rounded-xl bg-primary-500 text-white font-bold text-sm no-underline transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]">{t('courseDetail.loginToLearn')}</Link>
+                ) : isEnrolled ? (
+                  <Link to={`/learning/${courseSlug}`} className="block w-full text-center py-3 rounded-xl bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white font-bold text-sm no-underline transition-all hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(0,86,210,0.25)]">📚 {t('courseDetail.goToLearning', 'Vào My Learning')}</Link>
                 ) : isFree(course?.price) ? (
                   <button type="button" className="block w-full text-center py-3 rounded-xl bg-green-600 text-white font-bold text-sm border-none cursor-pointer transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(34,197,94,0.25)] hover:bg-green-700 disabled:opacity-60" onClick={handleJoinFree} disabled={joining}>{joining ? t('courseDetail.joining') : t('courseDetail.joinFree')}</button>
                 ) : (

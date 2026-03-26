@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import Header from '../components/layout/Header'
 import { enrollmentApi } from '../api'
 import { useTranslation } from 'react-i18next'
+import Footer from '../components/layout/Footer'
 
 const COLORS = ['#0056D2', '#16a34a', '#d97706', '#dc2626', '#8b5cf6', '#ec4899']
 
@@ -51,7 +52,7 @@ const PaymentSuccess = () => {
   return (
     <div className="min-h-screen bg-bg-page text-text-main relative overflow-hidden flex flex-col">
       <Header />
-      <main className="max-w-[520px] mx-auto px-6 py-12 pb-16 relative z-[1]">
+      <main className="w-full max-w-[960px] mx-auto px-4 sm:px-6 py-10 pb-16 relative z-[1]">
         {/* Confetti */}
         {!isError && (
           <div className="fixed inset-0 pointer-events-none z-0" aria-hidden>
@@ -62,14 +63,17 @@ const PaymentSuccess = () => {
           </div>
         )}
 
-        <div className={`bg-white rounded-[20px] p-10 text-center shadow-[0_4px_24px_rgba(0,0,0,0.08)] animate-[cardPop_0.5s_ease-out] ${isError ? 'border-2 border-red-600' : 'border-2 border-green-600'}`}>
+        <div
+          className={`w-full max-w-[760px] mx-auto bg-white rounded-3xl p-6 sm:p-10 text-center shadow-[0_8px_28px_rgba(2,6,23,0.08)] animate-[cardPop_0.5s_ease-out] ${isError ? 'border border-red-200' : 'border border-emerald-200'}`}
+          style={{ width: 'min(760px, 100%)' }}
+        >
           {isError ? (
             <>
-              <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-red-50 border-[3px] border-red-600 text-red-600 flex items-center justify-center animate-[iconPulse_0.6s_ease]">
+              <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-red-50 border-[3px] border-red-500 text-red-600 flex items-center justify-center animate-[iconPulse_0.6s_ease]">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </div>
-              <h1 className="m-0 mb-3 text-2xl font-extrabold">{t('payment.failedTitle')}</h1>
-              <p className="m-0 mb-4 text-text-secondary leading-relaxed">{message || t('payment.failedDesc')}</p>
+              <h1 className="m-0 mb-3 text-2xl sm:text-3xl font-extrabold">{t('payment.failedTitle')}</h1>
+              <p className="m-0 mb-4 text-text-secondary leading-relaxed text-[0.96rem] sm:text-base">{message || t('payment.failedDesc')}</p>
               <p className="m-0 mb-5 text-[0.82rem] text-text-muted bg-amber-50 rounded-lg px-3 py-2.5 text-left">{t('payment.sandboxNote')}</p>
               <div className="flex flex-col gap-2.5">
                 {courseId && <Link to={`/payment?courseId=${courseId}`} className="flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl font-bold text-center no-underline text-[0.95rem] transition-all bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white shadow-[0_4px_14px_rgba(0,86,210,0.25)] hover:-translate-y-0.5">{t('payment.retryPayment')}</Link>}
@@ -82,10 +86,10 @@ const PaymentSuccess = () => {
               <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-emerald-50 border-[3px] border-green-600 text-green-600 flex items-center justify-center animate-[iconPulse_0.6s_ease]">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
               </div>
-              <h1 className="m-0 mb-3 text-2xl font-extrabold">{t('payment.successTitle')}</h1>
-              <p className="m-0 mb-4 text-text-secondary leading-relaxed">{t('payment.successDesc')}</p>
+              <h1 className="m-0 mb-3 text-2xl sm:text-3xl font-extrabold">{t('payment.successTitle')}</h1>
+              <p className="m-0 mb-4 text-text-secondary leading-relaxed text-[0.96rem] sm:text-base">{t('payment.successDesc')}</p>
               {enrolling && <p className="text-[0.88rem] text-primary-500 m-0 mb-4">{t('payment.enrolling')}</p>}
-              <div className="text-left mb-6 p-4 bg-green-50 rounded-xl border border-green-200">
+              <div className="text-left mb-6 p-4 sm:p-5 bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl border border-green-200">
                 <h3 className="m-0 mb-3 text-[0.95rem] font-bold text-green-600">{t('payment.whatsNext')}</h3>
                 <div className="flex flex-col gap-2">
                   {[t('payment.step1'), t('payment.step2'), t('payment.step3')].map((text, i) => (
@@ -99,11 +103,13 @@ const PaymentSuccess = () => {
               <div className="flex flex-col gap-2.5">
                 <Link to="/my-learning" className="flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl font-bold text-center no-underline text-[0.95rem] transition-all bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white shadow-[0_4px_14px_rgba(0,86,210,0.25)] hover:-translate-y-0.5">{t('payment.goToLearning')}</Link>
                 {courseId && <Link to={`/courses/${courseId}`} className="flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl font-bold text-center no-underline text-[0.95rem] transition-colors bg-border-subtle text-text-secondary hover:bg-gray-200">{t('payment.viewCourse')}</Link>}
+                <Link to="/courses" className="flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl font-bold text-center no-underline text-[0.95rem] transition-colors bg-border-subtle text-text-secondary hover:bg-gray-200">{t('payment.chooseCourse')}</Link>
               </div>
             </>
           )}
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

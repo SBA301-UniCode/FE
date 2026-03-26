@@ -5,6 +5,10 @@ import Footer from '../components/layout/Footer'
 import { useAuth } from '../contexts/useAuth'
 import { subscriptionApi, courseApi, enrollmentApi } from '../api'
 import { useTranslation } from 'react-i18next'
+import {
+  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts'
 
 type AnyObj = Record<string, unknown>
 const unwrap = (res: unknown) => { const r = res as { data?: { data?: unknown } }; return r?.data?.data ?? r?.data ?? r }
@@ -16,13 +20,14 @@ const fmtShort = (n: number) => {
   return fmt(n)
 }
 const toISODate = (d: Date) => d.toISOString().slice(0, 10)
+const chartColors = { revenue: '#8b5cf6', success: '#22c55e', error: '#ef4444', pending: '#eab308', transactions: '#3b82f6' }
 
 /* ─── Shared styles ─── */
 const cardBase = 'bg-white rounded-2xl border border-border-medium shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden'
 const cardHeader = 'px-5 py-3.5 border-b border-border-subtle font-bold text-[0.95rem] text-text-main'
-const statCard = 'flex flex-col gap-1 p-5 rounded-2xl border border-border-medium shadow-[0_2px_12px_rgba(0,0,0,0.04)] min-w-[160px]'
+const statCard = 'flex flex-col gap-0.5 p-3.5 rounded-2xl border border-border-medium shadow-[0_2px_8px_rgba(0,0,0,0.04)] min-w-[140px]'
 const statLabel = 'text-[0.78rem] font-semibold text-text-muted uppercase tracking-wider'
-const statValue = 'text-2xl font-extrabold text-text-main'
+const statValue = 'text-[1.42rem] font-extrabold text-text-main leading-tight'
 const tableHead = 'text-left text-[0.78rem] font-semibold text-text-muted uppercase tracking-wider py-2.5 px-3'
 const tableCell = 'py-2.5 px-3 text-sm text-text-secondary border-t border-border-subtle'
 const pillBtn = (active: boolean) => `px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold border transition-all cursor-pointer ${active ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-text-muted border-border-medium hover:border-indigo-300 hover:text-indigo-600'}`
@@ -47,6 +52,7 @@ export default function Dashboard() {
   const [totalUsers, setTotalUsers] = useState(0)
   const [recentTx, setRecentTx] = useState<AnyObj[]>([])
   const [loadingReport, setLoadingReport] = useState(true)
+  const [chartType, setChartType] = useState<'area' | 'bar' | 'line'>('area')
 
   /* ── Chart period state ── */
   type Period = '7d' | '14d' | '30d' | 'custom'
@@ -66,6 +72,7 @@ export default function Dashboard() {
   const [instrPeriod, setInstrPeriod] = useState<Period>('30d')
   const [instrCustomFrom, setInstrCustomFrom] = useState('')
   const [instrCustomTo, setInstrCustomTo] = useState('')
+  const [instrChartType, setInstrChartType] = useState<'area' | 'bar' | 'line'>('area')
   const [loadingInstrRevenue, setLoadingInstrRevenue] = useState(false)
 
   /* ── Build date range from period ── */
@@ -83,18 +90,60 @@ export default function Dashboard() {
     setLoadingReport(true)
     const { from, to } = getDateRange(p, cf, ct)
     try {
-      const [reportRes, coursesRes, txRes] = await Promise.all([
-        subscriptionApi.report({ from, to }),
+      let page = 0
+      let totalPages = 1
+      const allSubs: AnyObj[] = []
+      while (page < totalPages) {
+        const res = await subscriptionApi.search({ from, to }, page, 100)
+        const data = unwrap(res) as AnyObj
+        const list = (data?.content || data?.data || []) as AnyObj[]
+        const tp = Number(data?.totalPages || (data?.page as AnyObj)?.totalPages || 1)
+        allSubs.push(...list)
+        totalPages = Math.max(1, tp)
+        page += 1
+      }
+
+      const dailyMap = new Map<string, DaySummary>()
+      let revenue = 0
+      let payments = 0
+      let success = 0
+      let error = 0
+
+      for (const s of allSubs) {
+        const dateKey = String(s?.createdAt || '').slice(0, 10)
+        if (!dateKey) continue
+        if (!dailyMap.has(dateKey)) dailyMap.set(dateKey, { localDate: dateKey, totalAmount: 0, totalPayment: 0, success: 0, error: 0 })
+        const row = dailyMap.get(dateKey)!
+        const status = String(s?.statusPayment || '').toUpperCase()
+        const amount = Number(s?.subcriptionPrice || 0)
+
+        row.totalPayment += 1
+        payments += 1
+
+        if (status === 'SUCCESS') {
+          const rev = Number.isFinite(amount) ? amount : 0
+          row.totalAmount += rev
+          row.success += 1
+          revenue += rev
+          success += 1
+        } else if (status === 'ERROR') {
+          row.error += 1
+          error += 1
+        }
+      }
+
+      const sortedSummaries = [...dailyMap.values()].sort((a, b) => a.localDate.localeCompare(b.localDate))
+      setTotalRevenue(revenue)
+      setTotalPayments(payments)
+      setTotalSuccess(success)
+      setTotalError(error)
+      setTotalPending(payments - success - error)
+      setDaySummaries(sortedSummaries)
+
+      const [coursesRes, txRes] = await Promise.all([
         courseApi.getAll(0, 1),
         subscriptionApi.search({}, 0, 8),
       ])
-      const rep = unwrap(reportRes) as AnyObj
-      setTotalRevenue(Number(rep?.totalAmount || 0))
-      setTotalPayments(Number(rep?.totalPayment || 0))
-      setTotalSuccess(Number(rep?.totalSuccess || 0))
-      setTotalError(Number(rep?.totalError || 0))
-      setTotalPending(Number(rep?.totalPending || 0))
-      setDaySummaries(((rep?.data as DaySummary[]) || []))
 
       const cp = unwrap(coursesRes) as AnyObj
       setTotalCourses(Number(cp?.totalElements || 0))
@@ -220,9 +269,18 @@ export default function Dashboard() {
   }
 
   /* ── Chart helpers ── */
-  const maxDayAmount = Math.max(1, ...daySummaries.map((d) => d.totalAmount))
-  // Y-axis: 5 ticks from 0 to maxDayAmount
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((p) => Math.round(maxDayAmount * p))
+  const chartData = daySummaries.map((d) => ({
+    date: d.localDate,
+    'Doanh thu': d.totalAmount,
+    'Giao dịch': d.totalPayment,
+    'Thành công': d.success,
+    'Lỗi': d.error,
+  }))
+  const tooltipFormatter = (value: unknown, name: unknown) => {
+    const label = String(name || '')
+    const numeric = Number(value || 0)
+    return [label === 'Doanh thu' ? fmtMoney(numeric) : numeric, label] as [string | number, string]
+  }
 
   /* ── Status badge ── */
   const statusBadge = (s: string) => {
@@ -236,18 +294,18 @@ export default function Dashboard() {
   if (isAdmin) return (
     <div className="min-h-screen bg-bg-page text-text-main">
       <Header />
-      <div className="bg-[linear-gradient(135deg,#312e81_0%,#4338ca_50%,#6366f1_100%)] px-6 py-8 text-white">
+      <div className="bg-[linear-gradient(135deg,#3730a3_0%,#4f46e5_52%,#6366f1_100%)] px-6 py-5 text-white">
         <div className="w-full mx-auto">
-          <h1 className="m-0 text-2xl font-extrabold">{t('dashboard.adminTitle')}</h1>
-          <p className="mt-1 mb-0 text-white/70 text-sm">{t('dashboard.adminSubtitle')}</p>
+          <h1 className="m-0 text-[1.55rem] font-extrabold">{t('dashboard.adminTitle')}</h1>
+          <p className="mt-1 mb-0 text-white/75 text-[0.92rem]">{t('dashboard.adminSubtitle')}</p>
         </div>
       </div>
 
-      <main className="w-full mx-auto px-6 py-6 pb-16">
-        {loadingReport ? <div className="text-center py-12 text-text-muted">{t('dashboard.loading')}</div> : <>
+      <main className="w-full mx-auto px-6 py-4 pb-12">
+        {loadingReport ? <div className="text-center py-12 text-text-muted">{t('dashboard.loading')}</div> : <div>
           {/* Stat cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            <div className={statCard} style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)' }}>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-4">
+            <div className={statCard} style={{ background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)' }}>
               <span className={statLabel}>{t('dashboard.revenue')}</span>
               <span className={`${statValue} !text-green-700`}>{fmtMoney(totalRevenue)}</span>
             </div>
@@ -255,26 +313,26 @@ export default function Dashboard() {
               <span className={statLabel}>{t('dashboard.transactions')}</span>
               <span className={`${statValue} !text-blue-700`}>{fmt(totalPayments)}</span>
             </div>
-            <div className={statCard} style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)' }}>
+            <div className={statCard} style={{ background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)' }}>
               <span className={statLabel}>{t('dashboard.success')}</span>
               <span className={`${statValue} !text-green-700`}>{fmt(totalSuccess)}</span>
             </div>
-            <div className={statCard} style={{ background: 'linear-gradient(135deg, #fef2f2, #fee2e2)' }}>
+            <div className={statCard} style={{ background: 'linear-gradient(135deg, #fff1f2, #ffe4e6)' }}>
               <span className={statLabel}>{t('dashboard.failed')}</span>
               <span className={`${statValue} !text-red-600`}>{fmt(totalError)}</span>
             </div>
-            <div className={statCard} style={{ background: 'linear-gradient(135deg, #fefce8, #fef9c3)' }}>
+            <div className={statCard} style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)' }}>
               <span className={statLabel}>{t('dashboard.pending')}</span>
               <span className={`${statValue} !text-amber-600`}>{fmt(totalPending)}</span>
             </div>
-            <div className={statCard} style={{ background: 'linear-gradient(135deg, #faf5ff, #ede9fe)' }}>
+            <div className={statCard} style={{ background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)' }}>
               <span className={statLabel}>{t('dashboard.coursesLabel')}</span>
               <span className={`${statValue} !text-violet-700`}>{fmt(totalCourses)}</span>
             </div>
           </div>
 
           {/* Revenue chart */}
-          <div className={`${cardBase} mb-6`}>
+          <div className={`${cardBase} mb-4`}>
             <div className={`${cardHeader} flex items-center justify-between flex-wrap gap-2`}>
               <span>{t('dashboard.revenueChart')}</span>
               {/* Period selector */}
@@ -290,74 +348,77 @@ export default function Dashboard() {
             {period === 'custom' && (
               <div className="px-5 pt-3 flex items-center gap-2 flex-wrap">
                 <label className="text-[0.78rem] text-text-muted font-semibold">{t('dashboard.from')}</label>
-                <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
+                <input aria-label="Từ ngày" type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
                 <label className="text-[0.78rem] text-text-muted font-semibold">{t('dashboard.to')}</label>
-                <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
+                <input aria-label="Đến ngày" type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
                 <button onClick={handleCustomApply} className="px-3 py-1 rounded-lg bg-indigo-600 text-white text-[0.78rem] font-semibold border-0 cursor-pointer hover:bg-indigo-700 transition-colors">{t('dashboard.apply')}</button>
               </div>
             )}
 
-            <div className="px-5 py-4">
-              {daySummaries.length === 0 ? <p className="text-text-muted text-sm text-center py-8">{t('dashboard.noData')}</p> : (
-                <div className="flex">
-                  {/* Y-axis labels */}
-                  <div className="flex flex-col-reverse justify-between h-[220px] pr-2 py-1" style={{ minWidth: '52px' }}>
-                    {yTicks.map((v, i) => (
-                      <span key={i} className="text-[0.65rem] text-text-muted font-semibold text-right leading-none">{fmtShort(v)}</span>
-                    ))}
-                  </div>
-
-                  {/* Bars */}
-                  <div className="flex-1 flex flex-col">
-                    <div className="relative flex items-end gap-[2px] h-[220px] border-l border-b border-border-subtle pl-1">
-                      {/* Horizontal grid lines */}
-                      {[0.25, 0.5, 0.75, 1].map((p, i) => (
-                        <div key={i} className="absolute left-0 right-0 border-t border-dashed border-border-subtle/50" style={{ bottom: `${p * 100}%` }} />
-                      ))}
-
-                      {daySummaries.map((d, i) => {
-                        const pct = maxDayAmount > 0 ? (d.totalAmount / maxDayAmount) * 100 : 0
-                        const barPct = Math.max(pct > 0 ? 2 : 0, pct)
-                        return (
-                          <div key={i} className="flex-1 flex flex-col items-center justify-end min-w-0 relative group" style={{ zIndex: 1 }}>
-                            {/* Tooltip */}
-                            <div className="absolute bottom-full mb-1 hidden group-hover:block bg-slate-800 text-white text-[0.68rem] px-2 py-1 rounded-md whitespace-nowrap shadow-lg z-10">
-                              <div className="font-bold">{String(d.localDate || '').slice(5)}</div>
-                              <div>{fmtMoney(d.totalAmount)}</div>
-                              <div>{d.totalPayment} {t('dashboard.transactions').toLowerCase()}</div>
-                            </div>
-                            <div
-                              className="w-full rounded-t-[3px] transition-all duration-300 hover:opacity-80 cursor-pointer"
-                              style={{
-                                height: `${barPct}%`,
-                                minHeight: d.totalAmount > 0 ? '4px' : '0px',
-                                background: d.totalAmount > 0 ? 'linear-gradient(180deg, #6366f1, #a5b4fc)' : 'transparent',
-                              }}
-                            />
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {/* X-axis labels */}
-                    <div className="flex gap-[2px] pl-1 mt-1">
-                      {daySummaries.map((d, i) => (
-                        <div key={i} className="flex-1 min-w-0 text-center">
-                          <span className="text-[0.58rem] text-text-muted truncate block">
-                            {/* Show label every few bars to avoid clutter */}
-                            {daySummaries.length <= 14 || i % Math.ceil(daySummaries.length / 15) === 0 ? String(d.localDate || '').slice(5) : ''}
-                          </span>
-                        </div>
+            <div className="px-4 py-3">
+              {chartData.length === 0 ? <p className="text-text-muted text-sm text-center py-8">{t('dashboard.noData')}</p> : (
+                <>
+                  <div className="flex justify-end mb-3">
+                    <div className="flex gap-1.5">
+                      {[
+                        { key: 'area', label: 'Area' },
+                        { key: 'bar', label: 'Bar' },
+                        { key: 'line', label: 'Line' },
+                      ].map((kind) => (
+                        <button
+                          key={kind.key}
+                          type="button"
+                          className={pillBtn(chartType === kind.key as 'area' | 'bar' | 'line')}
+                          onClick={() => setChartType(kind.key as 'area' | 'bar' | 'line')}
+                        >
+                          {kind.label}
+                        </button>
                       ))}
                     </div>
                   </div>
-                </div>
+                  <ResponsiveContainer width="100%" height={210}>
+                    {chartType === 'area' ? (
+                      <AreaChart data={chartData}>
+                        <defs>
+                          <linearGradient id="dashboardRevenueColor" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={chartColors.revenue} stopOpacity={0.28} />
+                            <stop offset="95%" stopColor={chartColors.revenue} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                        <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} />
+                        <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
+                        <Tooltip formatter={tooltipFormatter} />
+                        <Legend />
+                        <Area type="monotone" dataKey="Doanh thu" stroke={chartColors.revenue} fill="url(#dashboardRevenueColor)" strokeWidth={2} />
+                      </AreaChart>
+                    ) : chartType === 'bar' ? (
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                        <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} />
+                        <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
+                        <Tooltip formatter={tooltipFormatter} />
+                        <Legend />
+                        <Bar dataKey="Doanh thu" fill={chartColors.revenue} radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    ) : (
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                        <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} />
+                        <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
+                        <Tooltip formatter={tooltipFormatter} />
+                        <Legend />
+                        <Line type="monotone" dataKey="Doanh thu" stroke={chartColors.revenue} strokeWidth={2.5} dot={{ r: 3 }} />
+                      </LineChart>
+                    )}
+                  </ResponsiveContainer>
+                </>
               )}
             </div>
           </div>
 
           {/* Users + Success rate + Recent tx */}
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-3 mb-4">
             <div className="flex flex-col gap-4">
               <div className={statCard} style={{ background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)' }}>
                 <span className={statLabel}>{t('dashboard.totalUsers')}</span>
@@ -397,7 +458,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </>}
+        </div>}
       </main>
       <Footer />
     </div>
@@ -407,17 +468,17 @@ export default function Dashboard() {
   if (isInstructor) return (
     <div className="min-h-screen bg-bg-page text-text-main">
       <Header />
-      <div className="bg-[linear-gradient(135deg,#065f46_0%,#047857_50%,#10b981_100%)] px-6 py-8 text-white">
+      <div className="bg-[linear-gradient(135deg,#065f46_0%,#059669_52%,#10b981_100%)] px-6 py-5 text-white">
         <div className="w-full mx-auto">
-          <h1 className="m-0 text-2xl font-extrabold">{t('dashboard.instructorTitle')}</h1>
-          <p className="mt-1 mb-0 text-white/70 text-sm">{t('dashboard.instructorSubtitle')}</p>
+          <h1 className="m-0 text-[1.55rem] font-extrabold">{t('dashboard.instructorTitle')}</h1>
+          <p className="mt-1 mb-0 text-white/75 text-[0.92rem]">{t('dashboard.instructorSubtitle')}</p>
         </div>
       </div>
 
-      <main className="w-full mx-auto px-6 py-6 pb-16">
-        {loadingInstructor ? <div className="text-center py-12 text-text-muted">{t('dashboard.loading')}</div> : <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className={statCard} style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)' }}>
+      <main className="w-full mx-auto px-6 py-4 pb-12">
+        {loadingInstructor ? <div className="text-center py-12 text-text-muted">{t('dashboard.loading')}</div> : <div>
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
+            <div className={statCard} style={{ background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)' }}>
               <span className={statLabel}>{t('dashboard.myCourses')}</span>
               <span className={`${statValue} !text-green-700`}>{fmt(myCourses.length)}</span>
             </div>
@@ -425,18 +486,18 @@ export default function Dashboard() {
               <span className={statLabel}>{t('dashboard.totalStudents')}</span>
               <span className={`${statValue} !text-blue-700`}>{fmt(totalStudents)}</span>
             </div>
-            <div className={statCard} style={{ background: 'linear-gradient(135deg, #fefce8, #fef9c3)' }}>
+            <div className={statCard} style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)' }}>
               <span className={statLabel}>{t('dashboard.avgPerCourse')}</span>
               <span className={`${statValue} !text-amber-700`}>{myCourses.length > 0 ? fmt(Math.round(totalStudents / myCourses.length)) : '0'}</span>
             </div>
-            <div className={statCard} style={{ background: 'linear-gradient(135deg, #faf5ff, #ede9fe)' }}>
+            <div className={statCard} style={{ background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)' }}>
               <span className={statLabel}>{t('dashboard.instrRevenue')}</span>
               <span className={`${statValue} !text-violet-700`}>{fmtMoney(instrRevenue)}</span>
             </div>
           </div>
 
           {/* ── Instructor Revenue Chart ── */}
-          <div className={`${cardBase} mb-6`}>
+          <div className={`${cardBase} mb-4`}>
             <div className={`${cardHeader} flex items-center justify-between flex-wrap gap-2`}>
               <span>{t('dashboard.instrRevenueChart')}</span>
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -450,59 +511,84 @@ export default function Dashboard() {
             {instrPeriod === 'custom' && (
               <div className="px-5 pt-3 flex items-center gap-2 flex-wrap">
                 <label className="text-[0.78rem] text-text-muted font-semibold">{t('dashboard.from')}</label>
-                <input type="date" value={instrCustomFrom} onChange={(e) => setInstrCustomFrom(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
+                <input aria-label="Từ ngày" type="date" value={instrCustomFrom} onChange={(e) => setInstrCustomFrom(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
                 <label className="text-[0.78rem] text-text-muted font-semibold">{t('dashboard.to')}</label>
-                <input type="date" value={instrCustomTo} onChange={(e) => setInstrCustomTo(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
+                <input aria-label="Đến ngày" type="date" value={instrCustomTo} onChange={(e) => setInstrCustomTo(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
                 <button onClick={() => { if (instrCustomFrom && instrCustomTo) loadInstructorRevenue(myCourses, 'custom', instrCustomFrom, instrCustomTo) }} className="px-3 py-1 rounded-lg bg-indigo-600 text-white text-[0.78rem] font-semibold border-0 cursor-pointer hover:bg-indigo-700 transition-colors">{t('dashboard.apply')}</button>
               </div>
             )}
 
-            <div className="px-5 py-4">
-              {loadingInstrRevenue ? <p className="text-text-muted text-sm text-center py-8">{t('dashboard.loading')}</p>
-              : instrDaySummaries.length === 0 ? <p className="text-text-muted text-sm text-center py-8">{t('dashboard.noData')}</p>
-              : (() => {
-                  const maxAmt = Math.max(1, ...instrDaySummaries.map(d => d.totalAmount))
-                  const yT = [0, 0.25, 0.5, 0.75, 1].map(p => Math.round(maxAmt * p))
-                  return (
-                    <div className="flex">
-                      <div className="flex flex-col-reverse justify-between h-[220px] pr-2 py-1" style={{ minWidth: '52px' }}>
-                        {yT.map((v, i) => <span key={i} className="text-[0.65rem] text-text-muted font-semibold text-right leading-none">{fmtShort(v)}</span>)}
-                      </div>
-                      <div className="flex-1 flex flex-col">
-                        <div className="relative flex items-end gap-[2px] h-[220px] border-l border-b border-border-subtle pl-1">
-                          {[0.25, 0.5, 0.75, 1].map((p, i) => <div key={i} className="absolute left-0 right-0 border-t border-dashed border-border-subtle/50" style={{ bottom: `${p * 100}%` }} />)}
-                          {instrDaySummaries.map((d, i) => {
-                            const pct = maxAmt > 0 ? (d.totalAmount / maxAmt) * 100 : 0
-                            const barPct = Math.max(pct > 0 ? 2 : 0, pct)
-                            return (
-                              <div key={i} className="flex-1 flex flex-col items-center justify-end min-w-0 relative group" style={{ zIndex: 1 }}>
-                                <div className="absolute bottom-full mb-1 hidden group-hover:block bg-slate-800 text-white text-[0.68rem] px-2 py-1 rounded-md whitespace-nowrap shadow-lg z-10">
-                                  <div className="font-bold">{String(d.localDate || '').slice(5)}</div>
-                                  <div>{fmtMoney(d.totalAmount)}</div>
-                                  <div>{d.totalPayment} {t('dashboard.transactions').toLowerCase()}</div>
-                                </div>
-                                <div className="w-full rounded-t-[3px] transition-all duration-300 hover:opacity-80 cursor-pointer" style={{ height: `${barPct}%`, minHeight: d.totalAmount > 0 ? '4px' : '0px', background: d.totalAmount > 0 ? 'linear-gradient(180deg, #059669, #6ee7b7)' : 'transparent' }} />
-                              </div>
-                            )
-                          })}
-                        </div>
-                        <div className="flex gap-[2px] pl-1 mt-1">
-                          {instrDaySummaries.map((d, i) => (
-                            <div key={i} className="flex-1 min-w-0 text-center">
-                              <span className="text-[0.58rem] text-text-muted truncate block">
-                                {instrDaySummaries.length <= 14 || i % Math.ceil(instrDaySummaries.length / 15) === 0 ? String(d.localDate || '').slice(5) : ''}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+            <div className="px-4 py-3">
+              {loadingInstrRevenue ? <p className="text-text-muted text-sm text-center py-8">{t('dashboard.loading')}</p> : (() => {
+                const instrChartData = instrDaySummaries.map((d) => ({
+                  date: d.localDate,
+                  'Doanh thu': d.totalAmount,
+                  'Giao dịch': d.totalPayment,
+                }))
+                if (instrChartData.length === 0) return <p className="text-text-muted text-sm text-center py-8">{t('dashboard.noData')}</p>
+                return (
+                  <>
+                    <div className="flex justify-end mb-3">
+                      <div className="flex gap-1.5">
+                        {[
+                          { key: 'area', label: 'Area' },
+                          { key: 'bar', label: 'Bar' },
+                          { key: 'line', label: 'Line' },
+                        ].map((kind) => (
+                          <button
+                            key={kind.key}
+                            type="button"
+                            className={pillBtn(instrChartType === kind.key as 'area' | 'bar' | 'line')}
+                            onClick={() => setInstrChartType(kind.key as 'area' | 'bar' | 'line')}
+                          >
+                            {kind.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  )
-                })()}
+                    <ResponsiveContainer width="100%" height={210}>
+                      {instrChartType === 'area' ? (
+                        <AreaChart data={instrChartData}>
+                          <defs>
+                            <linearGradient id="instrRevenueColor" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={chartColors.revenue} stopOpacity={0.28} />
+                              <stop offset="95%" stopColor={chartColors.revenue} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                          <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} />
+                          <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
+                          <Tooltip formatter={tooltipFormatter} />
+                          <Legend />
+                          <Area type="monotone" dataKey="Doanh thu" stroke={chartColors.revenue} fill="url(#instrRevenueColor)" strokeWidth={2} />
+                        </AreaChart>
+                      ) : instrChartType === 'bar' ? (
+                        <BarChart data={instrChartData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                          <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} />
+                          <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
+                          <Tooltip formatter={tooltipFormatter} />
+                          <Legend />
+                          <Bar dataKey="Doanh thu" fill={chartColors.revenue} radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      ) : (
+                        <LineChart data={instrChartData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                          <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} />
+                          <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
+                          <Tooltip formatter={tooltipFormatter} />
+                          <Legend />
+                          <Line type="monotone" dataKey="Doanh thu" stroke={chartColors.revenue} strokeWidth={2.5} dot={{ r: 3 }} />
+                        </LineChart>
+                      )}
+                    </ResponsiveContainer>
+                  </>
+                )
+              })()}
             </div>
 
             {/* Revenue summary row */}
-            <div className="px-5 pb-4 grid grid-cols-3 gap-3">
+            <div className="px-4 pb-3.5 grid grid-cols-3 gap-2.5">
               <div className="text-center">
                 <div className="text-[0.72rem] text-text-muted font-semibold uppercase">{t('dashboard.transactions')}</div>
                 <div className="text-lg font-extrabold text-text-main">{fmt(instrTxCount)}</div>
@@ -542,7 +628,7 @@ export default function Dashboard() {
               </table>
             </div>
           </div>
-        </>}
+        </div>}
       </main>
       <Footer />
     </div>

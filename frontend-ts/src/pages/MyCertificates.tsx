@@ -6,7 +6,13 @@ import { certificateApi } from '../api'
 import { useTranslation } from 'react-i18next'
 
 type AnyObj = Record<string, unknown>
-const getCertImageUrl = (cert: AnyObj) => String(cert?.certicateUrl || cert?.certificateUrl || cert?.imageUrl || '').trim()
+const getCertImageUrl = (cert: AnyObj) => {
+  const raw = String(cert?.certicateUrl || cert?.certificateUrl || cert?.imageUrl || '').trim()
+  if (!raw) return ''
+  if (/^(null|undefined|n\/a)$/i.test(raw)) return ''
+  return raw
+}
+const isPdfUrl = (url: string) => /\.pdf(\?|#|$)/i.test(url)
 
 const MyCertificates = () => {
   const { t } = useTranslation()
@@ -18,6 +24,8 @@ const MyCertificates = () => {
   const [copiedSerial, setCopiedSerial] = useState('')
   const [expandedId, setExpandedId] = useState('')
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({})
+  const [previewCert, setPreviewCert] = useState<AnyObj | null>(null)
+  const [previewImageBroken, setPreviewImageBroken] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -72,8 +80,17 @@ const MyCertificates = () => {
   const handleDownload = (cert: AnyObj) => {
     const imgUrl = getCertImageUrl(cert)
     if (!imgUrl) return
-    const a = document.createElement('a'); a.href = imgUrl; a.download = `certificate-${cert.serialNumber || 'download'}.png`; a.target = '_blank'; a.click()
+    const ext = isPdfUrl(imgUrl) ? 'pdf' : 'png'
+    const a = document.createElement('a'); a.href = imgUrl; a.download = `certificate-${cert.serialNumber || 'download'}.${ext}`; a.target = '_blank'; a.click()
   }
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewCert(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   return (
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
@@ -88,7 +105,11 @@ const MyCertificates = () => {
         </div>
       </div>
 
-      <main className="max-w-[1100px] mx-auto px-6 py-6 pb-16">
+      <main className="max-w-[1500px] mx-auto w-full px-4 md:px-7 lg:px-10 py-6 pb-16">
+        <div className="relative">
+          <div className="hidden xl:block absolute -left-8 top-8 w-40 h-40 rounded-full bg-amber-200/30 blur-2xl pointer-events-none" />
+          <div className="hidden xl:block absolute -right-8 bottom-8 w-48 h-48 rounded-full bg-primary-500/10 blur-2xl pointer-events-none" />
+          <div className="relative bg-white/88 backdrop-blur-[1px] border border-border-subtle rounded-3xl p-4 md:p-6 shadow-[0_10px_40px_rgba(15,23,42,0.06)]">
         {/* Search & Sort */}
         {!loading && !error && certificates.length > 0 && (
           <div className="flex items-center gap-3 mb-5 flex-wrap">
@@ -123,7 +144,9 @@ const MyCertificates = () => {
               const certId = cert.certificateId as string
               const isExpanded = expandedId === certId
               const imgUrl = getCertImageUrl(cert)
-              const hasImage = Boolean(imgUrl) && !brokenImages[certId]
+              const isPdfAsset = isPdfUrl(imgUrl)
+              const canPreview = Boolean(imgUrl)
+              const hasImage = Boolean(imgUrl) && !isPdfAsset && !brokenImages[certId]
               return (
                 <article key={certId} className={`bg-white border rounded-2xl overflow-hidden transition-all ${isExpanded ? 'border-amber-400 shadow-[0_4px_20px_rgba(217,119,6,0.12)]' : 'border-border-medium hover:border-amber-300 hover:shadow-[0_2px_12px_rgba(217,119,6,0.06)]'}`}>
                   {/* Row header — clickable */}
@@ -148,9 +171,23 @@ const MyCertificates = () => {
                         {/* Certificate image */}
                         <div className="w-[320px] shrink-0 max-[800px]:w-full">
                           {hasImage ? (
-                            <a href={imgUrl} target="_blank" rel="noreferrer" className="block rounded-xl overflow-hidden border border-amber-200 shadow-[0_2px_12px_rgba(217,119,6,0.1)] hover:shadow-[0_4px_20px_rgba(217,119,6,0.15)] transition-shadow">
+                            <button
+                              type="button"
+                              className="block w-full rounded-xl overflow-hidden border border-amber-200 shadow-[0_2px_12px_rgba(217,119,6,0.1)] hover:shadow-[0_4px_20px_rgba(217,119,6,0.15)] transition-shadow bg-white p-0 cursor-zoom-in"
+                              onClick={() => { setPreviewImageBroken(false); setPreviewCert(cert) }}
+                            >
                               <img src={imgUrl} alt="Certificate" className="w-full block bg-amber-50" loading="lazy" onError={() => setBrokenImages((p) => ({ ...p, [certId]: true }))} />
-                            </a>
+                            </button>
+                          ) : isPdfAsset ? (
+                            <button
+                              type="button"
+                              className="w-full rounded-xl border border-amber-200 bg-white px-5 py-10 text-center cursor-zoom-in hover:bg-amber-50/40 transition-colors"
+                              onClick={() => { setPreviewImageBroken(false); setPreviewCert(cert) }}
+                            >
+                              <div className="text-4xl mb-2">📄</div>
+                              <div className="font-semibold text-amber-700">Certificate PDF</div>
+                              <div className="text-[0.78rem] text-amber-600 mt-1">Nhấn để mở xem tài liệu</div>
+                            </button>
                           ) : (
                             <div className="flex flex-col items-center justify-center py-8 px-6 bg-[linear-gradient(135deg,#fef3c7,#fde68a,#fef3c7)] border-2 border-amber-300 rounded-xl text-amber-800">
                               <div className="text-[0.65rem] uppercase tracking-[0.2em] font-bold text-amber-600 mb-2">{t('certs.certOfCompletion')}</div>
@@ -176,6 +213,7 @@ const MyCertificates = () => {
 
                           {/* Action buttons */}
                           <div className="flex gap-2 mt-2 flex-wrap">
+                            {canPreview && <button type="button" className="inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[0.85rem] font-semibold border border-border-medium bg-white text-text-secondary cursor-pointer transition-colors hover:bg-bg-deep" onClick={() => { setPreviewImageBroken(false); setPreviewCert(cert) }}>{isPdfAsset ? '📄 Xem file' : '🖼 Xem ảnh'}</button>}
                             {hasImage && <a href={imgUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[0.85rem] font-semibold no-underline bg-amber-500 text-white transition-colors hover:bg-amber-600 shadow-sm">📄 {t('certs.viewCert')}</a>}
                             {hasImage && <button type="button" className="inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[0.85rem] font-semibold border border-amber-200 bg-amber-50 text-amber-700 cursor-pointer transition-colors hover:bg-amber-100" onClick={() => handleDownload(cert)}>⬇ {t('certs.download')}</button>}
                             {!!cert.serialNumber && <Link to={`/verify-certificate?code=${String(cert.serialNumber)}`} className="inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[0.85rem] font-semibold no-underline border border-primary-500/20 bg-primary-500/6 text-primary-500 transition-colors hover:bg-primary-500/12">✓ {t('certs.verify')}</Link>}
@@ -197,7 +235,52 @@ const MyCertificates = () => {
             })}
           </div>
         )}
+          </div>
+        </div>
       </main>
+      {previewCert && (
+        <div className="fixed inset-0 z-[1000] bg-black/70 flex items-center justify-center p-4" onClick={() => setPreviewCert(null)}>
+          <div className="w-full max-w-[1320px] bg-white rounded-xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
+              <div className="font-semibold text-text-main text-[0.95rem] truncate">{String(previewCert.courseTitle || t('certs.courseDefault'))}</div>
+              <button type="button" className="border border-border-medium bg-white text-text-muted rounded-md px-3 py-1.5 text-sm cursor-pointer hover:bg-bg-page" onClick={() => setPreviewCert(null)}>Đóng</button>
+            </div>
+
+            <div className="p-4 bg-bg-page">
+              {!previewImageBroken && !!getCertImageUrl(previewCert) ? (
+                isPdfUrl(getCertImageUrl(previewCert)) ? (
+                  <iframe
+                    src={getCertImageUrl(previewCert)}
+                    className="w-full h-[82vh] bg-white rounded-lg border border-border-medium"
+                    title="Certificate PDF preview"
+                  />
+                ) : (
+                  <img
+                    src={getCertImageUrl(previewCert)}
+                    alt="Certificate preview"
+                    className="w-full max-h-[82vh] object-contain bg-white rounded-lg border border-border-medium"
+                    onError={() => setPreviewImageBroken(true)}
+                  />
+                )
+              ) : (
+                <div className="w-full min-h-[260px] flex flex-col items-center justify-center text-center bg-white rounded-lg border border-border-medium px-6 py-10">
+                  <div className="text-3xl mb-2">📄</div>
+                  <div className="text-[0.95rem] font-semibold text-text-main mb-1">Chưa hiển thị được chứng chỉ</div>
+                  <div className="text-[0.82rem] text-text-muted">Link tệp chưa hợp lệ hoặc tệp tạm thời không truy cập được.</div>
+                </div>
+              )}
+
+              <div className="mt-3 flex gap-2 flex-wrap">
+                <span className="text-[0.82rem] text-text-muted font-semibold self-center">{t('certs.share')}:</span>
+                <button type="button" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold border border-border-medium bg-white text-text-secondary cursor-pointer transition-colors hover:bg-bg-deep" onClick={() => handleCopyLink(previewCert)}>{copiedSerial === previewCert.serialNumber ? `✅ ${t('certs.copied')}` : `🔗 ${t('certs.copyLink')}`}</button>
+                <button type="button" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold border border-[#0A66C2]/20 bg-[#0A66C2]/6 text-[#0A66C2] cursor-pointer transition-colors hover:bg-[#0A66C2]/12" onClick={() => handleShareLinkedIn(previewCert)}>in LinkedIn</button>
+                <button type="button" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold border border-[#1877F2]/20 bg-[#1877F2]/6 text-[#1877F2] cursor-pointer transition-colors hover:bg-[#1877F2]/12" onClick={() => handleShareFacebook(previewCert)}>f Facebook</button>
+                <button type="button" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold border border-border-medium bg-white text-text-secondary cursor-pointer transition-colors hover:bg-bg-deep" onClick={() => handleDownload(previewCert)}>⬇ {t('certs.download')}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <Footer />
     </div>
   )

@@ -57,24 +57,23 @@ const MyLearning = () => {
         const courseMap = new Map<string, AnyObj>()
         for (const e of allEnrollments) { const cid = getCourseId(e); if (cid) courseMap.set(cid, e) }
         const unique = Array.from(courseMap.values())
-        const pMap: Record<string, number> = {}; const chMap: Record<string, number> = {}
-        await Promise.all(unique.map(async (en) => {
-          const cid = getCourseId(en); const eid = en?.enrollmentId as string; if (!cid || !eid) return
-          try { const cr = await chapterApi.getByCourseId(cid); const cl = (cr as { data?: { data?: unknown } }).data?.data ?? (cr as { data?: unknown }).data; chMap[cid] = Array.isArray(cl) ? cl.length : 0 } catch { chMap[cid] = 0 }
-          try { const pr = await processApi.getCourseProgress({ courseId: cid, enrollmentId: eid }); const pp = (pr as { data?: { data?: { percentComplete?: number } } }).data?.data ?? (pr as { data?: unknown }).data; pMap[eid] = typeof (pp as AnyObj)?.percentComplete === 'number' ? (pp as AnyObj).percentComplete as number : 0 } catch { pMap[eid] = 0 }
-        }))
-        if (!cancelled) { setEnrollments(unique); setProgressByEnrollment(pMap); setChapterCountByCourse(chMap) }
+        const pMap: Record<string, number> = {}; const chMap: Record<string, number> = {}; const cfMap: Record<string, boolean> = {}
+        // Process in batches of 5 to avoid flooding
+        for (let i = 0; i < unique.length; i += 5) {
+          const batch = unique.slice(i, i + 5)
+          await Promise.all(batch.map(async (en) => {
+            const cid = getCourseId(en); const eid = en?.enrollmentId as string; if (!cid || !eid) return
+            try { const cr = await chapterApi.getByCourseId(cid); const cl = (cr as { data?: { data?: unknown } }).data?.data ?? (cr as { data?: unknown }).data; chMap[cid] = Array.isArray(cl) ? cl.length : 0 } catch { chMap[cid] = 0 }
+            try { const pr = await processApi.getCourseProgress({ courseId: cid, enrollmentId: eid }); const pp = (pr as { data?: { data?: { percentComplete?: number } } }).data?.data ?? (pr as { data?: unknown }).data; pMap[eid] = typeof (pp as AnyObj)?.percentComplete === 'number' ? (pp as AnyObj).percentComplete as number : 0 } catch { pMap[eid] = 0 }
+            try { const r = unwrap(await feedbackApi.canFeedback(cid)); cfMap[cid] = r === true || r === 'true' } catch { cfMap[cid] = false }
+          }))
+        }
+        if (!cancelled) { setEnrollments(unique); setProgressByEnrollment(pMap); setChapterCountByCourse(chMap); setCanFeedbackByCourse(cfMap) }
         try { const me = unwrap(await userApi.getMe()) as AnyObj; const uid = (me?.userId || me?.id || '') as string; if (!cancelled) setLearnerId(uid); const cl = unwrap(await certificateApi.getMyList()); const certs = Array.isArray(cl) ? cl : []; if (!cancelled) setCertifiedCourseIds(new Set(certs.map((c: AnyObj) => c?.courseId as string).filter(Boolean))) } catch {}
       } catch (e: unknown) { const err = e as { response?: { data?: { message?: string; errorCode?: string } }; message?: string }; if (!cancelled) setError(err.response?.data?.message || err.response?.data?.errorCode || err.message || 'Error') }
       finally { if (!cancelled) setLoading(false) }
     }; run(); return () => { cancelled = true }
   }, [])
-
-  useEffect(() => {
-    if (enrollments.length === 0) return; let cancelled = false
-    const run = async () => { const map: Record<string, boolean> = {}; await Promise.all(enrollments.map(async (en) => { const cid = getCourseId(en); if (!cid) return; try { const r = unwrap(await feedbackApi.canFeedback(cid)); map[cid] = r === true || r === 'true' } catch { map[cid] = false } })); if (!cancelled) setCanFeedbackByCourse(map) }
-    run(); return () => { cancelled = true }
-  }, [enrollments])
 
   const handleContinueLearning = (en: AnyObj) => { const cid = getCourseId(en); const eid = en?.enrollmentId as string; if (cid && eid) navigate(`/learning/${cid}?enrollmentId=${encodeURIComponent(eid)}`) }
   const handleIssueCertificate = async (courseId: string) => {
@@ -100,9 +99,9 @@ const MyLearning = () => {
   const statusColors: Record<string, string> = { COMPLETED: 'bg-emerald-50 border-emerald-200 text-green-600', IN_PROGRESS: 'bg-blue-50 border-blue-200 text-blue-600', NOT_STARTED: 'bg-gray-100 border-gray-200 text-gray-500' }
 
   return (
-    <div className="min-h-screen bg-bg-page text-text-main">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
-      <main className="max-w-7xl mx-auto px-6 py-8 pb-16">
+      <main className="w-full mx-auto px-6 py-8 pb-16">
         {/* Welcome */}
         <div className="bg-[linear-gradient(135deg,#003E99_0%,#0056D2_50%,#1A73E8_100%)] rounded-2xl px-8 py-6 text-white flex items-center justify-between gap-6 mb-5 max-[640px]:flex-col max-[640px]:text-center">
           <div>

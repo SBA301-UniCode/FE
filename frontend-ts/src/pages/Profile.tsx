@@ -53,7 +53,7 @@ const Profile = () => {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-bg-page text-text-main">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       <main className="max-w-[800px] mx-auto px-6 py-20 text-center text-text-muted">{t('profile.loading')}</main>
     </div>
@@ -62,7 +62,7 @@ const Profile = () => {
   const roles = (user?.roles as AnyObj[]) || []
 
   return (
-    <div className="min-h-screen bg-bg-page text-text-main">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
 
       {/* Cover */}

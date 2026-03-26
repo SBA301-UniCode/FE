@@ -49,7 +49,7 @@ const PaymentSuccess = () => {
   }, [isError, courseId, enrollStorageKey])
 
   return (
-    <div className="min-h-screen bg-bg-page text-text-main relative overflow-hidden">
+    <div className="min-h-screen bg-bg-page text-text-main relative overflow-hidden flex flex-col">
       <Header />
       <main className="max-w-[520px] mx-auto px-6 py-12 pb-16 relative z-[1]">
         {/* Confetti */}

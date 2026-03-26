@@ -52,7 +52,7 @@ const Register = () => {
 
   return (
     <div className="w-full min-h-screen bg-bg-page flex items-center justify-center p-5 animate-[fadeIn_0.6s_ease-out]">
-      <div className="grid grid-cols-2 w-full max-w-[960px] min-h-[600px] rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.1)] max-md:grid-cols-1 max-md:max-w-[440px]">
+      <div className="grid grid-cols-2 w-full max-w-[1200px] min-h-[600px] rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.1)] max-md:grid-cols-1 max-md:max-w-[440px]">
         {/* Branding */}
         <div className="bg-[linear-gradient(135deg,#003E99_0%,#0056D2_50%,#1A73E8_100%)] text-white p-12 flex items-center relative overflow-hidden max-md:hidden">
           <div className="absolute -top-1/2 -right-[30%] w-[300px] h-[300px] rounded-full bg-white/[0.06]" />

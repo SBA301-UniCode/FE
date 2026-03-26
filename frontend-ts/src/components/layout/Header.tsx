@@ -91,11 +91,11 @@ const Header = () => {
 
         {/* Nav */}
         <nav className="flex items-center gap-1 flex-wrap max-md:hidden">
-          <NavLink to="/courses">{t('header.courses')}</NavLink>
+          <NavLink to="/courses">{(isAdmin || isLecturer) ? t('header.dashboard') : t('header.courses')}</NavLink>
           {isAuthenticated ? (
             isAdmin ? (
               <>
-                <NavLink to="/admin">{t('header.dashboard')}</NavLink>
+                <NavLink to="/admin">{t('header.adminPanel')}</NavLink>
                 <NavLink to="/my-courses">{t('header.management')}</NavLink>
                 <NavLink to="/syllabuses">{t('header.syllabuses')}</NavLink>
                 <NavLink to="/verify-content">{t('header.verify')}</NavLink>
@@ -185,12 +185,22 @@ const Header = () => {
                       <span className="text-xs text-text-muted">{user?.email}</span>
                       <span className="text-[0.75rem] text-text-dim">{t('header.role', { role: roleLabel })}</span>
                     </div>
-                    <DropdownItem to="/courses" onClick={() => setShowUserMenu(false)}>{t('header.courses')}</DropdownItem>
-                    {!isLecturer && !isAdmin && (
-                      <DropdownItem to="/my-certificates" onClick={() => setShowUserMenu(false)}>{t('header.myCertificates')}</DropdownItem>
+                    <DropdownItem to="/courses" onClick={() => setShowUserMenu(false)}>{(isAdmin || isLecturer) ? t('header.dashboard') : t('header.courses')}</DropdownItem>
+                    {isAdmin && (
+                      <DropdownItem to="/admin" onClick={() => setShowUserMenu(false)}>{t('header.adminPanel')}</DropdownItem>
                     )}
                     {(isAdmin || isLecturer) && (
-                      <DropdownItem to="/verify-content" onClick={() => setShowUserMenu(false)}>{t('header.verifyContent')}</DropdownItem>
+                      <>
+                        <DropdownItem to="/my-courses" onClick={() => setShowUserMenu(false)}>{t('header.management')}</DropdownItem>
+                        <DropdownItem to="/syllabuses" onClick={() => setShowUserMenu(false)}>{t('header.syllabuses')}</DropdownItem>
+                        <DropdownItem to="/verify-content" onClick={() => setShowUserMenu(false)}>{t('header.verifyContent')}</DropdownItem>
+                      </>
+                    )}
+                    {!isLecturer && !isAdmin && (
+                      <>
+                        <DropdownItem to="/my-learning" onClick={() => setShowUserMenu(false)}>{t('header.myLearning')}</DropdownItem>
+                        <DropdownItem to="/my-certificates" onClick={() => setShowUserMenu(false)}>{t('header.myCertificates')}</DropdownItem>
+                      </>
                     )}
                     <DropdownItem to="/profile" onClick={() => setShowUserMenu(false)}>{t('header.profileLabel')}</DropdownItem>
                     <DropdownItem onClick={handleLogout} className="text-danger-500 font-semibold">{t('header.logout')}</DropdownItem>
@@ -238,12 +248,12 @@ const Header = () => {
               ✕
             </button>
 
-            <MobileNavLink to="/courses" onClick={() => setShowMobileMenu(false)}>{t('header.courses')}</MobileNavLink>
+            <MobileNavLink to="/courses" onClick={() => setShowMobileMenu(false)}>{(isAdmin || isLecturer) ? t('header.dashboard') : t('header.courses')}</MobileNavLink>
             {isAuthenticated ? (
               <>
                 {isAdmin && (
                   <>
-                    <MobileNavLink to="/admin" onClick={() => setShowMobileMenu(false)}>{t('header.dashboard')}</MobileNavLink>
+                    <MobileNavLink to="/admin" onClick={() => setShowMobileMenu(false)}>{t('header.adminPanel')}</MobileNavLink>
                     <MobileNavLink to="/my-courses" onClick={() => setShowMobileMenu(false)}>{t('header.management')}</MobileNavLink>
                     <MobileNavLink to="/syllabuses" onClick={() => setShowMobileMenu(false)}>{t('header.syllabuses')}</MobileNavLink>
                     <MobileNavLink to="/verify-content" onClick={() => setShowMobileMenu(false)}>{t('header.verify')}</MobileNavLink>

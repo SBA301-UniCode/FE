@@ -97,6 +97,7 @@ const Courses = () => {
   const [currentPage, setCurrentPage] = useState(0)
   const ITEMS_PER_PAGE = 12
 
+  /* Filter/sort/search all happen client-side on the pre-fetched list — NO extra API calls */
   const filteredCourses = useMemo(() => {
     let result = [...courses]
     if (searchQuery.trim()) { const q = searchQuery.toLowerCase().trim(); result = result.filter((c) => (getCourseTitle(c) + ' ' + getCourseDesc(c)).toLowerCase().includes(q)) }
@@ -109,35 +110,57 @@ const Courses = () => {
     return result
   }, [courses, searchQuery, sortBy, filterLevel, ratingSummaryByCourse])
 
+  /* Reset to page 0 when filters change */
+  useEffect(() => { setCurrentPage(0) }, [searchQuery, sortBy, filterLevel])
+
+  /* Client-side pagination from filtered list */
   const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE)
   const pagedCourses = filteredCourses.slice(currentPage * ITEMS_PER_PAGE, (currentPage + 1) * ITEMS_PER_PAGE)
 
+  /* Fetch ALL courses ONCE on mount — no re-fetch on search/filter/sort */
   useEffect(() => {
     let cancelled = false; setLoading(true); setError('')
-    courseApi.getAll(0, 500).then((res) => { if (!cancelled) setCourses(extractList(res.data?.data ?? res.data) as AnyObj[]) })
+    courseApi.getAll(0, 500).then((res) => {
+      if (cancelled) return
+      const raw = res.data?.data ?? res.data
+      const pageData = raw as unknown as AnyObj
+      setCourses(extractList(pageData) as AnyObj[])
+    })
       .catch((e: unknown) => { if (!cancelled) { const err = e as { response?: { status?: number; data?: { message?: string } }; message?: string }; if (err.response?.status === 400 || err.response?.status === 404) setCourses([]); else setError(err.response?.data?.message || err.message || 'Không tải được danh sách khóa học.') } })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [])
+  }, []) // ← runs ONCE on mount, no deps
 
+  /* Check enrollment ONLY for visible page courses (max 12), with cache */
   useEffect(() => {
-    if (!isAuthenticated || courses.length === 0) return
+    if (!isAuthenticated || pagedCourses.length === 0) return
     let cancelled = false
+    const unchecked = pagedCourses.filter((c) => {
+      const id = getCourseKey(c)
+      return id && enrolledMap[id] === undefined
+    })
+    if (unchecked.length === 0) return
     const run = async () => {
       const map: Record<string, boolean> = {}
-      await Promise.all(courses.map(async (c) => { const id = getCourseKey(c); if (!id) return; try { const res = await enrollmentApi.isEnrolled(id); const data = res.data?.data ?? res.data; map[id] = data === true || data === 'true' } catch { map[id] = false } }))
-      if (!cancelled) setEnrolledMap(map)
+      await Promise.all(unchecked.map(async (c) => { const id = getCourseKey(c); if (!id) return; try { const res = await enrollmentApi.isEnrolled(id); const data = res.data?.data ?? res.data; map[id] = data === true || data === 'true' } catch { map[id] = false } }))
+      if (!cancelled) setEnrolledMap((prev) => ({ ...prev, ...map }))
     }; run(); return () => { cancelled = true }
-  }, [isAuthenticated, courses])
+  }, [isAuthenticated, pagedCourses])
 
+  /* Load rating summary ONLY for visible page courses, with cache */
   useEffect(() => {
-    if (courses.length === 0) return; let cancelled = false
+    if (pagedCourses.length === 0) return; let cancelled = false
+    const unchecked = pagedCourses.filter((c) => {
+      const id = getCourseKey(c)
+      return id && ratingSummaryByCourse[id] === undefined
+    })
+    if (unchecked.length === 0) return
     const run = async () => {
       const sm: Record<string, { count: number; avg: number }> = {}
-      await Promise.all(courses.map(async (c) => { const id = getCourseKey(c); if (!id) return; try { const res = await feedbackApi.getByCourse(id, 1, 50); sm[id] = buildRatingSummary(extractList(unwrap(res)) as AnyObj[]) } catch { sm[id] = { count: 0, avg: 0 } } }))
-      if (!cancelled) setRatingSummaryByCourse(sm)
+      await Promise.all(unchecked.map(async (c) => { const id = getCourseKey(c); if (!id) return; try { const res = await feedbackApi.getByCourse(id, 1, 50); sm[id] = buildRatingSummary(extractList(unwrap(res)) as AnyObj[]) } catch { sm[id] = { count: 0, avg: 0 } } }))
+      if (!cancelled) setRatingSummaryByCourse((prev) => ({ ...prev, ...sm }))
     }; run(); return () => { cancelled = true }
-  }, [courses])
+  }, [pagedCourses])
 
   const loadCanEditMap = async (feedbacks: AnyObj[]) => {
     const map: Record<string, boolean> = {}
@@ -164,9 +187,9 @@ const Courses = () => {
   void selectedCourseId; void setSelectedCourseId; void loadFeedbackDetail; void loadCanFeedback; void handleCreateFeedback; void handleSaveEdit; void handleDeleteFeedback; void feedbackByCourse; void feedbackLoadingByCourse; void feedbackErrorByCourse; void canFeedbackByCourse; void canEditByFeedback; void draftByCourse; void editingByCourse
 
   return (
-    <div className="min-h-screen bg-bg-page text-text-main">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
-      <main className="max-w-7xl mx-auto px-6 py-9 pb-16">
+      <main className="w-full mx-auto px-6 py-9 pb-16">
         <div className="mb-6">
           <h1 className="m-0 text-[clamp(2rem,3.5vw,2.4rem)] font-black tracking-tight">{t('courses.pageTitle')}</h1>
           <p className="mt-1 text-text-secondary">{t('courses.pageSubtitle')}</p>
@@ -226,9 +249,9 @@ const Courses = () => {
                 const title = getCourseTitle(c)
                 const ratingSummary = ratingSummaryByCourse[id] || { count: 0, avg: 0 }
                 return (
-                  <article key={id} className="bg-white border border-border-medium rounded-2xl flex flex-col min-h-[480px] shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-200 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:border-primary-500 group">
+                  <article key={id} className="bg-white border border-border-medium rounded-2xl flex flex-col h-[480px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-200 relative hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:border-primary-500 group">
                     {/* Image */}
-                    <div className="relative w-full aspect-video overflow-hidden border-b border-border-subtle">
+                    <div className="relative w-full h-[180px] shrink-0 overflow-hidden border-b border-border-subtle">
                       {showImage ? (
                         <Link to={`/courses/${courseSlugOrId(id, title)}`}>
                           <img src={imageUrl} alt={title} className="w-full h-full object-cover block transition-transform duration-300 group-hover:scale-[1.035]" loading="lazy" onError={() => setBrokenImages((p) => ({ ...p, [id]: true }))} />
@@ -242,38 +265,44 @@ const Courses = () => {
                       <span className="absolute top-2.5 right-2.5 bg-white/92 backdrop-blur-sm text-text-main text-[0.72rem] font-bold px-2 py-0.5 rounded-md tracking-wide shadow-[0_1px_4px_rgba(0,0,0,0.1)]">{guessLevel(c)}</span>
                       <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(15,23,42,0.34),transparent_42%)] pointer-events-none" />
                     </div>
-                    {/* Body */}
-                    <div className="p-3.5 flex flex-col gap-1.5 flex-1">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-xs font-extrabold text-primary-500 bg-[rgba(0,86,210,0.08)] px-1.5 py-0.5 rounded leading-none">&lt;/&gt;</span>
-                        <span className="text-[0.78rem] font-semibold text-text-muted">UniCode</span>
+                    {/* Body — flex with structured child heights */}
+                    <div className="p-3.5 flex flex-col flex-1 min-h-0 overflow-hidden">
+                      {/* Content area — flex-1 absorbs variable height, overflow hidden */}
+                      <div className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-hidden">
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-xs font-extrabold text-primary-500 bg-[rgba(0,86,210,0.08)] px-1.5 py-0.5 rounded leading-none">&lt;/&gt;</span>
+                          <span className="text-[0.78rem] font-semibold text-text-muted">UniCode</span>
+                        </div>
+                        <div className="flex items-start justify-between gap-3 shrink-0">
+                          <Link to={`/courses/${courseSlugOrId(id, title)}`} className="no-underline text-inherit"><div className="font-extrabold text-lg leading-snug tracking-tight line-clamp-2">{title}</div></Link>
+                          {enrolled && <span className="text-[0.73rem] px-2.5 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-600 whitespace-nowrap font-bold shrink-0">{t('courses.enrolled')}</span>}
+                        </div>
+                        {extractSkills(c).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-0.5 max-h-[26px] overflow-hidden shrink-0">{extractSkills(c).map((s) => <span key={s} className="text-[0.72rem] font-semibold bg-blue-50 text-primary-500 px-2 py-0.5 rounded whitespace-nowrap">{s}</span>)}</div>
+                        )}
+                        <div className="mt-0.5 shrink-0"><StarRating rating={ratingSummary.avg || 0} count={ratingSummary.count || 0} size="0.9rem" /></div>
+                        <div className="flex items-center gap-1.5 text-[0.78rem] text-text-muted mt-0.5 shrink-0">
+                          <span className="font-semibold">{guessLevel(c)}</span>
+                          {estimateDuration(c) && <><span className="text-border-medium">·</span><span>{estimateDuration(c)}</span></>}
+                          <span className="text-border-medium">·</span><span>Course</span>
+                        </div>
+                        <div className="mt-0.5 shrink-0"><span className="text-[0.78rem] text-text-muted">👥 {estimateLearners(id).toLocaleString()} enrolled</span></div>
                       </div>
-                      <div className="flex items-start justify-between gap-3">
-                        <Link to={`/courses/${courseSlugOrId(id, title)}`} className="no-underline text-inherit"><div className="font-extrabold text-lg leading-snug tracking-tight line-clamp-2">{title}</div></Link>
-                        {enrolled && <span className="text-[0.73rem] px-2.5 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-600 whitespace-nowrap font-bold">{t('courses.enrolled')}</span>}
+                      {/* Footer — always visible at bottom, never pushed off */}
+                      <div className="shrink-0 pt-2 mt-auto flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-border-subtle">
+                          <span className={`font-extrabold text-lg ${isFree(c.price) ? 'text-green-600' : 'text-text-main'}`}>{formatPrice(c.price, t('common.free'))}</span>
+                          {Number(c?.chapterCount) >= 0 && <span className="text-[0.88rem] text-text-muted">{t('courses.chapterCount', { count: c.chapterCount as number })}</span>}
+                        </div>
+                        <button type="button" className="py-2.5 px-3 rounded-[var(--radius-btn)] border border-border-medium bg-transparent text-text-secondary font-bold cursor-pointer transition-colors hover:bg-[#F5F7F8] hover:border-border-strong" onClick={() => handleOpenDetail(id)}>{t('courses.viewDesc')}</button>
+                        {enrolled ? (
+                          <Link to={`/learning/${id}`} className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white no-underline text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)]">{t('courses.enterCourse')}</Link>
+                        ) : isFree(c.price) ? (
+                          <button type="button" className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)] disabled:opacity-60" onClick={() => handleBuy(c)} disabled={joiningId === id}>{joiningId === id ? t('courses.joining') : t('courses.joinFree')}</button>
+                        ) : (
+                          <button type="button" className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-primary-500 text-white text-center transition-all shadow-[0_2px_8px_rgba(0,86,210,0.25)] hover:-translate-y-px hover:bg-primary-600" onClick={() => handleBuy(c)}>{t('courses.buyNow')}</button>
+                        )}
                       </div>
-                      {extractSkills(c).length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-0.5">{extractSkills(c).map((s) => <span key={s} className="text-[0.72rem] font-semibold bg-blue-50 text-primary-500 px-2 py-0.5 rounded whitespace-nowrap">{s}</span>)}</div>
-                      )}
-                      <div className="mt-0.5"><StarRating rating={ratingSummary.avg || 0} count={ratingSummary.count || 0} size="0.9rem" /></div>
-                      <div className="flex items-center gap-1.5 text-[0.78rem] text-text-muted mt-0.5">
-                        <span className="font-semibold">{guessLevel(c)}</span>
-                        {estimateDuration(c) && <><span className="text-border-medium">·</span><span>{estimateDuration(c)}</span></>}
-                        <span className="text-border-medium">·</span><span>Course</span>
-                      </div>
-                      <div className="mt-0.5"><span className="text-[0.78rem] text-text-muted">👥 {estimateLearners(id).toLocaleString()} enrolled</span></div>
-                      <div className="flex items-center justify-between gap-3 mt-auto pt-2.5 border-t border-border-subtle">
-                        <span className={`font-extrabold text-lg ${isFree(c.price) ? 'text-green-600' : 'text-text-main'}`}>{formatPrice(c.price, t('common.free'))}</span>
-                        {Number(c?.chapterCount) >= 0 && <span className="text-[0.88rem] text-text-muted">{t('courses.chapterCount', { count: c.chapterCount as number })}</span>}
-                      </div>
-                      <button type="button" className="mt-1 py-2.5 px-3 rounded-[var(--radius-btn)] border border-border-medium bg-transparent text-text-secondary font-bold cursor-pointer transition-colors hover:bg-[#F5F7F8] hover:border-border-strong" onClick={() => handleOpenDetail(id)}>{t('courses.viewDesc')}</button>
-                      {enrolled ? (
-                        <Link to={`/learning/${id}`} className="mt-1 py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white no-underline text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)]">{t('courses.enterCourse')}</Link>
-                      ) : isFree(c.price) ? (
-                        <button type="button" className="mt-1 py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)] disabled:opacity-60" onClick={() => handleBuy(c)} disabled={joiningId === id}>{joiningId === id ? t('courses.joining') : t('courses.joinFree')}</button>
-                      ) : (
-                        <button type="button" className="mt-1 py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-primary-500 text-white text-center transition-all shadow-[0_2px_8px_rgba(0,86,210,0.25)] hover:-translate-y-px hover:bg-primary-600" onClick={() => handleBuy(c)}>{t('courses.buyNow')}</button>
-                      )}
                     </div>
                   </article>
                 )

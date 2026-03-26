@@ -42,9 +42,9 @@ const LandingPage = () => {
   ]
 
   return (
-    <div className="min-h-screen bg-bg-page text-text-main">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
-      <main className="max-w-7xl mx-auto px-6 pt-8">
+      <main className="w-full mx-auto px-6 pt-8">
         {/* ═══ HERO ═══ */}
         <div className="grid grid-cols-2 gap-12 items-center min-h-[calc(100vh-140px)] pb-8 max-[900px]:grid-cols-1 max-[900px]:text-center max-[900px]:min-h-0 max-[900px]:pt-4">
           <section className="flex flex-col gap-5 max-[900px]:items-center">
@@ -168,7 +168,7 @@ const LandingPage = () => {
 
       {/* ═══ FOOTER ═══ */}
       <footer className="bg-gray-800 text-gray-50 pt-14 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-[1.2fr_2fr] gap-12 items-start pb-10 border-b border-white/10 max-[900px]:grid-cols-1">
+        <div className="w-full mx-auto grid grid-cols-[1.2fr_2fr] gap-12 items-start pb-10 border-b border-white/10 max-[900px]:grid-cols-1">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2.5">
               <span className="inline-flex items-center justify-center w-9 h-9 bg-primary-500 text-white rounded-lg text-[0.9rem] font-extrabold">&lt;/&gt;</span>
@@ -187,7 +187,7 @@ const LandingPage = () => {
             <FooterCol title={t('footer.company')} links={[[t('footer.aboutUs'), '/'], [t('footer.careers'), '/'], [t('footer.verifyCert'), '/verify-certificate'], [t('footer.terms'), '/'], [t('footer.privacy'), '/']]} />
           </div>
         </div>
-        <div className="max-w-7xl mx-auto py-5 text-center">
+        <div className="w-full mx-auto py-5 text-center">
           <p className="m-0 text-[0.82rem] text-white/45">{t('footer.allRights', { year: new Date().getFullYear() })}</p>
         </div>
       </footer>

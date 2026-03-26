@@ -47,7 +47,7 @@ const SyllabusManagement = () => {
   const btnSm = '!px-2.5 !py-1 !text-[0.78rem]'
 
   return (
-    <div className="min-h-screen bg-bg-page text-text-main">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       {/* Banner */}
       <div className="bg-[linear-gradient(135deg,#0f766e_0%,#0d9488_50%,#14b8a6_100%)] px-6 py-6 pb-7 text-white">

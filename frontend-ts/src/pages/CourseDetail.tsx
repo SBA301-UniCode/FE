@@ -107,15 +107,15 @@ const CourseDetail = () => {
   const handleDeleteFeedback = async (fid: string) => { if (!fid || !window.confirm(t('courseDetail.deleteFeedbackConfirm'))) return; try { await feedbackApi.delete(fid); await Promise.all([loadFeedback(), loadCanFeedback()]) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackError(err.response?.data?.message || err.message || t('courseDetail.deleteFeedbackFailed')) } }
   const scrollToSection = (id: string) => { setActiveSection(id); document.getElementById(`cd-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
 
-  if (loading) return <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-[1200px] mx-auto px-6 py-8"><div className="h-[220px] rounded-[20px] bg-gray-100 animate-pulse" /><div className="h-[300px] rounded-[20px] bg-gray-100 animate-pulse mt-6" /></main></div>
-  if (error) return <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-[1200px] mx-auto px-6 py-8"><div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 text-red-600">⚠️ {error}</div></main></div>
+  if (loading) return <div className="min-h-screen bg-bg-page text-text-main flex flex-col"><Header /><main className="w-full mx-auto px-6 py-8"><div className="h-[220px] rounded-[20px] bg-gray-100 animate-pulse" /><div className="h-[300px] rounded-[20px] bg-gray-100 animate-pulse mt-6" /></main></div>
+  if (error) return <div className="min-h-screen bg-bg-page text-text-main flex flex-col"><Header /><main className="w-full mx-auto px-6 py-8"><div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 text-red-600">⚠️ {error}</div></main></div>
 
   return (
-    <div className="min-h-screen bg-bg-page text-text-main">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       {/* Hero */}
       <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_40%,#4338ca_100%)] px-6 py-8 text-white">
-        <div className="max-w-[1200px] mx-auto flex items-start gap-8 max-[768px]:flex-col">
+        <div className="w-full mx-auto flex items-start gap-8 max-[768px]:flex-col">
           <div className="flex-1">
             <div className="flex items-center gap-1.5 text-[0.82rem] mb-3 text-white/60"><Link to="/" className="text-white/75 no-underline hover:underline">Home</Link><span>›</span><Link to="/courses" className="text-white/75 no-underline hover:underline">Courses</Link><span>›</span><span className="text-white/90">{(course?.title as string) || 'Course'}</span></div>
             <h1 className="m-0 text-[1.75rem] font-extrabold leading-tight">{(course?.title as string) || t('courseDetail.untitled')}</h1>
@@ -133,9 +133,9 @@ const CourseDetail = () => {
       </div>
 
       {/* Sticky nav */}
-      <nav className="sticky top-16 z-30 bg-white/95 backdrop-blur border-b border-border-subtle shadow-[0_1px_4px_rgba(0,0,0,0.04)]"><div className="max-w-[1200px] mx-auto px-6 flex gap-1">{['overview', 'syllabus', 'reviews'].map((s) => <button key={s} type="button" className={`px-5 py-3 text-sm font-semibold border-none bg-transparent cursor-pointer transition-all ${activeSection === s ? 'text-primary-500 border-b-2 border-primary-500' : 'text-text-muted hover:text-text-main'}`} onClick={() => scrollToSection(s)}>{s === 'overview' ? 'Overview' : s === 'syllabus' ? 'Syllabus' : 'Reviews'}</button>)}</div></nav>
+      <nav className="sticky top-16 z-30 bg-white/95 backdrop-blur border-b border-border-subtle shadow-[0_1px_4px_rgba(0,0,0,0.04)]"><div className="w-full mx-auto px-6 flex gap-1">{['overview', 'syllabus', 'reviews'].map((s) => <button key={s} type="button" className={`px-5 py-3 text-sm font-semibold border-none bg-transparent cursor-pointer transition-all ${activeSection === s ? 'text-primary-500 border-b-2 border-primary-500' : 'text-text-muted hover:text-text-main'}`} onClick={() => scrollToSection(s)}>{s === 'overview' ? 'Overview' : s === 'syllabus' ? 'Syllabus' : 'Reviews'}</button>)}</div></nav>
 
-      <main className="max-w-[1200px] mx-auto px-6 py-8 pb-16">
+      <main className="w-full mx-auto px-6 py-8 pb-16">
         <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-8 items-start max-[900px]:grid-cols-1">
           <div className="flex flex-col gap-6">
             {/* What you'll learn */}
@@ -191,7 +191,7 @@ const CourseDetail = () => {
                 ) : isFree(course?.price) ? (
                   <button type="button" className="block w-full text-center py-3 rounded-xl bg-green-600 text-white font-bold text-sm border-none cursor-pointer transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(34,197,94,0.25)] hover:bg-green-700 disabled:opacity-60" onClick={handleJoinFree} disabled={joining}>{joining ? t('courseDetail.joining') : t('courseDetail.joinFree')}</button>
                 ) : (
-                  <Link to={`/payment/${courseId}`} className="block w-full text-center py-3 rounded-xl bg-primary-500 text-white font-bold text-sm no-underline transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]">{t('courseDetail.enrollNow')}</Link>
+                  <Link to={`/payment?courseId=${courseId}`} state={{ course }} className="block w-full text-center py-3 rounded-xl bg-primary-500 text-white font-bold text-sm no-underline transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]">{t('courseDetail.enrollNow')}</Link>
                 )}
                 <ul className="list-none p-0 mt-4 flex flex-col gap-2 text-sm text-text-secondary">{[`📗 ${t('courseDetail.chapterCount', { count: chapters.length })}`, `📄 ${t('courseDetail.lessonCount', { count: totalLessons || 0 })}`, `🎯 ${level}`, `📜 ${t('courseDetail.certCompletion')}`, `♾️ ${t('courseDetail.lifetimeAccess')}`, `📱 ${t('courseDetail.learnAnywhere')}`].map((item) => <li key={item}>{item}</li>)}</ul>
               </div>

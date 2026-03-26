@@ -32,7 +32,7 @@ const VerifyContent = () => {
   const Row = ({ label, value, cls }: { label: string; value: string; cls?: string }) => <div className="flex justify-between items-center text-sm"><span className="text-text-muted font-medium">{label}</span><span className={`text-text-main text-right ${cls || ''}`}>{value}</span></div>
 
   return (
-    <div className="min-h-screen bg-bg-page text-text-main">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       <main className="flex justify-center px-6 py-8 pb-16">
         <div className="max-w-[700px] w-full">

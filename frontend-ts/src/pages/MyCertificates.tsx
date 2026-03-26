@@ -58,7 +58,7 @@ const MyCertificates = () => {
   }, [certificates, searchQuery, sortBy])
 
   const handleCopyLink = (cert: AnyObj) => {
-    const url = `${window.location.origin}/verify-certificate?code=${String(cert.serialNumber || '')}`
+    const url = getCertImageUrl(cert) || `${window.location.origin}/verify-certificate?code=${String(cert.serialNumber || '')}`
     navigator.clipboard.writeText(url).then(() => { setCopiedSerial(cert.serialNumber as string); setTimeout(() => setCopiedSerial(''), 2000) })
   }
   const handleShareLinkedIn = (cert: AnyObj) => {
@@ -76,7 +76,7 @@ const MyCertificates = () => {
   }
 
   return (
-    <div className="min-h-screen bg-bg-page text-text-main">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
 
       {/* Hero */}

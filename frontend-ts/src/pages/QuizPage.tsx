@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '../components/layout/Header'
-import { processApi, questionBankApi, contentApi } from '../api'
+import { processApi, questionBankApi, contentApi, examApi } from '../api'
 import { useTranslation } from 'react-i18next'
 
 type AnyObj = Record<string, unknown>
@@ -14,7 +14,7 @@ interface QOption { optionId: string; text: string; isCorrect: boolean }
 interface QItem { questionBankId: string; text: string; imageUrl?: string; type: string; options: QOption[] }
 interface QResult { correct: number; total: number; score: number; passed: boolean }
 
-const DURATION = 600, PASS_SCORE = 60
+const DURATION_DEFAULT = 600, PASS_SCORE_DEFAULT = 60
 
 /* ─── Shared button styles ─── */
 const btnBase = 'inline-flex items-center justify-center gap-1.5 rounded-xl font-semibold text-sm border-none cursor-pointer transition-all'
@@ -43,26 +43,71 @@ const QuizPage = () => {
   const [currentIdx, setCurrentIdx] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [flagged, setFlagged] = useState<Record<string, boolean>>({})
-  const [timeLeft, setTimeLeft] = useState(DURATION)
+  const [timeLeft, setTimeLeft] = useState(DURATION_DEFAULT)
+  const [examDuration, setExamDuration] = useState(DURATION_DEFAULT)
+  const [examPassScore, setExamPassScore] = useState(PASS_SCORE_DEFAULT)
+  const [examName, setExamName] = useState('')
   const [result, setResult] = useState<QResult | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (!lessonId) { setLoadError(t('quiz.noQuestionsLesson')); setLoading(false); return }
     setLoading(true); setLoadError('')
-    const loadQ = questionBankApi.getByLessonId(lessonId, 0, 100).then((res) => { const raw = unwrap(res) as AnyObj; const items = (raw?.content ?? raw?.items ?? (Array.isArray(raw) ? raw : [])) as AnyObj[]; if (!items.length) { setLoadError(t('quiz.noQuestionsLesson')); return }; setQuestions(items.map((q) => ({ questionBankId: q.questionBankId as string, text: q.questionText as string, imageUrl: q.imageUrl as string | undefined, type: (q.questionType as string) || 'MULTIPLE_CHOICE', options: ((q.options as AnyObj[]) || []).map((o) => ({ optionId: o.optionId as string, text: o.answerText as string, isCorrect: (o.isCorrect || o.correct) as boolean })) }))) }).catch((err: { response?: { data?: { message?: string } }; message?: string }) => setLoadError(err.response?.data?.message || err.message || t('quiz.cantLoadQuestions')))
-    const resolveId = contentApi.getByLessonId(lessonId).then((res) => { const list = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; const quiz = list.find((c) => c.contentType === 'QUIZ'); const id = getContentId(quiz as AnyObj); if (isUuid(id)) setRealContentId(id) }).catch(() => {})
-    Promise.all([loadQ, resolveId]).finally(() => setLoading(false))
+    const loadQ = async () => {
+      /* Step 1: resolve the real contentId for the QUIZ content */
+      let examId = ''
+      try {
+        const cRes = await contentApi.getByLessonId(lessonId)
+        const list = Array.isArray(unwrap(cRes)) ? unwrap(cRes) as AnyObj[] : []
+        const quiz = list.find((c) => c.contentType === 'QUIZ')
+        const id = getContentId(quiz as AnyObj)
+        if (isUuid(id)) { setRealContentId(id); examId = id }
+      } catch {}
+      /* Step 2: try to get exam questions from examApi */
+      let loaded = false
+      if (examId) {
+        try {
+          const examRes = await examApi.getExamById(examId)
+          const examData = unwrap(examRes) as AnyObj
+          if (examData) {
+            const dur = Number(examData.duration); if (Number.isFinite(dur) && dur > 0) { setExamDuration(dur); setTimeLeft(dur) }
+            const ps = Number(examData.passScore); if (Number.isFinite(ps) && ps > 0) setExamPassScore(ps)
+            if (examData.name || examData.examName) setExamName((examData.name || examData.examName) as string)
+          }
+          const qRes = await examApi.getQuestionsByExam(examId)
+          const qRaw = unwrap(qRes)
+          const qItems = (Array.isArray(qRaw) ? qRaw : (qRaw as AnyObj)?.content ?? (qRaw as AnyObj)?.items ?? []) as AnyObj[]
+          if (qItems.length > 0) {
+            setQuestions(qItems.map((q) => ({ questionBankId: (q.questionBankId || q.questionId || q.id) as string, text: (q.questionText || q.text) as string, imageUrl: q.imageUrl as string | undefined, type: (q.questionType || q.type || 'MULTIPLE_CHOICE') as string, options: ((q.options || q.answers || []) as AnyObj[]).map((o) => ({ optionId: (o.optionId || o.answerId || o.id) as string, text: (o.answerText || o.text) as string, isCorrect: (o.isCorrect || o.correct) as boolean })) })))
+            loaded = true
+          }
+        } catch {}
+      }
+      /* Step 3: fallback to questionBankApi */
+      if (!loaded) {
+        try {
+          const res = await questionBankApi.getByLessonId(lessonId, 0, 100)
+          const raw = unwrap(res) as AnyObj
+          const items = (raw?.content ?? raw?.items ?? (Array.isArray(raw) ? raw : [])) as AnyObj[]
+          if (!items.length) { setLoadError(t('quiz.noQuestionsLesson')); return }
+          setQuestions(items.map((q) => ({ questionBankId: q.questionBankId as string, text: q.questionText as string, imageUrl: q.imageUrl as string | undefined, type: (q.questionType as string) || 'MULTIPLE_CHOICE', options: ((q.options as AnyObj[]) || []).map((o) => ({ optionId: o.optionId as string, text: o.answerText as string, isCorrect: (o.isCorrect || o.correct) as boolean })) })))
+        } catch (err: unknown) {
+          const e = err as { response?: { data?: { message?: string } }; message?: string }
+          setLoadError(e.response?.data?.message || e.message || t('quiz.cantLoadQuestions'))
+        }
+      }
+    }
+    loadQ().finally(() => setLoading(false))
   }, [lessonId])
 
-  const startQuiz = useCallback(() => { setPhase('taking'); setTimeLeft(DURATION); setAnswers({}); setFlagged({}); setCurrentIdx(0); setResult(null) }, [])
+  const startQuiz = useCallback(() => { setPhase('taking'); setTimeLeft(examDuration); setAnswers({}); setFlagged({}); setCurrentIdx(0); setResult(null) }, [examDuration])
 
   useEffect(() => { if (phase !== 'taking') return; timerRef.current = setInterval(() => setTimeLeft((p) => { if (p <= 1) { clearInterval(timerRef.current!); return 0 }; return p - 1 }), 1000); return () => clearInterval(timerRef.current!) }, [phase])
 
   const submitQuiz = useCallback(() => {
     clearInterval(timerRef.current!); let correct = 0
     questions.forEach((q) => { const sel = answers[q.questionBankId]; const cor = q.options.find((o) => o.isCorrect); if (sel && cor && String(sel) === String(cor.optionId)) correct++ })
-    const score = Math.round((correct / questions.length) * 100); const passed = score >= PASS_SCORE
+    const score = Math.round((correct / questions.length) * 100); const passed = score >= examPassScore
     setResult({ correct, total: questions.length, score, passed }); setPhase('result')
     const tId = realContentId || contentId || ''; if (isUuid(tId) && enrollmentId) { processApi.trackContent({ contentId: tId, enrollmentId, status: (passed ? 'COMPLETED' : 'IN_PROCESS') as 'COMPLETED' | 'IN_PROCESS' }).then(() => { if (courseId) processApi.getCourseProgress({ courseId, enrollmentId }).catch(() => {}) }).catch(() => {}) }
   }, [answers, questions, contentId, enrollmentId, realContentId, courseId])
@@ -78,16 +123,16 @@ const QuizPage = () => {
   /* ─── LOADING / ERROR ─── */
   const IntroCard = ({ children }: { children: React.ReactNode }) => <div className="max-w-[580px] mx-auto bg-white border border-border-medium rounded-[20px] p-10 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">{children}</div>
 
-  if (loading) return <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-5xl mx-auto px-6 py-8 pb-16"><IntroCard><p className="text-center py-8">{t('quiz.loading')}</p></IntroCard></main></div>
-  if (loadError || questions.length === 0) return <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-5xl mx-auto px-6 py-8 pb-16"><IntroCard><div className="text-5xl mb-2">⚠️</div><h1 className="m-0 mb-6 text-2xl font-extrabold">{t('quiz.noQuiz')}</h1><p className="text-text-muted text-center">{loadError || t('quiz.noQuestionsLesson')}</p><div className="flex flex-col gap-2.5 items-center mt-6"><button type="button" className={btnGhost} onClick={goBack}>{t('quiz.goBack')}</button></div></IntroCard></main></div>
+  if (loading) return <div className="min-h-screen bg-bg-page text-text-main flex flex-col"><Header /><main className="w-full mx-auto px-6 py-8 pb-16"><IntroCard><p className="text-center py-8">{t('quiz.loading')}</p></IntroCard></main></div>
+  if (loadError || questions.length === 0) return <div className="min-h-screen bg-bg-page text-text-main flex flex-col"><Header /><main className="w-full mx-auto px-6 py-8 pb-16"><IntroCard><div className="text-5xl mb-2">⚠️</div><h1 className="m-0 mb-6 text-2xl font-extrabold">{t('quiz.noQuiz')}</h1><p className="text-text-muted text-center">{loadError || t('quiz.noQuestionsLesson')}</p><div className="flex flex-col gap-2.5 items-center mt-6"><button type="button" className={btnGhost} onClick={goBack}>{t('quiz.goBack')}</button></div></IntroCard></main></div>
 
   /* ─── INTRO ─── */
   if (phase === 'intro') return (
-    <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-5xl mx-auto px-6 py-8 pb-16">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col"><Header /><main className="w-full mx-auto px-6 py-8 pb-16">
       <IntroCard>
         <div className="text-5xl mb-2">📝</div>
-        <h1 className="m-0 mb-6 text-2xl font-extrabold">{t('quiz.title')}</h1>
-        <div className="flex justify-center gap-6 mb-6">{[{ l: 'Questions', v: questions.length }, { l: 'Time', v: formatTime(DURATION) }, { l: 'Pass', v: `${PASS_SCORE}%` }].map((m) => <div key={m.l} className="flex flex-col items-center gap-0.5"><span className="text-[0.78rem] text-text-muted uppercase tracking-wider">{m.l}</span><span className="text-xl font-bold text-primary-500">{m.v}</span></div>)}</div>
+        <h1 className="m-0 mb-6 text-2xl font-extrabold">{examName || t('quiz.title')}</h1>
+        <div className="flex justify-center gap-6 mb-6">{[{ l: 'Questions', v: questions.length }, { l: 'Time', v: formatTime(examDuration) }, { l: 'Pass', v: `${examPassScore}%` }].map((m) => <div key={m.l} className="flex flex-col items-center gap-0.5"><span className="text-[0.78rem] text-text-muted uppercase tracking-wider">{m.l}</span><span className="text-xl font-bold text-primary-500">{m.v}</span></div>)}</div>
         <div className="text-left bg-bg-deep border border-border-subtle rounded-[14px] p-4 mb-6"><h3 className="m-0 mb-2 text-sm text-text-main">{t('quiz.notesTitle')}</h3><ul className="m-0 pl-5">{[t('quiz.note1'), t('quiz.note2'), t('quiz.note3'), t('quiz.note4')].map((note) => <li key={note} className="text-[0.88rem] text-text-secondary mb-1 leading-relaxed">{note}</li>)}</ul></div>
         <div className="flex flex-col gap-2.5 items-center"><button type="button" className={`${btnPrimary} ${btnLg}`} onClick={startQuiz}>{t('quiz.startBtn')}</button><button type="button" className={btnGhost} onClick={goBack}>{t('quiz.goBack')}</button></div>
       </IntroCard>
@@ -96,11 +141,11 @@ const QuizPage = () => {
 
   /* ─── RESULT ─── */
   if (phase === 'result' && result) return (
-    <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-5xl mx-auto px-6 py-8 pb-16">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col"><Header /><main className="w-full mx-auto px-6 py-8 pb-16">
       <div className="max-w-[720px] mx-auto bg-white border border-border-medium rounded-[20px] p-10 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <div className="text-[3.5rem] mb-1">{result.passed ? '🎉' : '😔'}</div>
         <h1 className="m-0 mb-1 text-2xl font-extrabold">{result.passed ? t('quiz.resultPassed') : t('quiz.resultFailed')}</h1>
-        <p className="m-0 mb-6 text-text-muted text-sm">{result.passed ? t('quiz.resultPassedDesc') : t('quiz.resultFailedDesc', { score: PASS_SCORE })}</p>
+        <p className="m-0 mb-6 text-text-muted text-sm">{result.passed ? t('quiz.resultPassedDesc') : t('quiz.resultFailedDesc', { score: examPassScore })}</p>
         {/* Score ring */}
         <div className="flex items-center justify-center gap-10 mb-8 flex-wrap">
           <div className="relative w-[120px] h-[120px]"><svg viewBox="0 0 120 120" className="w-full h-full -rotate-90"><circle cx="60" cy="60" r="52" fill="none" stroke="#E5E7EB" strokeWidth="10" /><circle cx="60" cy="60" r="52" fill="none" strokeWidth="10" strokeLinecap="round" className={result.passed ? 'stroke-green-500' : 'stroke-red-500'} strokeDasharray={`${(result.score / 100) * 327} 327`} style={{ transition: 'stroke-dasharray 0.8s ease' }} /></svg><div className="absolute inset-0 flex items-center justify-center"><span className="text-[2rem] font-extrabold">{result.score}</span><span className="text-base text-text-muted ml-px">%</span></div></div>
@@ -125,7 +170,7 @@ const QuizPage = () => {
   /* ─── TAKING ─── */
   if (!currentQ) return null
   return (
-    <div className="min-h-screen bg-bg-page text-text-main"><Header /><main className="max-w-5xl mx-auto px-6 py-8 pb-16">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col"><Header /><main className="w-full mx-auto px-6 py-8 pb-16">
       <div className="grid grid-cols-[minmax(0,1fr)_260px] gap-5 items-start max-[768px]:grid-cols-1">
         {/* Question panel */}
         <div className="bg-white border border-border-medium rounded-[20px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">

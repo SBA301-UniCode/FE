@@ -71,6 +71,36 @@ body {
   min-height: 100vh;
 }
 
+/* Push footer to bottom when content is short (loading/error/empty states) */
+.flex.flex-col > main {
+  flex: 1;
+}
+
+/* ═══ GLOBAL LAYOUT STABILIZATION ═══ */
+
+/* 1. Main content area: fixed min-height + 80% centered width (10% margin each side) */
+main {
+  min-height: 60vh;
+  padding-left: 10% !important;
+  padding-right: 10% !important;
+}
+
+/* Hero/gradient header sections: same 80% content width */
+div[class*="bg-[linear-gradient"] {
+  padding-left: 10% !important;
+  padding-right: 10% !important;
+}
+
+/* 3. Tab content grid: stable min-height prevents jumping on tab switch */
+main > .grid {
+  min-height: 300px;
+}
+
+/* 4. Tables: allow auto column sizing but prevent text overflow */
+table th, table td {
+  word-break: break-word;
+}
+
 a {
   color: inherit;
 }

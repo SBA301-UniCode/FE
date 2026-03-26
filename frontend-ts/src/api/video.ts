@@ -11,8 +11,18 @@ export const videoApi = {
     apiClient.post(`${VIDEOS_BASE}/generate-upload-url`, payload),
 
   createVideoRecord(request: CreateVideoPayload): Promise<AxiosResponse> {
+    const normalizedKey = String(request?.key || '').trim()
     const formData = new FormData()
-    formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }), 'request.json')
+    // Backend implementations differ by field name for S3 object key.
+    // Send compatible aliases so key is not persisted as null.
+    const payload = {
+      ...request,
+      key: normalizedKey,
+      s3Key: normalizedKey,
+      objectKey: normalizedKey,
+      fileKey: normalizedKey,
+    }
+    formData.append('request', new Blob([JSON.stringify(payload)], { type: 'application/json' }), 'request.json')
     return apiClient.post(`${VIDEOS_BASE}/create`, formData)
   },
 

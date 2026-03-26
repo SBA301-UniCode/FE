@@ -45,23 +45,30 @@ const SyllabusManagement = () => {
   const btnPrimary = 'px-3.5 py-2 rounded-[10px] font-semibold border-none cursor-pointer text-[0.85rem] transition-all bg-primary-500 text-white hover:bg-primary-600'
   const btnGhost = 'px-3.5 py-2 rounded-[10px] font-semibold cursor-pointer text-[0.85rem] transition-all bg-bg-deep text-text-main border border-border-medium hover:bg-gray-100'
   const btnSm = '!px-2.5 !py-1 !text-[0.78rem]'
+  const tdBase = 'align-top text-left px-3 py-2 border-b border-border-subtle break-words'
 
   return (
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       {/* Banner */}
       <div className="bg-[linear-gradient(135deg,#0f766e_0%,#0d9488_50%,#14b8a6_100%)] px-6 py-6 pb-7 text-white">
-        <div className="max-w-[1100px] mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="flex items-center gap-1.5 text-[0.82rem] mb-2 text-white/70"><Link to="/" className="text-white/85 no-underline hover:underline">{t('syllabus.breadcrumbHome')}</Link><span>/</span><Link to="/my-courses" className="text-white/85 no-underline hover:underline">{t('syllabus.breadcrumbMyCourses')}</Link><span>/</span><span>{t('syllabus.breadcrumbSyllabus')}</span></div>
           <h1 className="m-0 text-2xl font-extrabold">{t('syllabus.title')}</h1>
           <p className="mt-1 mb-0 text-white/70 text-sm">{t('syllabus.desc')}</p>
         </div>
       </div>
 
-      <main className="max-w-[1100px] mx-auto px-6 py-6 pb-16">
-        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-          <Link to="/my-courses" className={`${btnGhost} no-underline inline-flex items-center gap-1`}>{t('manageContent.backMyCourses')}</Link>
-          <button type="button" className={btnPrimary} onClick={openCreate}>{t('syllabus.createBtn')}</button>
+      <main className="w-full max-w-[1600px] mx-auto px-6 py-6 pb-16">
+        <div className="flex items-end justify-between mb-4 gap-3 flex-wrap">
+          <div>
+            <h2 className="m-0 text-lg font-extrabold text-text-main">Danh sách giáo trình</h2>
+            <p className="m-0 mt-1 text-sm text-text-secondary">Quản lý nội dung, phương pháp và tài liệu tham khảo của từng khóa học.</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link to="/my-courses" className={`${btnGhost} no-underline inline-flex items-center gap-1`}>{t('manageContent.backMyCourses')}</Link>
+            <button type="button" className={btnPrimary} onClick={openCreate}>{t('syllabus.createBtn')}</button>
+          </div>
         </div>
 
         {/* Modal */}
@@ -83,9 +90,37 @@ const SyllabusManagement = () => {
         <div className="bg-white border border-border-medium rounded-[18px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           {loading ? <div className="p-4 text-center text-text-muted">{t('syllabus.loading')}</div> : <>
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
-                <thead><tr className="[&>th]:text-left [&>th]:px-3 [&>th]:py-2 [&>th]:border-b [&>th]:border-border-subtle [&>th]:font-bold [&>th]:text-text-muted [&>th]:text-[0.82rem] [&>th]:uppercase"><th>{t('syllabus.thCourse')}</th><th>{t('syllabus.thContent')}</th><th>{t('syllabus.thMethod')}</th><th>{t('syllabus.thReference')}</th><th>{t('syllabus.thActions')}</th></tr></thead>
-                <tbody>{syllabuses.map((s) => <tr key={s.sylabusId as string} className="hover:[&>td]:bg-bg-deep [&>td]:text-left [&>td]:px-3 [&>td]:py-2 [&>td]:border-b [&>td]:border-border-subtle"><td>{(s.courseTitle as string) || '-'}</td><td className="max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap">{(s.courseContent as string) || '-'}</td><td>{(s.method as string) || '-'}</td><td className="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">{(s.referenceMaterial as string) || '-'}</td><td><div className="flex gap-1.5"><button type="button" className={`${btnGhost} ${btnSm}`} onClick={() => openEdit(s)}>{t('syllabus.editBtn')}</button><button type="button" className={`${btnSm} px-2.5 py-1 rounded-[10px] font-semibold cursor-pointer text-[0.78rem] bg-red-500/8 text-red-600 border-none hover:bg-red-500/15`} onClick={() => handleDelete(s)}>{t('syllabus.deleteBtn')}</button></div></td></tr>)}
+              <table className="w-full table-fixed border-collapse text-sm">
+                <thead>
+                  <tr className="[&>th]:text-left [&>th]:px-3 [&>th]:py-2 [&>th]:border-b [&>th]:border-border-subtle [&>th]:font-bold [&>th]:text-text-muted [&>th]:text-[0.82rem] [&>th]:uppercase">
+                    <th className="w-[20%]">{t('syllabus.thCourse')}</th>
+                    <th className="w-[36%]">{t('syllabus.thContent')}</th>
+                    <th className="w-[18%]">{t('syllabus.thMethod')}</th>
+                    <th className="w-[18%]">{t('syllabus.thReference')}</th>
+                    <th className="w-[8%]">{t('syllabus.thActions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {syllabuses.map((s) => (
+                    <tr key={s.sylabusId as string} className="hover:[&>td]:bg-bg-deep">
+                      <td className={`${tdBase} font-semibold text-text-main`} title={(s.courseTitle as string) || '-'}>{(s.courseTitle as string) || '-'}</td>
+                      <td className={`${tdBase} text-text-secondary`}>
+                        <p className="m-0 overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] wrap-break-word">{(s.courseContent as string) || '-'}</p>
+                      </td>
+                      <td className={`${tdBase} text-text-main`} title={(s.method as string) || '-'}>
+                        <p className="m-0 wrap-break-word">{(s.method as string) || '-'}</p>
+                      </td>
+                      <td className={`${tdBase} text-text-secondary`}>
+                        <p className="m-0 overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] wrap-break-word">{(s.referenceMaterial as string) || '-'}</p>
+                      </td>
+                      <td className={`${tdBase} whitespace-nowrap`}>
+                        <div className="flex gap-1.5 justify-end">
+                          <button type="button" className={`${btnGhost} ${btnSm}`} onClick={() => openEdit(s)}>{t('syllabus.editBtn')}</button>
+                          <button type="button" className={`${btnSm} px-2.5 py-1 rounded-[10px] font-semibold cursor-pointer text-[0.78rem] bg-red-500/8 text-red-600 border-none hover:bg-red-500/15`} onClick={() => handleDelete(s)}>{t('syllabus.deleteBtn')}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                   {syllabuses.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-text-muted">{t('syllabus.noData')}</td></tr>}
                 </tbody>
               </table>

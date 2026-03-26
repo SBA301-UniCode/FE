@@ -9,7 +9,7 @@ type AnyObj = Record<string, unknown>
 const unwrap = (res: unknown) => { const r = res as { data?: { data?: unknown } }; return r?.data?.data ?? r?.data ?? r }
 const extractPage = (p: unknown) => { const o = p as AnyObj; const content = o?.content ?? o?.data ?? []; return { list: Array.isArray(content) ? content as AnyObj[] : [], totalPages: ((o?.totalPages ?? (o?.page as AnyObj)?.totalPages ?? 1) as number), totalElements: ((o?.totalElements ?? (o?.page as AnyObj)?.totalElements ?? 0) as number) } }
 
-const TABS = [{ key: 'users', label: 'Users' }, { key: 'roles', label: 'Roles' }, { key: 'subscriptions', label: 'Subscriptions' }, { key: 'report', label: 'Report' }, { key: 'enrollments', label: 'Enrollments' }]
+const TABS = [{ key: 'users', label: 'Users' }, { key: 'roles', label: 'Roles' }, { key: 'subscriptions', label: 'Subscriptions' }, { key: 'enrollments', label: 'Enrollments' }]
 
 const btnPrimary = 'px-3.5 py-2 rounded-[10px] font-semibold border-none cursor-pointer text-[0.82rem] transition-all bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-60 disabled:cursor-not-allowed'
 const btnGhost = 'px-3.5 py-2 rounded-[10px] font-semibold cursor-pointer text-[0.82rem] transition-all bg-bg-deep text-text-main border border-border-medium'
@@ -193,7 +193,7 @@ const AdminPanel = () => {
         {tab === 'users' && <UsersTab />}
         {tab === 'roles' && <RolesTab />}
         {tab === 'subscriptions' && <SubscriptionsTab />}
-        {tab === 'report' && <ReportTab />}
+        {false && <ReportTab />}
         {tab === 'enrollments' && <EnrollmentsTab />}
       </main>
       <Footer />

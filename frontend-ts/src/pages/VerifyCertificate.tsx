@@ -65,7 +65,7 @@ const VerifyCertificate = () => {
   }
 
   return (
-    <div className="min-h-screen bg-bg-page text-text-main">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       <main className="flex justify-center px-6 py-8 pb-16">
         <div className="max-w-[600px] w-full">

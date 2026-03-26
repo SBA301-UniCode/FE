@@ -47,9 +47,9 @@ const Payment = () => {
   if (!isAuthenticated) return null
 
   return (
-    <div className="min-h-screen bg-bg-page text-text-main">
+    <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
-      <main className="max-w-[960px] mx-auto px-6 py-6 pb-16">
+      <main className="w-full mx-auto px-6 py-6 pb-16">
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-[0.82rem] text-text-muted mb-4">
           <Link to="/" className="text-primary-500 no-underline hover:underline">Home</Link><span>›</span>

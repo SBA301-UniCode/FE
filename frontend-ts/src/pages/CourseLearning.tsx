@@ -14,6 +14,7 @@ const unwrap = (res: unknown) => { const r = res as { data?: { data?: unknown } 
 const getContentId = (c: AnyObj | null | undefined) => ((c?.contentId || c?.id || '') as string)
 const isTrackableContentId = (v: string) => v.length > 0 && !v.startsWith('doc-') && !v.startsWith('quiz-')
 const getVideoContentId = (v: AnyObj | null | undefined) => String(v?.contentId ?? (v?.content as AnyObj)?.contentId ?? v?.id ?? '')
+const getVideoId = (v: AnyObj | null | undefined) => String(v?.videoId ?? v?.idVideo ?? v?.videoID ?? '')
 const normalizeId = (v: unknown) => String(v || '').trim().toLowerCase()
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000'
 const isValidId = (v: unknown) => { const n = normalizeId(v); return n.length > 0 && n !== ZERO_UUID && n !== 'null' && n !== 'undefined' }
@@ -182,11 +183,33 @@ const CourseLearning = () => {
         const cRes = await contentApi.getByLessonId(selectedLessonId).catch(() => null); if (c) return
         const contents = cRes ? (Array.isArray(unwrap(cRes)) ? (unwrap(cRes) as AnyObj[]).map(normalizeContent) : []) : []
         const vcList = contents.filter((ct) => (ct as AnyObj).contentType === 'VIDEO'); const vMap = new Map<string, AnyObj>()
-        if (vcList.length > 0) { try { const allRes = await videoApi.getAllActiveVideos(); const allV = Array.isArray(unwrap(allRes)) ? unwrap(allRes) as AnyObj[] : []; const validIds = new Set(vcList.map((ct) => getContentId(ct)).filter(isTrackableContentId).map(normalizeId)); allV.forEach((v) => { const nId = normalizeId(getVideoContentId(v)); if (validIds.has(nId)) vMap.set(nId, v) }); await Promise.all([...vMap.entries()].map(async ([cid, v]) => { const vid = (v?.videoId || v?.id) as string; if (!vid) return; try { const pr = await videoApi.getVideoPlaybackUrl(vid); const pp = unwrap(pr) as AnyObj; const pu = extractPlaybackUrl(pp); const pd = Number(pp?.duration); if (pu) vMap.set(cid, { ...v, url: pu, playbackDuration: pd }) } catch {} })) } catch {} }
+        if (vcList.length > 0) { try { const allRes = await videoApi.getAllActiveVideos(); const allV = Array.isArray(unwrap(allRes)) ? unwrap(allRes) as AnyObj[] : []; const validIds = new Set(vcList.map((ct) => getContentId(ct)).filter(isTrackableContentId).map(normalizeId)); allV.forEach((v) => { const nId = normalizeId(getVideoContentId(v)); if (validIds.has(nId)) vMap.set(nId, v) }); await Promise.all([...vMap.entries()].map(async ([cid, v]) => { const vid = getVideoId(v); if (!vid) return; try { const pr = await videoApi.getVideoPlaybackUrl(vid); const pp = unwrap(pr) as AnyObj; const pu = extractPlaybackUrl(pp); const pd = Number(pp?.duration); if (pu) vMap.set(cid, { ...v, url: pu, playbackDuration: pd }) } catch {} })) } catch {} }
         const dRes = await documentApi.getByLessonId(selectedLessonId).catch(() => null); if (c) return
-        const enriched = [...contents]; const docs = dRes ? (Array.isArray(unwrap(dRes)) ? unwrap(dRes) as AnyObj[] : []) : []; const docMap: Record<string, AnyObj> = {}; docs.forEach((d) => { const cid = normalizeId(d?.contentId); if (cid) docMap[cid] = d }); setDocumentsByLesson((p) => ({ ...p, [selectedLessonId]: docMap }))
-        setContentsByLesson((p) => ({ ...p, [selectedLessonId]: enriched })); setVideosByLesson((p) => ({ ...p, [selectedLessonId]: [...vMap.values()] }))
-        if (enriched.length > 0) { const rid = initialResumeRef.current?.contentId; const rc = rid ? enriched.find((ct) => normalizeId(getContentId(ct)) === rid) : null; const picked = rc || enriched[0]; setSelectedContent(picked); const pid = normalizeId(getContentId(picked)); setCurrentVideo((picked as AnyObj).contentType === 'VIDEO' ? vMap.get(pid) || null : null); initialResumeRef.current = { chapterId: '', lessonId: '', contentId: '' } } else { setSelectedContent(null); setCurrentVideo(null) }
+        const docs = dRes ? (Array.isArray(unwrap(dRes)) ? unwrap(dRes) as AnyObj[] : []) : []
+        const docMap: Record<string, AnyObj> = {}
+        docs.forEach((d) => { const cid = normalizeId(d?.contentId); if (cid) docMap[cid] = d })
+        setDocumentsByLesson((p) => ({ ...p, [selectedLessonId]: docMap }))
+
+        // Hide orphan VIDEO content rows (content exists but video was deleted/inactive).
+        const visibleContents = contents.filter((ct) => {
+          if ((ct as AnyObj).contentType !== 'VIDEO') return true
+          const cid = normalizeId(getContentId(ct))
+          return cid && vMap.has(cid)
+        })
+
+        setContentsByLesson((p) => ({ ...p, [selectedLessonId]: visibleContents }))
+        setVideosByLesson((p) => ({ ...p, [selectedLessonId]: [...vMap.values()] }))
+        if (visibleContents.length > 0) {
+          const rid = initialResumeRef.current?.contentId
+          const rc = rid ? visibleContents.find((ct) => normalizeId(getContentId(ct)) === rid) : null
+          const picked = rc || visibleContents[0]
+          setSelectedContent(picked)
+          const pid = normalizeId(getContentId(picked))
+          setCurrentVideo((picked as AnyObj).contentType === 'VIDEO' ? vMap.get(pid) || null : null)
+          initialResumeRef.current = { chapterId: '', lessonId: '', contentId: '' }
+        } else {
+          setSelectedContent(null); setCurrentVideo(null)
+        }
         setDocRead(false)
       } catch {} finally { if (!c) setRefreshingContent(false) }
     }; load(); return () => { c = true }
@@ -289,7 +312,7 @@ const CourseLearning = () => {
             {selectedLessonId && !selectedContent && currentContents.length === 0 && <div className="text-sm text-text-muted py-4">{t('learning.noContent')}</div>}
 
             {/* VIDEO */}
-            {selectedContent?.contentType === 'VIDEO' && <div className="flex flex-col gap-2">{currentVideo ? (getVideoUrl(currentVideo) ? <><div className="w-full bg-slate-950 rounded-2xl overflow-hidden border border-border-medium"><HlsCourseVideoPlayer src={getVideoUrl(currentVideo)} playbackVideoId={(currentVideo.videoId || currentVideo.id) as string} playbackDuration={currentVideo.playbackDuration as number} className="" onPlay={handleVideoPlay} onEnded={handleVideoEnded} /></div><div className="font-semibold text-base">{t('learning.videoLesson')}{currentVideo.duration ? ` · ${currentVideo.duration} ${t('learning.minutes')}` : ''}</div></> : <div className="text-sm text-text-muted py-4">{t('learning.noVideoUrl')}</div>) : <div className="text-sm text-text-muted py-4">{t('learning.noVideoUploaded')}</div>}</div>}
+            {selectedContent?.contentType === 'VIDEO' && <div className="flex flex-col gap-2">{currentVideo ? (getVideoUrl(currentVideo) ? <><div className="w-full bg-slate-950 rounded-2xl overflow-hidden border border-border-medium"><HlsCourseVideoPlayer src={getVideoUrl(currentVideo)} playbackVideoId={getVideoId(currentVideo)} playbackDuration={currentVideo.playbackDuration as number} className="" onPlay={handleVideoPlay} onEnded={handleVideoEnded} /></div><div className="font-semibold text-base">{t('learning.videoLesson')}{currentVideo.duration ? ` · ${currentVideo.duration} ${t('learning.minutes')}` : ''}</div></> : <div className="text-sm text-text-muted py-4">{t('learning.noVideoUrl')}</div>) : <div className="text-sm text-text-muted py-4">{t('learning.noVideoUploaded')}</div>}</div>}
 
             {/* DOCUMENT */}
             {selectedContent?.contentType === 'DOCUMENT' && <div className="bg-white border border-border-medium rounded-[18px] overflow-hidden"><div className="flex items-center gap-2.5 px-4 py-3 bg-bg-deep border-b border-border-subtle"><span className="text-xl">📄</span><h3 className="m-0 text-lg font-bold">{(selectedDoc?.title as string) || t('learning.documentTitle')}</h3></div><div className="px-4 py-5 text-text-secondary leading-relaxed text-sm">{(selectedDoc?.documentUrl) ? <><a href={selectedDoc.documentUrl as string} target="_blank" rel="noreferrer">📄 {t('learning.openDocument')}</a><button type="button" className="ml-3 bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] border-none text-white px-4 py-2 rounded-lg cursor-pointer text-[0.85rem]" onClick={async () => { try { const res = await watermarkApi.downloadWithWatermark((selectedDoc as AnyObj).documentId as string); const blob = new Blob([(res as { data: BlobPart }).data]); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; let fn = (selectedDoc?.title || 'document') as string; const cd = ((res as { headers?: Record<string, string> }).headers || {})['content-disposition']; if (cd) { const m = cd.match(/filename="?([^"]+)"?/); if (m?.[1]) fn = m[1] } else if (!fn.includes('.')) fn += '.pdf'; a.download = fn; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; alert(t('learning.downloadFailed') + ': ' + (err.response?.data?.message || err.message)) } }}>🔒 {t('learning.downloadWatermark')}</button></> : <><p>{t('learning.noDocUrl')}</p><p>{t('learning.noDocUrlHint')}</p></>}</div><div className="px-4 py-3 border-t border-border-subtle flex justify-center">{contentStatusMap[normalizeId(getContentId(selectedContent))] === 'COMPLETED' || docRead ? <div className="font-bold text-green-600 text-sm">✅ {t('learning.docRead')}</div> : <button type="button" className="px-5 py-2.5 rounded-xl font-bold text-sm border-none cursor-pointer bg-primary-500 text-white transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]" onClick={handleMarkDocRead}>{t('learning.markDocRead')}</button>}</div></div>}

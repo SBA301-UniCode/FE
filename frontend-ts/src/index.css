@@ -91,6 +91,15 @@ div[class*="bg-[linear-gradient"] {
   padding-right: 10% !important;
 }
 
+/* Left role menu for Admin/Lecturer (desktop) */
+body.with-role-sidebar main {
+  padding-left: calc(10% + 248px) !important;
+}
+
+body.with-role-sidebar div[class*="bg-[linear-gradient"] {
+  padding-left: calc(10% + 248px) !important;
+}
+
 /* 3. Tab content grid: stable min-height prevents jumping on tab switch */
 main > .grid {
   min-height: 300px;
@@ -99,6 +108,13 @@ main > .grid {
 /* 4. Tables: allow auto column sizing but prevent text overflow */
 table th, table td {
   word-break: break-word;
+}
+
+@media (max-width: 1024px) {
+  body.with-role-sidebar main,
+  body.with-role-sidebar div[class*="bg-[linear-gradient"] {
+    padding-left: 10% !important;
+  }
 }
 
 a {

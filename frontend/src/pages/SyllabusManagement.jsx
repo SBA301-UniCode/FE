@@ -111,8 +111,14 @@ const SyllabusManagement = () => {
       <main className="syllabus-main">
 
         <div className="syllabus-header">
-          <Link to="/my-courses" className="syllabus-btn syllabus-btn-ghost">← My Courses</Link>
-          <button type="button" className="syllabus-btn syllabus-btn-primary" onClick={openCreate}>+ Tạo Syllabus</button>
+          <div className="syllabus-header-info">
+            <h2>Danh sách đề cương</h2>
+            <p>Theo dõi nội dung, phương pháp giảng dạy và tài liệu tham khảo của từng khóa học.</p>
+          </div>
+          <div className="syllabus-header-actions">
+            <Link to="/my-courses" className="syllabus-btn syllabus-btn-ghost">← My Courses</Link>
+            <button type="button" className="syllabus-btn syllabus-btn-primary" onClick={openCreate}>+ Tạo Syllabus</button>
+          </div>
         </div>
 
         {showModal && (
@@ -162,11 +168,11 @@ const SyllabusManagement = () => {
                   <tbody>
                     {syllabuses.map((s) => (
                       <tr key={s.sylabusId}>
-                        <td>{s.courseTitle || '-'}</td>
-                        <td style={{ maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.courseContent || '-'}</td>
-                        <td>{s.method || '-'}</td>
-                        <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.referenceMaterial || '-'}</td>
-                        <td>
+                        <td className="syllabus-cell-course" title={s.courseTitle || '-'}>{s.courseTitle || '-'}</td>
+                        <td className="syllabus-cell-content" title={s.courseContent || '-'}>{s.courseContent || '-'}</td>
+                        <td className="syllabus-cell-method" title={s.method || '-'}>{s.method || '-'}</td>
+                        <td className="syllabus-cell-reference" title={s.referenceMaterial || '-'}>{s.referenceMaterial || '-'}</td>
+                        <td className="syllabus-cell-actions">
                           <div className="syllabus-actions-cell">
                             <button type="button" className="syllabus-btn syllabus-btn-sm syllabus-btn-ghost" onClick={() => openEdit(s)}>Sửa</button>
                             <button type="button" className="syllabus-btn syllabus-btn-sm syllabus-btn-danger" onClick={() => handleDelete(s)}>Xóa</button>

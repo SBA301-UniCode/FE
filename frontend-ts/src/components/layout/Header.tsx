@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/useAuth'
 import { useTranslation } from 'react-i18next'
 
 const Header = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAuthenticated, user, logout } = useAuth()
   const { t, i18n } = useTranslation()
   const [showRoleMenu, setShowRoleMenu] = useState(false)
@@ -28,12 +29,27 @@ const Header = () => {
   const roleLabel = roleCode === 'ADMIN' ? t('header.role.admin') : roleCode === 'INSTRUCTOR' ? t('header.role.instructor') : t('header.role.learner')
   const isLecturer = roleCode === 'INSTRUCTOR'
   const isAdmin = roleCode === 'ADMIN'
+  const hasRoleSidebar = isAuthenticated && (isAdmin || isLecturer)
 
   const handleLogout = () => {
     setShowUserMenu(false)
     logout()
     navigate('/login', { replace: true })
   }
+
+  useEffect(() => {
+    if (hasRoleSidebar) document.body.classList.add('with-role-sidebar')
+    else document.body.classList.remove('with-role-sidebar')
+    return () => document.body.classList.remove('with-role-sidebar')
+  }, [hasRoleSidebar])
+
+  const roleMenuItems = [
+    { to: '/courses', label: 'Overview', icon: '🏠' },
+    ...(isAdmin ? [{ to: '/admin', label: 'System Management', icon: '🛡️' }] : []),
+    { to: '/my-courses', label: 'Course Management', icon: '📚' },
+    { to: '/syllabuses', label: 'Syllabus', icon: '🧾' },
+    { to: '/verify-content', label: 'Content Verification', icon: '✅' },
+  ]
 
   const roleBadgeColors: Record<string, string> = {
     learner: 'bg-blue-50 text-blue-800',
@@ -68,32 +84,36 @@ const Header = () => {
         </Link>
 
         {/* Search */}
-        <div className="flex items-center gap-1.5 bg-[#F5F7F8] border border-border-medium rounded-full px-3 py-1.5 flex-1 max-w-[420px] transition-all focus-within:border-primary-500 focus-within:shadow-[0_0_0_3px_rgba(0,86,210,0.1)]">
-          <span className="text-[0.9rem] leading-none shrink-0">🔍</span>
-          <input
-            type="text"
-            className="border-none bg-transparent outline-none text-[0.9rem] font-[inherit] text-text-main w-full py-0.5 placeholder:text-text-muted"
-            placeholder={t('header.search')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleSearch}
-          />
-          {searchQuery && (
-            <button
-              className="bg-transparent border-none text-text-muted cursor-pointer text-[0.85rem] p-0.5 leading-none shrink-0 hover:text-text-main"
-              onClick={() => setSearchQuery('')}
-              type="button"
-            >
-              ✕
-            </button>
-          )}
-        </div>
+        {!hasRoleSidebar && (
+          <div className="flex items-center gap-1.5 bg-[#F5F7F8] border border-border-medium rounded-full px-3 py-1.5 flex-1 max-w-[420px] transition-all focus-within:border-primary-500 focus-within:shadow-[0_0_0_3px_rgba(0,86,210,0.1)]">
+            <span className="text-[0.9rem] leading-none shrink-0">🔍</span>
+            <input
+              type="text"
+              className="border-none bg-transparent outline-none text-[0.9rem] font-[inherit] text-text-main w-full py-0.5 placeholder:text-text-muted"
+              placeholder={t('header.search')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearch}
+            />
+            {searchQuery && (
+              <button
+                className="bg-transparent border-none text-text-muted cursor-pointer text-[0.85rem] p-0.5 leading-none shrink-0 hover:text-text-main"
+                onClick={() => setSearchQuery('')}
+                type="button"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Nav */}
         <nav className="flex items-center gap-1 flex-wrap max-md:hidden">
-          <NavLink to="/courses">{(isAdmin || isLecturer) ? t('header.dashboard') : t('header.courses')}</NavLink>
+          {!hasRoleSidebar && (
+            <NavLink to="/courses">{t('header.courses')}</NavLink>
+          )}
           {isAuthenticated ? (
-            isAdmin ? (
+            hasRoleSidebar ? null : isAdmin ? (
               <>
                 <NavLink to="/admin">{t('header.adminPanel')}</NavLink>
                 <NavLink to="/my-courses">{t('header.management')}</NavLink>
@@ -120,40 +140,44 @@ const Header = () => {
         {/* Actions */}
         <div className="flex items-center gap-3">
           {/* Language toggle */}
-          <button
-            type="button"
-            onClick={toggleLang}
-            className="px-2.5 py-1.5 rounded-full text-xs font-bold border border-border-medium bg-white cursor-pointer transition-all hover:bg-[#F5F7F8] hover:shadow-sm"
-            title={i18n.language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
-          >
-            🌐 {i18n.language === 'vi' ? 'EN' : 'VN'}
-          </button>
+          {!hasRoleSidebar && (
+            <button
+              type="button"
+              onClick={toggleLang}
+              className="px-2.5 py-1.5 rounded-full text-xs font-bold border border-border-medium bg-white cursor-pointer transition-all hover:bg-[#F5F7F8] hover:shadow-sm"
+              title={i18n.language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+            >
+              🌐 {i18n.language === 'vi' ? 'EN' : 'VN'}
+            </button>
+          )}
 
           {isAuthenticated ? (
             <>
               {/* Role badge */}
-              <div className="relative">
-                <button
-                  type="button"
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold border-none cursor-pointer uppercase tracking-wide transition-opacity hover:opacity-85 ${roleBadgeColors[roleCode.toLowerCase()] || ''}`}
-                  onClick={() => setShowRoleMenu(!showRoleMenu)}
-                  aria-expanded={showRoleMenu}
-                >
-                  {roleLabel}
-                </button>
-                {showRoleMenu && (
-                  <div className="absolute top-[calc(100%+6px)] right-0 min-w-[200px] bg-white rounded-[var(--radius-btn-lg)] shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-border-medium p-3 z-[101]">
-                    <div className="text-sm font-semibold text-text-main">{t('header.role', { role: roleLabel })}</div>
-                    <button
-                      type="button"
-                      className="mt-2 py-1 text-xs text-text-muted bg-transparent border-none cursor-pointer"
-                      onClick={() => setShowRoleMenu(false)}
-                    >
-                      {t('header.close')}
-                    </button>
-                  </div>
-                )}
-              </div>
+              {!hasRoleSidebar && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold border-none cursor-pointer uppercase tracking-wide transition-opacity hover:opacity-85 ${roleBadgeColors[roleCode.toLowerCase()] || ''}`}
+                    onClick={() => setShowRoleMenu(!showRoleMenu)}
+                    aria-expanded={showRoleMenu}
+                  >
+                    {roleLabel}
+                  </button>
+                  {showRoleMenu && (
+                    <div className="absolute top-[calc(100%+6px)] right-0 min-w-[200px] bg-white rounded-[var(--radius-btn-lg)] shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-border-medium p-3 z-[101]">
+                      <div className="text-sm font-semibold text-text-main">{t('header.role', { role: roleLabel })}</div>
+                      <button
+                        type="button"
+                        className="mt-2 py-1 text-xs text-text-muted bg-transparent border-none cursor-pointer"
+                        onClick={() => setShowRoleMenu(false)}
+                      >
+                        {t('header.close')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Action button */}
               {isLecturer && (
@@ -230,6 +254,61 @@ const Header = () => {
           </button>
         </div>
       </div>
+
+      {hasRoleSidebar && (
+        <aside className="hidden md:flex fixed left-0 top-16 h-[calc(100vh-64px)] w-[248px] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] border-r border-border-medium shadow-[3px_0_14px_rgba(0,0,0,0.05)] z-[90] flex-col">
+          <div className="px-4 pt-4 pb-3 border-b border-border-subtle bg-[linear-gradient(135deg,rgba(0,86,210,0.08),rgba(99,102,241,0.08))]">
+            <div className="flex items-center gap-2">
+              <span className="text-primary-500 text-[1.05rem] font-black">&lt;/&gt;</span>
+              <span className="text-[0.95rem] font-extrabold text-text-main">UniCode</span>
+            </div>
+            <div className="mt-2.5 inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white border border-border-subtle">
+              <span className="w-5 h-5 rounded-full bg-bg-deep border border-border-medium flex items-center justify-center text-text-secondary">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
+                </svg>
+              </span>
+              <span className="text-[0.74rem] font-bold text-text-main uppercase">{isAdmin ? 'Admin' : 'Lecturer'}</span>
+            </div>
+          </div>
+          <nav className="p-2.5 flex flex-col gap-1.5 overflow-y-auto">
+            {roleMenuItems.map((item) => {
+              const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`group px-3 py-2.5 rounded-xl no-underline text-[0.9rem] font-semibold transition-all flex items-center gap-2.5 ${
+                    active
+                      ? 'bg-[linear-gradient(135deg,rgba(0,86,210,0.16),rgba(99,102,241,0.14))] text-primary-600 border border-[rgba(0,86,210,0.26)] shadow-[0_4px_12px_rgba(0,86,210,0.12)]'
+                      : 'text-text-secondary hover:bg-white hover:text-text-main border border-transparent hover:border-border-subtle'
+                  }`}
+                >
+                  <span className={`w-7 h-7 rounded-lg grid place-items-center text-[0.95rem] transition-all ${active ? 'bg-white/80' : 'bg-bg-deep group-hover:bg-white'}`}>
+                    {item.icon}
+                  </span>
+                  {item.label}
+                </Link>
+              )
+            })}
+          </nav>
+          <div className="mt-auto p-3">
+            <div className="rounded-xl border border-border-subtle bg-white px-3 py-2.5 text-[0.78rem] text-text-muted">
+              <strong className="text-text-main">{roleLabel}</strong>
+              <div>Menu nhanh cho {isAdmin ? 'quản trị hệ thống' : 'giảng viên'}.</div>
+            </div>
+            <button
+              type="button"
+              onClick={toggleLang}
+              className="w-full mt-2 px-3 py-2 rounded-xl text-xs font-bold border border-border-medium bg-white cursor-pointer transition-all hover:bg-[#F5F7F8] hover:shadow-sm text-left"
+              title={i18n.language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+            >
+              🌐 Language: {i18n.language === 'vi' ? 'EN' : 'VI'}
+            </button>
+          </div>
+        </aside>
+      )}
 
       {/* Overlays */}
       {showRoleMenu && <div className="fixed inset-0 z-[99]" onClick={() => setShowRoleMenu(false)} aria-hidden />}

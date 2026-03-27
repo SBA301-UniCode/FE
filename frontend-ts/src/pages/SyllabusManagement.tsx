@@ -51,15 +51,14 @@ const SyllabusManagement = () => {
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       {/* Banner */}
-      <div className="bg-[linear-gradient(135deg,#0f766e_0%,#0d9488_50%,#14b8a6_100%)] px-6 py-6 pb-7 text-white">
-        <div className="max-w-[1600px] mx-auto">
-          <div className="flex items-center gap-1.5 text-[0.82rem] mb-2 text-white/70"><Link to="/" className="text-white/85 no-underline hover:underline">{t('syllabus.breadcrumbHome')}</Link><span>/</span><Link to="/my-courses" className="text-white/85 no-underline hover:underline">{t('syllabus.breadcrumbMyCourses')}</Link><span>/</span><span>{t('syllabus.breadcrumbSyllabus')}</span></div>
-          <h1 className="m-0 text-2xl font-extrabold">{t('syllabus.title')}</h1>
-          <p className="mt-1 mb-0 text-white/70 text-sm">{t('syllabus.desc')}</p>
+      <div className="bg-[linear-gradient(135deg,#0f766e_0%,#0d9488_50%,#14b8a6_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+        <div className="w-full max-w-[1320px] mx-auto">
+          <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('syllabus.title')}</h1>
+          <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('syllabus.desc')}</p>
         </div>
       </div>
 
-      <main className="w-full max-w-[1600px] mx-auto px-6 py-6 pb-16">
+      <main className="w-full max-w-[1320px] mx-auto px-6 py-4 pb-16">
         <div className="flex items-end justify-between mb-4 gap-3 flex-wrap">
           <div>
             <h2 className="m-0 text-lg font-extrabold text-text-main">Danh sách giáo trình</h2>

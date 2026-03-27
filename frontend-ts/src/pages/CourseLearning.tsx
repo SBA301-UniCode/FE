@@ -17,7 +17,7 @@ const getVideoContentId = (v: AnyObj | null | undefined) => String(v?.contentId 
 const getVideoId = (v: AnyObj | null | undefined) => String(v?.videoId ?? v?.idVideo ?? v?.videoID ?? '')
 const normalizeId = (v: unknown) => String(v || '').trim().toLowerCase()
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000'
-const isValidId = (v: unknown) => { const n = normalizeId(v); return n.length > 0 && n !== ZERO_UUID && n !== 'null' && n !== 'undefined' }
+const isValidId = (v: unknown) => { const n = normalizeId(v); return n.length > 0 && n !== ZERO_UUID && n !== 'null' && n !== 'undefined' && isUuid(n) }
 const extractProcessId = (item: AnyObj) => normalizeId(item?.id ?? item?.contentId ?? item?.lessonId ?? item?.chapterId ?? '')
 const extractStatus = (item: AnyObj) => (item?.statusContent ?? item?.status ?? 'NOT_STARTED') as string
 const getVideoUrl = (v: AnyObj | null) => { if (!v) return ''; const raw = (v.url ?? v.videoUrl ?? v.videoURL ?? v.video_url ?? v.secureUrl ?? v.secure_url ?? '') as string; const url = raw.trim(); if (!url) return ''; return url.startsWith('http://res.cloudinary.com/') ? `https://${url.slice(7)}` : url }
@@ -166,7 +166,7 @@ const CourseLearning = () => {
 
   useEffect(() => { let c = false; const resolve = async () => { if (enrollmentId || !courseId) return; for (const s of ['IN_PROGRESS', 'NOT_STARTED', 'COMPLETED'] as const) { try { const res = await enrollmentApi.getMyLearning(s, 0, 50); const page = unwrap(res) as AnyObj; const list = (Array.isArray(page?.content) ? page.content : Array.isArray(page?.data) ? page.data : Array.isArray(page) ? page : []) as AnyObj[]; const found = list.find((e) => (e?.courseResponse as AnyObj)?.courseId && String((e.courseResponse as AnyObj).courseId) === String(courseId)); if (!c && isValidId(found?.enrollmentId)) { setEnrollmentId(found!.enrollmentId as string); return } } catch { } } }; resolve(); return () => { c = true } }, [courseId, enrollmentId])
 
-  useEffect(() => { if (!courseId) return; let c = false; setLoading(true); setError(''); chapterApi.getByCourseId(courseId).then((res) => { if (c) return; const arr = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; setChapters(arr); if (arr.length > 0) { const rid = initialResumeRef.current?.chapterId; const rch = rid ? arr.find((ch) => normalizeId(ch.chapterId || ch.id) === rid) : null; setSelectedChapterId(((rch?.chapterId || rch?.id || arr[0].chapterId || arr[0].id || '') as string)) } }).catch((e: { response?: { data?: { message?: string } }; message?: string }) => { if (!c) setError(e.response?.data?.message || e.message || t('learning.loadChaptersFailed')) }).finally(() => { if (!c) setLoading(false) }); return () => { c = true } }, [courseId])
+  useEffect(() => { if (!isUuid(courseId)) return; let c = false; setLoading(true); setError(''); chapterApi.getByCourseId(courseId).then((res) => { if (c) return; const arr = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; setChapters(arr); if (arr.length > 0) { const rid = initialResumeRef.current?.chapterId; const rch = rid ? arr.find((ch) => normalizeId(ch.chapterId || ch.id) === rid) : null; setSelectedChapterId(((rch?.chapterId || rch?.id || arr[0].chapterId || arr[0].id || '') as string)) } }).catch((e: { response?: { data?: { message?: string } }; message?: string }) => { if (!c) setError(e.response?.data?.message || e.message || t('learning.loadChaptersFailed')) }).finally(() => { if (!c) setLoading(false) }); return () => { c = true } }, [courseId])
 
   useEffect(() => { refreshAllProgress() }, [refreshAllProgress])
   useEffect(() => { if (!enrollmentId || chapters.length === 0) return; chapters.forEach((ch) => refreshChapterProgress((ch.chapterId || ch.id) as string)) }, [enrollmentId, chapters, refreshChapterProgress])
@@ -296,7 +296,13 @@ const CourseLearning = () => {
 
           {/* Sidebar */}
           <aside className={`bg-white border-r border-border-medium h-[calc(100vh-64px)] sticky top-16 overflow-hidden transition-all duration-[350ms] ease-[cubic-bezier(0.4,0,0.2,1)] flex flex-col ${sidebarOpen ? 'w-[340px] min-w-[340px]' : 'w-0 min-w-0 border-r-0 p-0'}`}>
-            <div className="flex justify-between items-center px-5 pt-4 pb-2 shrink-0"><h2 className="m-0 text-base font-bold whitespace-nowrap">{t('learning.courseContent')}</h2><button type="button" className="bg-transparent border-none text-text-muted text-lg cursor-pointer p-0.5 rounded-md hover:text-text-main hover:bg-bg-deep" onClick={() => setSidebarOpen(false)}>✕</button></div>
+            <div className="px-5 pt-4 pb-0 shrink-0">
+              <Link to="/my-learning" className="inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-text-muted hover:text-primary-500 transition-colors no-underline mb-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                {t('learning.goBack', 'Quay lại Học tập của tôi')}
+              </Link>
+            </div>
+            <div className="flex justify-between items-center px-5 pt-1 pb-2 shrink-0"><h2 className="m-0 text-base font-bold whitespace-nowrap">{t('learning.courseContent')}</h2><button type="button" className="bg-transparent border-none text-text-muted text-lg cursor-pointer p-0.5 rounded-md hover:text-text-main hover:bg-bg-deep" onClick={() => setSidebarOpen(false)}>✕</button></div>
             {loading && <div className="px-5 py-4 text-[0.88rem] text-text-muted whitespace-nowrap">{t('learning.loading')}</div>}
             {error && <div className="px-5 py-4 text-[0.88rem] text-red-600">{error}</div>}
             {!loading && !error && (

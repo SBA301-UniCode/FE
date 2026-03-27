@@ -294,10 +294,10 @@ export default function Dashboard() {
   if (isAdmin) return (
     <div className="min-h-screen bg-bg-page text-text-main">
       <Header />
-      <div className="bg-[linear-gradient(135deg,#3730a3_0%,#4f46e5_52%,#6366f1_100%)] px-6 py-5 text-white">
-        <div className="w-full mx-auto">
-          <h1 className="m-0 text-[1.55rem] font-extrabold">{t('dashboard.adminTitle')}</h1>
-          <p className="mt-1 mb-0 text-white/75 text-[0.92rem]">{t('dashboard.adminSubtitle')}</p>
+      <div className="bg-[linear-gradient(135deg,#3f3bb8_0%,#4f46e5_52%,#6366f1_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+        <div className="w-full max-w-[1320px] mx-auto">
+          <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('dashboard.adminTitle')}</h1>
+          <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('dashboard.adminSubtitle')}</p>
         </div>
       </div>
 
@@ -468,10 +468,10 @@ export default function Dashboard() {
   if (isInstructor) return (
     <div className="min-h-screen bg-bg-page text-text-main">
       <Header />
-      <div className="bg-[linear-gradient(135deg,#065f46_0%,#059669_52%,#10b981_100%)] px-6 py-5 text-white">
-        <div className="w-full mx-auto">
-          <h1 className="m-0 text-[1.55rem] font-extrabold">{t('dashboard.instructorTitle')}</h1>
-          <p className="mt-1 mb-0 text-white/75 text-[0.92rem]">{t('dashboard.instructorSubtitle')}</p>
+      <div className="bg-[linear-gradient(135deg,#0d7a5f_0%,#11a87f_52%,#2bc292_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+        <div className="w-full max-w-[1320px] mx-auto">
+          <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('dashboard.instructorTitle')}</h1>
+          <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('dashboard.instructorSubtitle')}</p>
         </div>
       </div>
 

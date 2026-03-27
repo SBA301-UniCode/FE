@@ -296,7 +296,7 @@ const Courses = () => {
                         </div>
                         <button type="button" className="py-2.5 px-3 rounded-[var(--radius-btn)] border border-border-medium bg-transparent text-text-secondary font-bold cursor-pointer transition-colors hover:bg-[#F5F7F8] hover:border-border-strong" onClick={() => handleOpenDetail(id)}>{t('courses.viewDesc')}</button>
                         {enrolled ? (
-                          <Link to={`/learning/${id}`} className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white no-underline text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)]">{t('courses.enterCourse')}</Link>
+                          <Link to={`/learning/${courseSlugOrId(id, title)}`} className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white no-underline text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)]">{t('courses.enterCourse')}</Link>
                         ) : isFree(c.price) ? (
                           <button type="button" className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)] disabled:opacity-60" onClick={() => handleBuy(c)} disabled={joiningId === id}>{joiningId === id ? t('courses.joining') : t('courses.joinFree')}</button>
                         ) : (
@@ -311,14 +311,39 @@ const Courses = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-8 py-4">
-                <button className="px-4 py-2 text-sm font-semibold font-[inherit] text-primary-500 bg-transparent border border-border-medium rounded-[var(--radius-btn)] cursor-pointer transition-colors hover:bg-[rgba(0,86,210,0.05)] hover:border-primary-500 disabled:opacity-40 disabled:cursor-not-allowed" disabled={currentPage === 0} onClick={() => setCurrentPage((p) => p - 1)}>{t('courses.prev')}</button>
-                <div className="flex gap-1">
+              <div className="flex items-center justify-center gap-3 mt-8 pb-4">
+                <button
+                  type="button"
+                  className="px-4 py-2 border border-border-medium rounded-lg text-sm font-semibold bg-white text-[#0052CC] hover:bg-primary-50 active:bg-primary-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-1.5"
+                  disabled={currentPage === 0}
+                  onClick={() => setCurrentPage((p) => p - 1)}>
+                  <span aria-hidden="true">&larr;</span> {t("courses.prev")}
+                </button>
+
+                <div className="flex items-center gap-1.5 mx-2">
                   {Array.from({ length: totalPages }, (_, i) => (
-                    <button key={i} className={`w-9 h-9 flex items-center justify-center text-sm font-semibold font-[inherit] rounded-[var(--radius-btn)] border border-transparent cursor-pointer transition-all ${currentPage === i ? 'bg-primary-500 text-white border-primary-500 hover:bg-primary-600' : 'text-text-secondary bg-transparent hover:bg-[#F5F7F8]'}`} onClick={() => setCurrentPage(i)}>{i + 1}</button>
+                    <button
+                      key={i}
+                      type="button"
+                      className={`min-w-[38px] h-[38px] flex items-center justify-center rounded-lg text-[0.95rem] font-bold cursor-pointer transition-all border ${
+                        currentPage === i
+                          ? 'bg-[#0052CC] text-white border-[#0052CC] shadow-md hover:bg-[#0047b3]'
+                          : 'bg-transparent text-text-main border-transparent hover:bg-gray-100'
+                      }`}
+                      onClick={() => setCurrentPage(i)}
+                    >
+                      {i + 1}
+                    </button>
                   ))}
                 </div>
-                <button className="px-4 py-2 text-sm font-semibold font-[inherit] text-primary-500 bg-transparent border border-border-medium rounded-[var(--radius-btn)] cursor-pointer transition-colors hover:bg-[rgba(0,86,210,0.05)] hover:border-primary-500 disabled:opacity-40 disabled:cursor-not-allowed" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage((p) => p + 1)}>{t('courses.next')}</button>
+
+                <button
+                  type="button"
+                  className="px-4 py-2 border border-border-medium rounded-lg text-sm font-semibold bg-white text-[#0052CC] hover:bg-primary-50 active:bg-primary-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-1.5"
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() => setCurrentPage((p) => p + 1)}>
+                  {t("courses.next")} <span aria-hidden="true">&rarr;</span>
+                </button>
               </div>
             )}
           </>

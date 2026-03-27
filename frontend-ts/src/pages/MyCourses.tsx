@@ -163,7 +163,7 @@ function LearnerMyCoursesView() {
                       [courseId]: Number(d?.percent ?? d?.progress ?? 0),
                     }));
                 })
-                .catch(() => {});
+                .catch(() => { });
             }
           });
         }
@@ -433,11 +433,11 @@ const MyCourses = () => {
     setForm(
       draft && draft.title
         ? {
-            ...EMPTY_FORM,
-            ...draft,
-            instructorId: draft.instructorId || user?.userId || "",
-            imageFile: null,
-          }
+          ...EMPTY_FORM,
+          ...draft,
+          instructorId: draft.instructorId || user?.userId || "",
+          imageFile: null,
+        }
         : { ...EMPTY_FORM, instructorId: user?.userId || "" },
     );
     setFormError("");
@@ -781,10 +781,10 @@ const MyCourses = () => {
                 {(form.price === "" ||
                   form.price === 0 ||
                   form.price === "0") && (
-                  <span className="text-[0.82rem] text-green-600 font-bold mt-0.5">
-                    {t("common.free")}
-                  </span>
-                )}
+                    <span className="text-[0.82rem] text-green-600 font-bold mt-0.5">
+                      {t("common.free")}
+                    </span>
+                  )}
               </label>
               <label className="flex flex-col gap-1 text-sm font-semibold">
                 {t("myCourses.imageLabel")}{" "}
@@ -927,23 +927,35 @@ const MyCourses = () => {
             </div>
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 mt-6">
+              <div className="flex items-center justify-center gap-3 mt-8 pb-4">
                 <button
                   type="button"
-                  className={btnGhost}
+                  className="px-4 py-2 border border-border-medium rounded-lg text-sm font-semibold bg-white text-[#0052CC] hover:bg-primary-50 active:bg-primary-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
                   disabled={currentPage === 0}
                   onClick={() => setCurrentPage(currentPage - 1)}>
                   {t("myCourses.paginationPrev")}
                 </button>
-                <span className="text-[0.88rem] text-text-secondary">
-                  {t("myCourses.paginationPage", {
-                    current: currentPage + 1,
-                    total: totalPages,
-                  })}
-                </span>
+                
+                <div className="flex items-center gap-1.5 mx-2">
+                  {Array.from({ length: totalPages }).map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className={`min-w-[38px] h-[38px] flex items-center justify-center rounded-lg text-[0.95rem] font-bold cursor-pointer transition-all border ${
+                        currentPage === idx 
+                          ? 'bg-[#0052CC] text-white border-[#0052CC] shadow-md hover:bg-[#0047b3]' 
+                          : 'bg-transparent text-text-main border-transparent hover:bg-gray-100'
+                      }`}
+                      onClick={() => setCurrentPage(idx)}
+                    >
+                      {idx + 1}
+                    </button>
+                  ))}
+                </div>
+
                 <button
                   type="button"
-                  className={btnGhost}
+                  className="px-4 py-2 border border-border-medium rounded-lg text-sm font-semibold bg-white text-[#0052CC] hover:bg-primary-50 active:bg-primary-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
                   disabled={currentPage + 1 >= totalPages}
                   onClick={() => setCurrentPage(currentPage + 1)}>
                   {t("myCourses.paginationNext")}

@@ -98,7 +98,7 @@ function CourseMindMap() {
   const handleAddNote = useCallback(() => { if (!selectedNode) return; const id = `note-${Date.now()}`; setGraphData((p) => ({ nodes: [...p.nodes, { id, label: t('mindmap.newNote'), type: 'USER_NOTE', group: (selectedNode.group || 0) + 1 }], links: [...p.links, { source: selectedNode.id, target: id }] })); setNotes((p) => ({ ...p, [id]: '' })); showToast(t('mindmap.noteAdded')) }, [selectedNode, showToast, t])
 
   const extractId = (nid: string) => { const p = nid.split('-'); return p.length > 1 ? p.slice(1).join('-') : nid }
-  const getNodeUrl = useCallback((node: GNode) => { if (!node || !courseId) return null; const eid = extractId(node.id); const b = `/learning/${courseId}`; switch (node.type) { case 'CHAPTER': return `${b}?chapterId=${eid}`; case 'LESSON': return `${b}?lessonId=${eid}`; case 'VIDEO': case 'DOCUMENT': case 'QUIZ': return `${b}?contentId=${eid}`; default: return null } }, [courseId])
+  const getNodeUrl = useCallback((node: GNode) => { if (!node || !courseId) return null; const eid = extractId(node.id); const b = `/learning/${courseSlug || courseId}`; switch (node.type) { case 'CHAPTER': return `${b}?chapterId=${eid}`; case 'LESSON': return `${b}?lessonId=${eid}`; case 'VIDEO': case 'DOCUMENT': case 'QUIZ': return `${b}?contentId=${eid}`; default: return null } }, [courseId, courseSlug])
   const handleGoToContent = useCallback(() => { if (!selectedNode) return; const u = getNodeUrl(selectedNode); if (u) navigate(u) }, [selectedNode, getNodeUrl, navigate])
 
 
@@ -139,7 +139,7 @@ function CourseMindMap() {
       <Header />
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-5 py-3 bg-[rgba(17,22,57,0.85)] backdrop-blur-2xl border-b border-indigo-500/20 z-10 shrink-0">
-        <Link to={`/learning/${courseId}`} className={`${btn} no-underline inline-flex items-center gap-1`}>{t('mindmap.back')}</Link>
+        <Link to={`/learning/${courseSlug || courseId}`} className={`${btn} no-underline inline-flex items-center gap-1`}>{t('mindmap.back')}</Link>
         <span className="text-base font-semibold text-indigo-200 mr-auto whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px]">🗺️ {courseName || 'Mind Map'}</span>
         <button className={btn} onClick={handleZoomIn}>🔍+</button>
         <button className={btn} onClick={handleZoomOut}>🔍−</button>

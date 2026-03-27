@@ -36,6 +36,13 @@ interface DaySummary { localDate: string; totalAmount: number; totalPayment: num
 export default function Dashboard() {
   const { user } = useAuth()
   const { t } = useTranslation()
+  const revenueKey = t('dashboard.revenue')
+  const transactionsKey = t('dashboard.transactions')
+  const successKey = t('dashboard.success')
+  const failedKey = t('dashboard.failed')
+  const chartAreaKey = t('dashboard.chartArea')
+  const chartBarKey = t('dashboard.chartBar')
+  const chartLineKey = t('dashboard.chartLine')
   const roles = (user?.roles || []).map((r) => (r as unknown as AnyObj).roleCode || (r as unknown as AnyObj).roleName || '').map(String)
   const isAdmin = roles.some((r) => r.toUpperCase() === 'ADMIN')
   const isInstructor = roles.some((r) => r.toUpperCase() === 'INSTRUCTOR')
@@ -270,15 +277,15 @@ export default function Dashboard() {
   /* ── Chart helpers ── */
   const chartData = daySummaries.map((d) => ({
     date: d.localDate,
-    'Doanh thu': d.totalAmount,
-    'Giao dịch': d.totalPayment,
-    'Thành công': d.success,
-    'Lỗi': d.error,
+    [revenueKey]: d.totalAmount,
+    [transactionsKey]: d.totalPayment,
+    [successKey]: d.success,
+    [failedKey]: d.error,
   }))
   const tooltipFormatter = (value: unknown, name: unknown) => {
     const label = String(name || '')
     const numeric = Number(value || 0)
-    return [label === 'Doanh thu' ? fmtMoney(numeric) : numeric, label] as [string | number, string]
+    return [label === revenueKey ? fmtMoney(numeric) : numeric, label] as [string | number, string]
   }
   const adminPeriodLabel =
     period === '7d'
@@ -355,9 +362,9 @@ export default function Dashboard() {
             {period === 'custom' && (
               <div className="px-5 pt-3 flex items-center gap-2 flex-wrap">
                 <label className="text-[0.78rem] text-text-muted font-semibold">{t('dashboard.from')}</label>
-                <input aria-label="Từ ngày" type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
+                <input aria-label={t('dashboard.from')} type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
                 <label className="text-[0.78rem] text-text-muted font-semibold">{t('dashboard.to')}</label>
-                <input aria-label="Đến ngày" type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
+                <input aria-label={t('dashboard.to')} type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
                 <button onClick={handleCustomApply} className="px-3 py-1 rounded-lg bg-indigo-600 text-white text-[0.78rem] font-semibold border-0 cursor-pointer hover:bg-indigo-700 transition-colors">{t('dashboard.apply')}</button>
               </div>
             )}
@@ -368,9 +375,9 @@ export default function Dashboard() {
                   <div className="flex justify-end mb-3">
                     <div className="flex gap-1.5">
                       {[
-                        { key: 'area', label: 'Area' },
-                        { key: 'bar', label: 'Bar' },
-                        { key: 'line', label: 'Line' },
+                        { key: 'area', label: chartAreaKey },
+                        { key: 'bar', label: chartBarKey },
+                        { key: 'line', label: chartLineKey },
                       ].map((kind) => (
                         <button
                           key={kind.key}
@@ -397,7 +404,7 @@ export default function Dashboard() {
                         <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
                         <Tooltip formatter={tooltipFormatter} />
                         <Legend />
-                        <Area type="monotone" dataKey="Doanh thu" stroke={chartColors.revenue} fill="url(#dashboardRevenueColor)" strokeWidth={2} />
+                        <Area type="monotone" dataKey={revenueKey} stroke={chartColors.revenue} fill="url(#dashboardRevenueColor)" strokeWidth={2} />
                       </AreaChart>
                     ) : chartType === 'bar' ? (
                       <BarChart data={chartData}>
@@ -406,7 +413,7 @@ export default function Dashboard() {
                         <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
                         <Tooltip formatter={tooltipFormatter} />
                         <Legend />
-                        <Bar dataKey="Doanh thu" fill={chartColors.revenue} radius={[6, 6, 0, 0]} />
+                        <Bar dataKey={revenueKey} fill={chartColors.revenue} radius={[6, 6, 0, 0]} />
                       </BarChart>
                     ) : (
                       <LineChart data={chartData}>
@@ -415,7 +422,7 @@ export default function Dashboard() {
                         <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
                         <Tooltip formatter={tooltipFormatter} />
                         <Legend />
-                        <Line type="monotone" dataKey="Doanh thu" stroke={chartColors.revenue} strokeWidth={2.5} dot={{ r: 3 }} />
+                        <Line type="monotone" dataKey={revenueKey} stroke={chartColors.revenue} strokeWidth={2.5} dot={{ r: 3 }} />
                       </LineChart>
                     )}
                   </ResponsiveContainer>
@@ -517,9 +524,9 @@ export default function Dashboard() {
             {instrPeriod === 'custom' && (
               <div className="px-5 pt-3 flex items-center gap-2 flex-wrap">
                 <label className="text-[0.78rem] text-text-muted font-semibold">{t('dashboard.from')}</label>
-                <input aria-label="Từ ngày" type="date" value={instrCustomFrom} onChange={(e) => setInstrCustomFrom(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
+                <input aria-label={t('dashboard.from')} type="date" value={instrCustomFrom} onChange={(e) => setInstrCustomFrom(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
                 <label className="text-[0.78rem] text-text-muted font-semibold">{t('dashboard.to')}</label>
-                <input aria-label="Đến ngày" type="date" value={instrCustomTo} onChange={(e) => setInstrCustomTo(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
+                <input aria-label={t('dashboard.to')} type="date" value={instrCustomTo} onChange={(e) => setInstrCustomTo(e.target.value)} className="px-2 py-1 rounded-lg border border-border-medium text-sm" />
                 <button onClick={() => { if (instrCustomFrom && instrCustomTo) loadInstructorRevenue(myCourses, 'custom', instrCustomFrom, instrCustomTo) }} className="px-3 py-1 rounded-lg bg-indigo-600 text-white text-[0.78rem] font-semibold border-0 cursor-pointer hover:bg-indigo-700 transition-colors">{t('dashboard.apply')}</button>
               </div>
             )}
@@ -528,8 +535,8 @@ export default function Dashboard() {
               {loadingInstrRevenue ? <p className="text-text-muted text-sm text-center py-8">{t('dashboard.loading')}</p> : (() => {
                 const instrChartData = instrDaySummaries.map((d) => ({
                   date: d.localDate,
-                  'Doanh thu': d.totalAmount,
-                  'Giao dịch': d.totalPayment,
+                  [revenueKey]: d.totalAmount,
+                  [transactionsKey]: d.totalPayment,
                 }))
                 if (instrChartData.length === 0) return <p className="text-text-muted text-sm text-center py-8">{t('dashboard.noData')}</p>
                 return (
@@ -537,9 +544,9 @@ export default function Dashboard() {
                     <div className="flex justify-end mb-3">
                       <div className="flex gap-1.5">
                         {[
-                          { key: 'area', label: 'Area' },
-                          { key: 'bar', label: 'Bar' },
-                          { key: 'line', label: 'Line' },
+                          { key: 'area', label: chartAreaKey },
+                          { key: 'bar', label: chartBarKey },
+                          { key: 'line', label: chartLineKey },
                         ].map((kind) => (
                           <button
                             key={kind.key}
@@ -566,7 +573,7 @@ export default function Dashboard() {
                           <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
                           <Tooltip formatter={tooltipFormatter} />
                           <Legend />
-                          <Area type="monotone" dataKey="Doanh thu" stroke={chartColors.revenue} fill="url(#instrRevenueColor)" strokeWidth={2} />
+                          <Area type="monotone" dataKey={revenueKey} stroke={chartColors.revenue} fill="url(#instrRevenueColor)" strokeWidth={2} />
                         </AreaChart>
                       ) : instrChartType === 'bar' ? (
                         <BarChart data={instrChartData}>
@@ -575,7 +582,7 @@ export default function Dashboard() {
                           <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
                           <Tooltip formatter={tooltipFormatter} />
                           <Legend />
-                          <Bar dataKey="Doanh thu" fill={chartColors.revenue} radius={[6, 6, 0, 0]} />
+                          <Bar dataKey={revenueKey} fill={chartColors.revenue} radius={[6, 6, 0, 0]} />
                         </BarChart>
                       ) : (
                         <LineChart data={instrChartData}>
@@ -584,7 +591,7 @@ export default function Dashboard() {
                           <YAxis tickFormatter={fmtShort} tick={{ fill: '#64748b', fontSize: 11 }} />
                           <Tooltip formatter={tooltipFormatter} />
                           <Legend />
-                          <Line type="monotone" dataKey="Doanh thu" stroke={chartColors.revenue} strokeWidth={2.5} dot={{ r: 3 }} />
+                          <Line type="monotone" dataKey={revenueKey} stroke={chartColors.revenue} strokeWidth={2.5} dot={{ r: 3 }} />
                         </LineChart>
                       )}
                     </ResponsiveContainer>

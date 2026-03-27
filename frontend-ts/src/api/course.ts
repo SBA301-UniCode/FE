@@ -6,7 +6,7 @@ const COURSES_BASE = '/api/v1/courses'
 
 export const courseApi = {
   getMyCourses: (params: Record<string, unknown> = {}): Promise<AxiosResponse<ApiResponse<PageResponse<Course>>>> =>
-    apiClient.get(COURSES_BASE, { params }),
+    apiClient.get(`${COURSES_BASE}/my-courses`, { params }),
   getById: (courseId: string): Promise<AxiosResponse<ApiResponse<Course>>> =>
     apiClient.get(`${COURSES_BASE}/${courseId}`),
   getAll: (page = 0, size = 10): Promise<AxiosResponse<ApiResponse<PageResponse<Course>>>> =>
@@ -23,4 +23,6 @@ export const courseApi = {
     apiClient.post(`${COURSES_BASE}/${courseId}/image`, data),
   delete: (courseId: string): Promise<AxiosResponse> =>
     apiClient.delete(`${COURSES_BASE}/${courseId}`),
+  active: (courseId: string): Promise<AxiosResponse> =>
+    apiClient.put(`${COURSES_BASE}/active/${courseId}`),
 }

@@ -11,6 +11,7 @@ const Header = () => {
   const [showRoleMenu, setShowRoleMenu] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [hideRoleSidebar, setHideRoleSidebar] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -31,6 +32,7 @@ const Header = () => {
   const isLecturer = roleCode === 'INSTRUCTOR'
   const isAdmin = roleCode === 'ADMIN'
   const hasRoleSidebar = isAuthenticated && (isAdmin || isLecturer)
+  const showDesktopRoleSidebar = hasRoleSidebar && !hideRoleSidebar
 
   const handleLogout = () => {
     setShowUserMenu(false)
@@ -39,10 +41,10 @@ const Header = () => {
   }
 
   useEffect(() => {
-    if (hasRoleSidebar) document.body.classList.add('with-role-sidebar')
+    if (showDesktopRoleSidebar) document.body.classList.add('with-role-sidebar')
     else document.body.classList.remove('with-role-sidebar')
     return () => document.body.classList.remove('with-role-sidebar')
-  }, [hasRoleSidebar])
+  }, [showDesktopRoleSidebar])
 
   const roleMenuItems: Array<{ to: string; labelKey: string; match?: (pathname: string, search: string) => boolean }> = [
     { to: '/courses', labelKey: 'header.dashboard' },
@@ -106,8 +108,8 @@ const Header = () => {
   }
 
   return (
-    <header className={`sticky top-0 z-100 bg-white border-b border-border-subtle shadow-[0_1px_6px_rgba(15,23,42,0.05)] ${hasRoleSidebar ? 'md:h-0 md:min-h-0 md:border-b-0 md:shadow-none md:bg-transparent' : ''}`}>
-      <div className={`max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4 ${hasRoleSidebar ? 'md:hidden' : ''}`}>
+    <header className={`sticky top-0 z-100 bg-white border-b border-border-subtle shadow-[0_1px_6px_rgba(15,23,42,0.05)] ${showDesktopRoleSidebar ? 'md:h-0 md:min-h-0 md:border-b-0 md:shadow-none md:bg-transparent' : ''}`}>
+      <div className={`max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4 ${showDesktopRoleSidebar ? 'md:hidden' : ''}`}>
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 text-primary-500 font-bold text-xl no-underline whitespace-nowrap hover:text-primary-600">
           <span className="text-[1.35rem] text-primary-500">&lt;/&gt;</span>
@@ -287,9 +289,18 @@ const Header = () => {
         </div>
       </div>
 
-      {hasRoleSidebar && (
+      {showDesktopRoleSidebar && (
         <aside className="hidden md:flex fixed left-0 top-0 h-screen w-[240px] bg-[linear-gradient(180deg,#dceaff_0%,#cde2ff_45%,#c3dcff_100%)] border-r border-blue-400/70 z-[90] flex-col shadow-[4px_0_30px_rgba(37,99,235,0.2)]">
           <div className="px-3.5 pt-3 pb-2 border-b border-blue-300/50 bg-transparent">
+            <div className="flex justify-end mb-1">
+              <button
+                type="button"
+                className="px-2 py-1 rounded-md border border-blue-300/70 bg-white/90 text-[0.72rem] font-semibold text-slate-700 cursor-pointer hover:bg-white transition-colors"
+                onClick={() => setHideRoleSidebar(true)}
+              >
+                {t('header.close')}
+              </button>
+            </div>
             <Link to="/courses" className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg no-underline text-blue-600 hover:bg-blue-50/90 transition-colors">
               <span className="text-[1.55rem] font-extrabold text-blue-600 leading-none">&lt;/&gt;</span>
               <span className="text-[1.25rem] font-black tracking-tight text-blue-700 leading-none">UniCode.com</span>
@@ -352,6 +363,15 @@ const Header = () => {
             </button>
           </div>
         </aside>
+      )}
+      {hasRoleSidebar && hideRoleSidebar && (
+        <button
+          type="button"
+          className="hidden md:flex fixed left-3 top-3 z-[95] px-3 py-2 rounded-lg border border-blue-300/70 bg-white text-[0.8rem] font-semibold text-blue-700 cursor-pointer shadow-[0_8px_20px_rgba(37,99,235,0.18)] hover:bg-blue-50 transition-colors"
+          onClick={() => setHideRoleSidebar(false)}
+        >
+          {t('header.openMenu')}
+        </button>
       )}
 
       {/* Overlays */}

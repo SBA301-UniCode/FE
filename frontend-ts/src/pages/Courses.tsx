@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/useAuth'
 import { courseSlugOrId } from '../utils/slug'
 import StarRating from '../components/StarRating'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 
 /* ── helpers ── */
 const extractList = (p: unknown): unknown[] => {
@@ -54,6 +55,13 @@ const extractSkills = (c: AnyObj) => {
   if (found.length === 0) return keywords.filter((k) => getCourseDesc(c).toLowerCase().includes(k.toLowerCase())).slice(0, 3)
   return found.slice(0, 3)
 }
+const getLanguage = (c: AnyObj) => {
+  const direct = String(c?.languageType || c?.language || '').trim()
+  if (direct) return direct
+  const skills = extractSkills(c)
+  const fromSkills = skills.find((s) => ['Java', 'Python', 'JavaScript', 'TypeScript', 'SQL', 'PHP', 'C++', 'C#', 'Go', 'Rust'].includes(s))
+  return fromSkills || 'General'
+}
 const estimateDuration = (c: AnyObj) => { const ch = Number(c?.chapterCount) || 0; return ch <= 0 ? null : `${Math.max(2, ch * 4)} hours` }
 const estimateLearners = (id: string) => { let hash = 0; for (let i = 0; i < String(id).length; i++) hash = (hash * 31 + String(id).charCodeAt(i)) & 0x7fffffff; return 200 + (hash % 3000) }
 
@@ -74,12 +82,13 @@ const SkeletonCard = () => (
 
 const Courses = () => {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [courses, setCourses] = useState<AnyObj[]>([])
   const [enrolledMap, setEnrolledMap] = useState<Record<string, boolean>>({})
+  const [bannedMap, setBannedMap] = useState<Record<string, boolean>>({})
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({})
   const [selectedCourseId, setSelectedCourseId] = useState('')
   const [feedbackByCourse, setFeedbackByCourse] = useState<Record<string, AnyObj[]>>({})
@@ -94,24 +103,39 @@ const Courses = () => {
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
   const [sortBy, setSortBy] = useState('default')
   const [filterLevel, setFilterLevel] = useState('All')
+  const [filterLanguage, setFilterLanguage] = useState('All')
+  const [filterRating, setFilterRating] = useState('All')
+  const [filterPrice, setFilterPrice] = useState('All')
+  const [enrolledOnly, setEnrolledOnly] = useState(false)
   const [currentPage, setCurrentPage] = useState(0)
   const ITEMS_PER_PAGE = 12
+
+  const languageOptions = useMemo(() => {
+    const langs = Array.from(new Set(courses.map((c) => getLanguage(c)).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+    return ['All', ...langs]
+  }, [courses])
 
   /* Filter/sort/search all happen client-side on the pre-fetched list — NO extra API calls */
   const filteredCourses = useMemo(() => {
     let result = [...courses]
     if (searchQuery.trim()) { const q = searchQuery.toLowerCase().trim(); result = result.filter((c) => (getCourseTitle(c) + ' ' + getCourseDesc(c)).toLowerCase().includes(q)) }
     if (filterLevel !== 'All') { filterLevel === 'Free' ? result = result.filter((c) => !c.price || Number(c.price) === 0) : result = result.filter((c) => guessLevel(c) === filterLevel) }
+    if (filterLanguage !== 'All') result = result.filter((c) => getLanguage(c) === filterLanguage)
+    if (filterPrice === 'Free') result = result.filter((c) => isFree(c.price))
+    if (filterPrice === 'Paid') result = result.filter((c) => !isFree(c.price))
+    if (filterRating === '4+') result = result.filter((c) => (ratingSummaryByCourse[getCourseKey(c)]?.avg || 0) >= 4)
+    if (filterRating === '3+') result = result.filter((c) => (ratingSummaryByCourse[getCourseKey(c)]?.avg || 0) >= 3)
+    if (enrolledOnly) result = result.filter((c) => enrolledMap[getCourseKey(c)] === true)
     if (sortBy === 'name-asc') result.sort((a, b) => getCourseTitle(a).localeCompare(getCourseTitle(b)))
     else if (sortBy === 'name-desc') result.sort((a, b) => getCourseTitle(b).localeCompare(getCourseTitle(a)))
     else if (sortBy === 'price-asc') result.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))
     else if (sortBy === 'price-desc') result.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0))
     else if (sortBy === 'rating') result.sort((a, b) => (ratingSummaryByCourse[getCourseKey(b)]?.avg || 0) - (ratingSummaryByCourse[getCourseKey(a)]?.avg || 0))
     return result
-  }, [courses, searchQuery, sortBy, filterLevel, ratingSummaryByCourse])
+  }, [courses, searchQuery, sortBy, filterLevel, filterLanguage, filterRating, filterPrice, enrolledOnly, ratingSummaryByCourse, enrolledMap])
 
   /* Reset to page 0 when filters change */
-  useEffect(() => { setCurrentPage(0) }, [searchQuery, sortBy, filterLevel])
+  useEffect(() => { setCurrentPage(0) }, [searchQuery, sortBy, filterLevel, filterLanguage, filterRating, filterPrice, enrolledOnly])
 
   /* Client-side pagination from filtered list */
   const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE)
@@ -147,6 +171,38 @@ const Courses = () => {
     }; run(); return () => { cancelled = true }
   }, [isAuthenticated, pagedCourses])
 
+  /* Check banned ONLY for visible page courses (max 12), with cache */
+  useEffect(() => {
+    const uid = ((user as AnyObj | null)?.userId || (user as AnyObj | null)?.id || '') as string
+    if (!isAuthenticated || !uid || pagedCourses.length === 0) return
+    let cancelled = false
+    const unchecked = pagedCourses.filter((c) => {
+      const id = getCourseKey(c)
+      return id && bannedMap[id] === undefined
+    })
+    if (unchecked.length === 0) return
+    const run = async () => {
+      const map: Record<string, boolean> = {}
+      for (let i = 0; i < unchecked.length; i += 6) {
+        const batch = unchecked.slice(i, i + 6)
+        await Promise.all(batch.map(async (c) => {
+          const id = getCourseKey(c)
+          if (!id) return
+          try {
+            const res = await enrollmentApi.isBanned({ userId: uid, coureId: id })
+            const data = unwrap(res)
+            map[id] = data === true || data === 'true'
+          } catch {
+            map[id] = false
+          }
+        }))
+      }
+      if (!cancelled) setBannedMap((prev) => ({ ...prev, ...map }))
+    }
+    run()
+    return () => { cancelled = true }
+  }, [isAuthenticated, user, pagedCourses, bannedMap])
+
   /* Load rating summary ONLY for visible page courses, with cache */
   useEffect(() => {
     if (pagedCourses.length === 0) return; let cancelled = false
@@ -178,7 +234,28 @@ const Courses = () => {
     try { const r = unwrap(await feedbackApi.canFeedback(courseId)); setCanFeedbackByCourse((p) => ({ ...p, [courseId]: r === true || r === 'true' })) } catch { setCanFeedbackByCourse((p) => ({ ...p, [courseId]: false })) }
   }
   const [joiningId, setJoiningId] = useState('')
-  const handleBuy = async (c: AnyObj) => { const id = (c?.courseId || c?.id) as string; if (!id) return; if (!isAuthenticated) { navigate('/login', { state: { from: '/courses', returnTo: isFree(c?.price) ? `/courses` : `/payment?courseId=${id}` } }); return }; if (isFree(c?.price)) { try { setJoiningId(id); await enrollmentApi.join(id); setEnrolledMap((p) => ({ ...p, [id]: true })) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; alert(err.response?.data?.message || err.message || 'Tham gia thất bại') } finally { setJoiningId('') }; return }; navigate(`/payment?courseId=${id}`, { state: { course: c } }) }
+  const handleBuy = async (c: AnyObj) => {
+    const id = (c?.courseId || c?.id) as string
+    if (!id) return
+    if (!isAuthenticated) { navigate('/login', { state: { from: '/courses', returnTo: isFree(c?.price) ? `/courses` : `/payment?courseId=${id}` } }); return }
+    try {
+      const uid = ((user as AnyObj | null)?.userId || (user as AnyObj | null)?.id || '') as string
+      if (uid) {
+        const res = await enrollmentApi.isBanned({ userId: uid, coureId: id })
+        const v = unwrap(res)
+        if (v === true || v === 'true') { toast.error('Bạn đã bị ban'); return }
+      }
+    } catch {
+      // ignore ban check failures
+    }
+    if (isFree(c?.price)) {
+      try { setJoiningId(id); await enrollmentApi.join(id); setEnrolledMap((p) => ({ ...p, [id]: true })) }
+      catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; toast.error(err.response?.data?.message || err.message || 'Tham gia thất bại') }
+      finally { setJoiningId('') }
+      return
+    }
+    navigate(`/payment?courseId=${id}`, { state: { course: c } })
+  }
   const handleOpenDetail = (courseId: string, title?: string) => { if (courseId) navigate(`/courses/${courseSlugOrId(courseId, title)}`) }
   const handleCreateFeedback = async (courseId: string) => { const draft = draftByCourse[courseId] || { comment: '', rating: 5 }; if (!draft.comment?.trim()) return; try { await feedbackApi.create(courseId, { comment: draft.comment.trim(), rating: clampRating(draft.rating) }); setDraftByCourse((p) => ({ ...p, [courseId]: { comment: '', rating: 5 } })); await Promise.all([loadFeedbackDetail(courseId), loadCanFeedback(courseId)]) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackErrorByCourse((p) => ({ ...p, [courseId]: err.response?.data?.message || err.message || 'Gửi bình luận thất bại.' })) } }
   const handleSaveEdit = async (courseId: string) => { const edit = editingByCourse[courseId]; if (!edit?.feedbackId || !edit.comment?.trim()) return; try { await feedbackApi.update(edit.feedbackId, { comment: edit.comment.trim(), rating: clampRating(edit.rating) }); setEditingByCourse((p) => ({ ...p, [courseId]: null })); await loadFeedbackDetail(courseId) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackErrorByCourse((p) => ({ ...p, [courseId]: err.response?.data?.message || err.message || 'Cập nhật bình luận thất bại.' })) } }
@@ -190,15 +267,25 @@ const Courses = () => {
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       <main className="w-full mx-auto px-6 py-9 pb-16">
-        <div className="mb-6">
-          <h1 className="m-0 text-[clamp(2rem,3.5vw,2.4rem)] font-black tracking-tight">{t('courses.pageTitle')}</h1>
-          <p className="mt-1 text-text-secondary">{t('courses.pageSubtitle')}</p>
+        <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="m-0 text-[clamp(2rem,3.5vw,2.4rem)] font-black tracking-tight">{t('courses.pageTitle')}</h1>
+            <p className="mt-1 text-text-secondary">{t('courses.pageSubtitle')}</p>
+          </div>
+          {!loading && !error && courses.length > 0 && (
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-primary-500/20 bg-primary-500/8">
+              <span className="text-[0.72rem] uppercase tracking-wide font-bold text-primary-500">{t('courses.totalLabel')}</span>
+              <span className="text-[1rem] leading-none font-extrabold text-primary-600">{filteredCourses.length}</span>
+              <span className="text-[0.82rem] font-semibold text-text-secondary">{t('courses.totalUnit')}</span>
+            </div>
+          )}
         </div>
 
         {!loading && !error && courses.length > 0 && (
           <>
             {/* Toolbar */}
-            <div className="flex items-center gap-3 mb-6 flex-wrap">
+            <div className="bg-white border border-border-medium rounded-2xl p-3.5 mb-6 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
+              <div className="flex items-center gap-3 flex-wrap">
               <div className="flex-1 min-w-[220px] flex items-center gap-2 bg-white border border-border-medium rounded-[var(--radius-btn)] px-3 py-2.5 transition-all focus-within:border-primary-500 focus-within:shadow-[0_0_0_3px_rgba(0,86,210,0.1)]">
                 <svg className="shrink-0 text-text-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg>
                 <input type="text" className="flex-1 bg-transparent border-none outline-none text-text-main text-[0.92rem] font-[inherit] placeholder:text-text-dim" placeholder={t('courses.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
@@ -212,7 +299,44 @@ const Courses = () => {
                 <option value="price-desc">{t('courses.sortPriceDesc')}</option>
                 <option value="rating">{t('courses.sortRating')}</option>
               </select>
-              <span className="text-[0.85rem] text-text-muted whitespace-nowrap">{t('courses.courseCount', { count: filteredCourses.length })}</span>
+              <button
+                type="button"
+                className="bg-bg-deep border border-border-medium rounded-[var(--radius-btn)] px-3 py-2.5 text-[0.84rem] font-semibold text-text-secondary cursor-pointer hover:bg-[#F5F7F8]"
+                onClick={() => {
+                  setSearchQuery('')
+                  setSortBy('default')
+                  setFilterLevel('All')
+                  setFilterLanguage('All')
+                  setFilterRating('All')
+                  setFilterPrice('All')
+                  setEnrolledOnly(false)
+                }}
+              >
+                {t('courses.resetFilters')}
+              </button>
+              </div>
+
+              <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-2.5">
+                <select className="bg-bg-page border border-border-medium rounded-xl px-3 py-2 text-[0.84rem] outline-none cursor-pointer" value={filterLanguage} onChange={(e) => setFilterLanguage(e.target.value)}>
+                  {languageOptions.map((lang) => <option key={lang} value={lang}>{lang === 'All' ? t('courses.filterLanguageAll') : `${t('courses.filterLanguage')}: ${lang}`}</option>)}
+                </select>
+                <select className="bg-bg-page border border-border-medium rounded-xl px-3 py-2 text-[0.84rem] outline-none cursor-pointer" value={filterRating} onChange={(e) => setFilterRating(e.target.value)}>
+                  <option value="All">{t('courses.filterStarAll')}</option>
+                  <option value="4+">{t('courses.filterStar4')}</option>
+                  <option value="3+">{t('courses.filterStar3')}</option>
+                </select>
+                <select className="bg-bg-page border border-border-medium rounded-xl px-3 py-2 text-[0.84rem] outline-none cursor-pointer" value={filterPrice} onChange={(e) => setFilterPrice(e.target.value)}>
+                  <option value="All">{t('courses.filterPriceAll')}</option>
+                  <option value="Free">{t('courses.filterPriceFree')}</option>
+                  <option value="Paid">{t('courses.filterPricePaid')}</option>
+                </select>
+                {isAuthenticated && (
+                  <label className="inline-flex items-center gap-2 bg-bg-page border border-border-medium rounded-xl px-3 py-2 text-[0.84rem] font-semibold text-text-secondary cursor-pointer">
+                    <input type="checkbox" checked={enrolledOnly} onChange={(e) => setEnrolledOnly(e.target.checked)} />
+                    {t('courses.filterEnrolledOnly')}
+                  </label>
+                )}
+              </div>
             </div>
 
             {/* Filter pills */}
@@ -244,10 +368,13 @@ const Courses = () => {
               {pagedCourses.map((c) => {
                 const id = getCourseKey(c)
                 const enrolled = enrolledMap[id]
+                const isBanned = bannedMap[id] === true
                 const imageUrl = getCourseImage(c)
                 const showImage = Boolean(imageUrl) && !brokenImages[id]
                 const title = getCourseTitle(c)
                 const ratingSummary = ratingSummaryByCourse[id] || { count: 0, avg: 0 }
+                const freeCourse = isFree(c.price)
+                const topRated = ratingSummary.count >= 3 && ratingSummary.avg >= 4.5
                 return (
                   <article key={id} className="bg-white border border-border-medium rounded-2xl flex flex-col h-[480px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-200 relative hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:border-primary-500 group">
                     {/* Image */}
@@ -277,6 +404,11 @@ const Courses = () => {
                           <Link to={`/courses/${courseSlugOrId(id, title)}`} className="no-underline text-inherit"><div className="font-extrabold text-lg leading-snug tracking-tight line-clamp-2">{title}</div></Link>
                           {enrolled && <span className="text-[0.73rem] px-2.5 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-600 whitespace-nowrap font-bold shrink-0">{t('courses.enrolled')}</span>}
                         </div>
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5 shrink-0">
+                          {freeCourse && <span className="text-[0.74rem] font-extrabold uppercase tracking-wide text-green-600">Free</span>}
+                          {topRated && <span className="text-[0.74rem] font-extrabold uppercase tracking-wide text-amber-600">Top rated</span>}
+                          {Number(c?.chapterCount) >= 0 && <span className="text-[0.74rem] font-semibold text-primary-600">{t('courses.chapterCount', { count: c.chapterCount as number })}</span>}
+                        </div>
                         {extractSkills(c).length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-0.5 max-h-[26px] overflow-hidden shrink-0">{extractSkills(c).map((s) => <span key={s} className="text-[0.72rem] font-semibold bg-blue-50 text-primary-500 px-2 py-0.5 rounded whitespace-nowrap">{s}</span>)}</div>
                         )}
@@ -291,12 +423,14 @@ const Courses = () => {
                       {/* Footer — always visible at bottom, never pushed off */}
                       <div className="shrink-0 pt-2 mt-auto flex flex-col gap-1.5">
                         <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-border-subtle">
-                          <span className={`font-extrabold text-lg ${isFree(c.price) ? 'text-green-600' : 'text-text-main'}`}>{formatPrice(c.price, t('common.free'))}</span>
-                          {Number(c?.chapterCount) >= 0 && <span className="text-[0.88rem] text-text-muted">{t('courses.chapterCount', { count: c.chapterCount as number })}</span>}
+                          <span className={`font-extrabold text-lg ${freeCourse ? 'text-green-600' : 'text-primary-600'}`}>{formatPrice(c.price, t('common.free'))}</span>
+                          {Number(c?.chapterCount) >= 0 && <span className="text-[0.82rem] font-semibold text-text-muted">{t('courses.chapterCount', { count: c.chapterCount as number })}</span>}
                         </div>
                         <button type="button" className="py-2.5 px-3 rounded-[var(--radius-btn)] border border-border-medium bg-transparent text-text-secondary font-bold cursor-pointer transition-colors hover:bg-[#F5F7F8] hover:border-border-strong" onClick={() => handleOpenDetail(id)}>{t('courses.viewDesc')}</button>
-                        {enrolled ? (
-                          <Link to={`/learning/${id}`} className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white no-underline text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)]">{t('courses.enterCourse')}</Link>
+                        {isBanned ? (
+                          <button type="button" className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border border-red-200 bg-red-50 text-red-700 cursor-not-allowed text-center" disabled>Đã bị ban</button>
+                        ) : enrolled ? (
+                          <Link to={`/learning/${courseSlugOrId(id, title)}`} className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white no-underline text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)]">{t('courses.enterCourse')}</Link>
                         ) : isFree(c.price) ? (
                           <button type="button" className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)] disabled:opacity-60" onClick={() => handleBuy(c)} disabled={joiningId === id}>{joiningId === id ? t('courses.joining') : t('courses.joinFree')}</button>
                         ) : (
@@ -311,14 +445,39 @@ const Courses = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-8 py-4">
-                <button className="px-4 py-2 text-sm font-semibold font-[inherit] text-primary-500 bg-transparent border border-border-medium rounded-[var(--radius-btn)] cursor-pointer transition-colors hover:bg-[rgba(0,86,210,0.05)] hover:border-primary-500 disabled:opacity-40 disabled:cursor-not-allowed" disabled={currentPage === 0} onClick={() => setCurrentPage((p) => p - 1)}>{t('courses.prev')}</button>
-                <div className="flex gap-1">
+              <div className="flex items-center justify-center gap-3 mt-8 pb-4">
+                <button
+                  type="button"
+                  className="px-4 py-2 border border-border-medium rounded-lg text-sm font-semibold bg-white text-[#0052CC] hover:bg-primary-50 active:bg-primary-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-1.5"
+                  disabled={currentPage === 0}
+                  onClick={() => setCurrentPage((p) => p - 1)}>
+                  <span aria-hidden="true">&larr;</span> {t("courses.prev")}
+                </button>
+
+                <div className="flex items-center gap-1.5 mx-2">
                   {Array.from({ length: totalPages }, (_, i) => (
-                    <button key={i} className={`w-9 h-9 flex items-center justify-center text-sm font-semibold font-[inherit] rounded-[var(--radius-btn)] border border-transparent cursor-pointer transition-all ${currentPage === i ? 'bg-primary-500 text-white border-primary-500 hover:bg-primary-600' : 'text-text-secondary bg-transparent hover:bg-[#F5F7F8]'}`} onClick={() => setCurrentPage(i)}>{i + 1}</button>
+                    <button
+                      key={i}
+                      type="button"
+                      className={`min-w-[38px] h-[38px] flex items-center justify-center rounded-lg text-[0.95rem] font-bold cursor-pointer transition-all border ${
+                        currentPage === i
+                          ? 'bg-[#0052CC] text-white border-[#0052CC] shadow-md hover:bg-[#0047b3]'
+                          : 'bg-transparent text-text-main border-transparent hover:bg-gray-100'
+                      }`}
+                      onClick={() => setCurrentPage(i)}
+                    >
+                      {i + 1}
+                    </button>
                   ))}
                 </div>
-                <button className="px-4 py-2 text-sm font-semibold font-[inherit] text-primary-500 bg-transparent border border-border-medium rounded-[var(--radius-btn)] cursor-pointer transition-colors hover:bg-[rgba(0,86,210,0.05)] hover:border-primary-500 disabled:opacity-40 disabled:cursor-not-allowed" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage((p) => p + 1)}>{t('courses.next')}</button>
+
+                <button
+                  type="button"
+                  className="px-4 py-2 border border-border-medium rounded-lg text-sm font-semibold bg-white text-[#0052CC] hover:bg-primary-50 active:bg-primary-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-1.5"
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() => setCurrentPage((p) => p + 1)}>
+                  {t("courses.next")} <span aria-hidden="true">&rarr;</span>
+                </button>
               </div>
             )}
           </>

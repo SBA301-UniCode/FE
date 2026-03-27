@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 
 type AnyObj = Record<string, unknown>
 const unwrap = (res: unknown) => { const r = res as { data?: { data?: unknown } }; return r?.data?.data ?? r?.data ?? r }
-const getContentId = (c: AnyObj) => ((c?.contentId || c?.id || '') as string)
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v)
 const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
@@ -38,7 +37,6 @@ const QuizPage = () => {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [questions, setQuestions] = useState<QItem[]>([])
-  const [realContentId, setRealContentId] = useState<string | null>(null)
   const [phase, setPhase] = useState<'intro' | 'taking' | 'result'>('intro')
   const [currentIdx, setCurrentIdx] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -57,12 +55,9 @@ const QuizPage = () => {
       /* Step 1: resolve the real contentId for the QUIZ content */
       let examId = ''
       try {
-        const cRes = await contentApi.getByLessonId(lessonId)
-        const list = Array.isArray(unwrap(cRes)) ? unwrap(cRes) as AnyObj[] : []
-        const quiz = list.find((c) => c.contentType === 'QUIZ')
-        const id = getContentId(quiz as AnyObj)
-        if (isUuid(id)) { setRealContentId(id); examId = id }
-      } catch {}
+        const cRes = await contentApi.getByContentId(lessonId)
+        examId = cRes.data.data.contentId
+      } catch { }
       /* Step 2: try to get exam questions from examApi */
       let loaded = false
       if (examId) {
@@ -81,7 +76,7 @@ const QuizPage = () => {
             setQuestions(qItems.map((q) => ({ questionBankId: (q.questionBankId || q.questionId || q.id) as string, text: (q.questionText || q.text) as string, imageUrl: q.imageUrl as string | undefined, type: (q.questionType || q.type || 'MULTIPLE_CHOICE') as string, options: ((q.options || q.answers || []) as AnyObj[]).map((o) => ({ optionId: (o.optionId || o.answerId || o.id) as string, text: (o.answerText || o.text) as string, isCorrect: (o.isCorrect || o.correct) as boolean })) })))
             loaded = true
           }
-        } catch {}
+        } catch { }
       }
       /* Step 3: fallback to questionBankApi */
       if (!loaded) {
@@ -109,8 +104,8 @@ const QuizPage = () => {
     questions.forEach((q) => { const sel = answers[q.questionBankId]; const cor = q.options.find((o) => o.isCorrect); if (sel && cor && String(sel) === String(cor.optionId)) correct++ })
     const score = Math.round((correct / questions.length) * 100); const passed = score >= examPassScore
     setResult({ correct, total: questions.length, score, passed }); setPhase('result')
-    const tId = realContentId || contentId || ''; if (isUuid(tId) && enrollmentId) { processApi.trackContent({ contentId: tId, enrollmentId, status: (passed ? 'COMPLETED' : 'IN_PROCESS') as 'COMPLETED' | 'IN_PROCESS' }).then(() => { if (courseId) processApi.getCourseProgress({ courseId, enrollmentId }).catch(() => {}) }).catch(() => {}) }
-  }, [answers, questions, contentId, enrollmentId, realContentId, courseId])
+    const tId = contentId || ''; if (isUuid(tId) && enrollmentId) { processApi.trackContent({ contentId: tId, enrollmentId, status: (passed ? 'COMPLETED' : 'IN_PROCESS') as 'COMPLETED' | 'IN_PROCESS' }).then(() => { if (courseId) processApi.getCourseProgress({ courseId, enrollmentId }).catch(() => { }) }).catch(() => { }) }
+  }, [answers, questions, contentId, enrollmentId, courseId])
 
   useEffect(() => { if (phase === 'taking' && timeLeft <= 0) submitQuiz() }, [timeLeft, phase, submitQuiz])
 
@@ -154,13 +149,15 @@ const QuizPage = () => {
         {/* Review answers */}
         <div className="text-left mt-6">
           <h3 className="m-0 mb-4 text-lg font-bold text-center">{t('quiz.detailAnswers')}</h3>
-          {questions.map((q, i) => { const ua = answers[q.questionBankId]; const co = q.options.find((o) => o.isCorrect); const ok = ua && co && String(ua) === String(co.optionId); return (
-            <div key={q.questionBankId} className={`bg-bg-deep border border-border-medium rounded-[14px] p-4 mb-3 ${ok ? 'border-l-[3px] border-l-green-500' : 'border-l-[3px] border-l-red-500'}`}>
-              <div className="flex justify-between items-center mb-1"><span className="text-[0.82rem] font-bold text-text-muted">{t('quiz.questionNum', { num: i + 1 })}</span><span className={`text-[0.72rem] font-bold px-2 py-0.5 rounded-md ${ok ? 'bg-emerald-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{ok ? t('quiz.correct') : t('quiz.incorrect')}</span></div>
-              <p className="m-0 mb-2.5 text-sm font-semibold text-text-main leading-relaxed">{q.text}</p>
-              <div className="flex flex-col gap-1">{q.options.map((opt) => { let cls = 'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[0.88rem] text-text-secondary'; if (opt.isCorrect) cls += ' bg-emerald-50 text-green-600'; if (String(opt.optionId) === String(ua) && !opt.isCorrect) cls += ' bg-red-50 text-red-600'; return <div key={opt.optionId} className={cls}><span className="w-[18px] text-center font-bold text-[0.85rem] shrink-0">{opt.isCorrect ? '✓' : String(opt.optionId) === String(ua) ? '✗' : ''}</span><span>{opt.text}</span></div> })}</div>
-            </div>
-          ) })}
+          {questions.map((q, i) => {
+            const ua = answers[q.questionBankId]; const co = q.options.find((o) => o.isCorrect); const ok = ua && co && String(ua) === String(co.optionId); return (
+              <div key={q.questionBankId} className={`bg-bg-deep border border-border-medium rounded-[14px] p-4 mb-3 ${ok ? 'border-l-[3px] border-l-green-500' : 'border-l-[3px] border-l-red-500'}`}>
+                <div className="flex justify-between items-center mb-1"><span className="text-[0.82rem] font-bold text-text-muted">{t('quiz.questionNum', { num: i + 1 })}</span><span className={`text-[0.72rem] font-bold px-2 py-0.5 rounded-md ${ok ? 'bg-emerald-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{ok ? t('quiz.correct') : t('quiz.incorrect')}</span></div>
+                <p className="m-0 mb-2.5 text-sm font-semibold text-text-main leading-relaxed">{q.text}</p>
+                <div className="flex flex-col gap-1">{q.options.map((opt) => { let cls = 'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[0.88rem] text-text-secondary'; if (opt.isCorrect) cls += ' bg-emerald-50 text-green-600'; if (String(opt.optionId) === String(ua) && !opt.isCorrect) cls += ' bg-red-50 text-red-600'; return <div key={opt.optionId} className={cls}><span className="w-[18px] text-center font-bold text-[0.85rem] shrink-0">{opt.isCorrect ? '✓' : String(opt.optionId) === String(ua) ? '✗' : ''}</span><span>{opt.text}</span></div> })}</div>
+              </div>
+            )
+          })}
         </div>
         <div className="flex justify-center gap-3 mt-6"><button type="button" className={btnPrimary} onClick={startQuiz}>{t('quiz.retry')}</button><button type="button" className={btnGhost} onClick={goBack}>{t('quiz.backToCourse')}</button></div>
       </div>
@@ -179,12 +176,14 @@ const QuizPage = () => {
           {currentQ.type === 'MULTIPLE_CHOICE' && <span className="inline-block text-[0.72rem] font-semibold uppercase tracking-widest bg-purple-50 text-violet-600 px-2.5 py-0.5 rounded-md mb-3">{t('quiz.multipleChoice')}</span>}
           <div className="text-[1.08rem] font-semibold leading-relaxed mb-5 text-text-main">{currentQ.text}</div>
           {currentQ.imageUrl && <img src={currentQ.imageUrl} alt="" className="max-w-full rounded-xl mb-5" />}
-          <div className="flex flex-col gap-2.5 mb-5">{currentQ.options.map((opt, i) => { const sel = String(answers[currentQ.questionBankId]) === String(opt.optionId); return (
-            <button key={opt.optionId} type="button" className={`flex items-center gap-3 w-full text-left border rounded-[14px] px-4 py-3 cursor-pointer transition-all text-sm text-text-main ${sel ? 'bg-[rgba(0,86,210,0.06)] border-primary-500' : 'bg-white border-border-medium hover:bg-bg-deep hover:border-text-muted'}`} onClick={() => handleSelect(opt.optionId)}>
-              <span className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold text-[0.88rem] shrink-0 border ${sel ? 'bg-primary-500 text-white border-primary-500' : 'bg-bg-deep text-text-muted border-border-medium'}`}>{String.fromCharCode(65 + i)}</span>
-              <span className="flex-1 leading-snug">{opt.text}</span>
-            </button>
-          ) })}</div>
+          <div className="flex flex-col gap-2.5 mb-5">{currentQ.options.map((opt, i) => {
+            const sel = String(answers[currentQ.questionBankId]) === String(opt.optionId); return (
+              <button key={opt.optionId} type="button" className={`flex items-center gap-3 w-full text-left border rounded-[14px] px-4 py-3 cursor-pointer transition-all text-sm text-text-main ${sel ? 'bg-[rgba(0,86,210,0.06)] border-primary-500' : 'bg-white border-border-medium hover:bg-bg-deep hover:border-text-muted'}`} onClick={() => handleSelect(opt.optionId)}>
+                <span className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold text-[0.88rem] shrink-0 border ${sel ? 'bg-primary-500 text-white border-primary-500' : 'bg-bg-deep text-text-muted border-border-medium'}`}>{String.fromCharCode(65 + i)}</span>
+                <span className="flex-1 leading-snug">{opt.text}</span>
+              </button>
+            )
+          })}</div>
           <div className="flex justify-between items-center flex-wrap gap-2 border-t border-border-subtle pt-4">
             <button type="button" className={`${btnGhost} text-[0.82rem] px-3 py-1.5`} onClick={toggleFlag}>{flagged[currentQ.questionBankId] ? t('quiz.unflag') : t('quiz.flag')}</button>
             <div className="flex gap-2">

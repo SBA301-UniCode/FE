@@ -23,4 +23,16 @@ export const enrollmentApi = {
   isEnrolled(courseId: string): Promise<AxiosResponse> {
     return apiClient.get(`${ENROLLMENTS_BASE}/courses/${courseId}/me`)
   },
+  isBanned(payload: { userId: string; coureId: string }): Promise<AxiosResponse> {
+    return apiClient.post(`${ENROLLMENTS_BASE}/is-banned`, payload)
+  },
+  banLearner(payload: { userId: string; coureId: string }): Promise<AxiosResponse> {
+    return apiClient.post(`${ENROLLMENTS_BASE}/ban-learner`, payload)
+  },
+  openBanLearner(payload: { userId: string; coureId: string }): Promise<AxiosResponse> {
+    return apiClient.post(`${ENROLLMENTS_BASE}/open-ban-learner`, payload)
+  },
+  reportLearnersByCourse(courseId: string, params: { keysearch?: string; banned?: boolean; page?: number; size?: number }): Promise<AxiosResponse> {
+    return apiClient.get(`${ENROLLMENTS_BASE}/learners/${courseId}`, { params })
+  },
 }

@@ -6,6 +6,7 @@ import { courseApi, enrollmentApi, processApi } from "../api";
 import { useAuth } from "../contexts/useAuth";
 import { courseSlugOrId } from "../utils/slug";
 import { useTranslation } from "react-i18next";
+import toast from 'react-hot-toast';
 
 type AnyObj = Record<string, unknown>;
 const extractList = (p: unknown) => {
@@ -491,7 +492,7 @@ const MyCourses = () => {
       setCourses((p) => p.filter((x) => getCourseKey(x) !== id));
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message || "Error");
+      toast.error(err.response?.data?.message || "Error");
     }
   };
 

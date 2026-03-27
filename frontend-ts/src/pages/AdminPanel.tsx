@@ -52,7 +52,7 @@ function UsersTab() {
       if (form.password.length < 6) { setFormError(t('admin.validationPasswordMin')); return }
     }
     if (form.avatarUrl && !/^https?:\/\/.+/.test(form.avatarUrl.trim())) { setFormError(t('admin.validationAvatarUrl')); return }
-    setSaving(true); const roleCodes = form.roleCodes.split(',').map((s) => s.trim()).filter(Boolean); try { if (editing) { await userApi.update(editing.userId as string, { name: trimName, avatarUrl: form.avatarUrl?.trim() || undefined, active: true, roleCodes: roleCodes.length ? roleCodes : [] }) } else { await userApi.create({ email: form.email.trim(), password: form.password, name: trimName, avatarUrl: form.avatarUrl?.trim() || undefined, roleCodes: roleCodes }) }; setShowModal(false); setPage(0); load() } catch (err: unknown) { const e = err as { response?: { data?: { message?: string } }; message?: string }; setFormError(e.response?.data?.message || e.message || 'Lỗi') }; setSaving(false) }
+    setSaving(true); const roleCodes = form.roleCodes.split(',').map((s) => s.trim()).filter(Boolean); try { if (editing) { await userApi.update(editing.userId as string, { name: trimName, avatarUrl: form.avatarUrl?.trim() || undefined, active: true, roleCodes: roleCodes.length ? new Set(roleCodes) : undefined }) } else { await userApi.create({ email: form.email.trim(), password: form.password, name: trimName, avatarUrl: form.avatarUrl?.trim() || undefined, roleCodes: new Set(roleCodes) }) }; setShowModal(false); setPage(0); load() } catch (err: unknown) { const e = err as { response?: { data?: { message?: string } }; message?: string }; setFormError(e.response?.data?.message || e.message || 'Lỗi') }; setSaving(false) }
 
   const filteredUsers = searchQuery.trim() ? users.filter((u) => ((u.name as string) || '').toLowerCase().includes(searchQuery.toLowerCase()) || ((u.email as string) || '').toLowerCase().includes(searchQuery.toLowerCase())) : users
 
@@ -187,8 +187,8 @@ const AdminPanel = () => {
   return (
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
-      <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_50%,#4338ca_100%)] px-6 py-8 text-white"><div className="w-full mx-auto"><div className="flex items-center gap-1.5 text-[0.82rem] mb-2 text-white/65"><a href="/" className="text-white/85 no-underline hover:underline">{t('admin.breadcrumbHome')}</a><span>/</span><span>Admin</span></div><h1 className="m-0 text-2xl font-extrabold">{t('admin.dashboardTitle')}</h1><p className="mt-1 mb-0 text-white/70 text-sm">{t('admin.dashboardDesc')}</p></div></div>
-      <main className="w-full mx-auto px-6 py-6 pb-16">
+      <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_50%,#4338ca_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"><div className="w-full max-w-[1320px] mx-auto"><h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('admin.dashboardTitle')}</h1><p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('admin.dashboardDesc')}</p></div></div>
+      <main className="w-full mx-auto px-6 py-4 pb-16">
         <div className="flex gap-2 mb-6 flex-wrap">{TABS.map((t) => <button key={t.key} type="button" className={`px-4 py-2 rounded-xl font-bold border cursor-pointer transition-all text-sm ${tab === t.key ? 'bg-primary-500 text-white border-primary-500 shadow-[0_4px_12px_rgba(0,86,210,0.15)]' : 'bg-white text-text-secondary border-border-medium hover:bg-bg-deep'}`} onClick={() => setTab(t.key)}>{t.label}</button>)}</div>
         {tab === 'users' && <UsersTab />}
         {tab === 'roles' && <RolesTab />}

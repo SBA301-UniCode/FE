@@ -191,16 +191,16 @@ function LearnerMyCoursesView() {
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       {/* Hero */}
-      <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_40%,#4338ca_100%)] px-6 py-8 text-white">
-        <div className="w-full mx-auto">
-          <h1 className="m-0 text-2xl font-extrabold">{t('learnerCourses.title')}</h1>
-          <p className="mt-1 mb-0 text-white/70 text-sm">
+      <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_40%,#4338ca_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+        <div className="w-full max-w-[1320px] mx-auto">
+          <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('learnerCourses.title')}</h1>
+          <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">
             {t('learnerCourses.subtitle')}
           </p>
         </div>
       </div>
 
-      <main className="w-full mx-auto px-6 py-6 pb-16">
+      <main className="w-full mx-auto px-6 py-4 pb-16">
         {/* Tabs */}
         <div className="flex items-center gap-3 mb-6">
           <button
@@ -613,23 +613,23 @@ const MyCourses = () => {
       <Header />
       {/* Banner */}
       {canView && (
-        <div className="bg-[linear-gradient(135deg,#312e81_0%,#4338ca_50%,#6366f1_100%)] px-6 py-8 text-white">
-          <div className="w-full mx-auto flex items-center justify-between gap-6">
+        <div className="bg-[linear-gradient(135deg,#312e81_0%,#4338ca_50%,#6366f1_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+          <div className="w-full max-w-[1320px] mx-auto flex items-center justify-between gap-6">
             <div>
-              <h1 className="m-0 text-2xl font-extrabold">
+              <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">
                 {t("myCourses.instructorDashboard")}
               </h1>
-              <p className="mt-1 mb-0 text-white/70 text-sm">
+              <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">
                 {t("myCourses.dashboardDesc")}
               </p>
             </div>
-            <div className="flex gap-8">
+            <div className="flex gap-6">
               {[
                 { v: courses.length, l: "Courses" },
                 { v: totalChapters, l: "Chapters" },
               ].map((s) => (
                 <div key={s.l} className="flex flex-col items-center">
-                  <span className="text-3xl font-extrabold">{s.v}</span>
+                  <span className="text-2xl font-extrabold leading-tight">{s.v}</span>
                   <span className="text-[0.75rem] text-white/60 uppercase tracking-wider">
                     {s.l}
                   </span>
@@ -640,7 +640,7 @@ const MyCourses = () => {
         </div>
       )}
 
-      <main className="w-full mx-auto px-6 py-6 pb-16">
+      <main className="w-full mx-auto px-6 py-4 pb-16">
         <div className="flex items-end justify-between gap-4 mb-5 flex-wrap">
           <div />
           <div className="flex gap-3 flex-wrap">

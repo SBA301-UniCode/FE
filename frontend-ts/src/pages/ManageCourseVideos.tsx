@@ -205,7 +205,7 @@ const ManageCourseVideos = () => {
   return (
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
-      <div className="bg-[linear-gradient(135deg,#312e81_0%,#4338ca_50%,#6366f1_100%)] px-6 py-6 pb-7 text-white"><div className="w-full mx-auto"><div className="flex items-center gap-1.5 text-[0.82rem] mb-2 text-white/65"><Link to="/" className="text-white/85 no-underline hover:underline">{t('manageContent.breadcrumbHome')}</Link><span>/</span><Link to="/my-courses" className="text-white/85 no-underline hover:underline">{t('manageContent.breadcrumbMyCourses')}</Link><span>/</span><span>{t('manageContent.breadcrumbContent')}</span></div><h1 className="m-0 text-2xl font-extrabold">{t('manageContent.title')}</h1><p className="mt-1 mb-0 text-white/70 text-sm">{t('manageContent.desc')}</p></div></div>
+      <div className="bg-[linear-gradient(135deg,#312e81_0%,#4338ca_50%,#6366f1_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"><div className="w-full max-w-[1320px] mx-auto"><h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('manageContent.title')}</h1><p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('manageContent.desc')}</p></div></div>
 
       {/* ── Toast popup container ── */}
       <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none" style={{ maxWidth: '420px' }}>
@@ -219,7 +219,7 @@ const ManageCourseVideos = () => {
       </div>
       <style>{`@keyframes toastSlideIn { from { transform: translateX(100%); opacity: 0 } to { transform: translateX(0); opacity: 1 } }`}</style>
 
-      <main className="w-full mx-auto px-6 py-6 pb-16">
+      <main className="w-full mx-auto px-6 py-4 pb-16">
         <div className="flex items-center justify-between mb-4"><div /><Link to="/my-courses" className={`${btnG} no-underline`}>{t('manageContent.backMyCourses')}</Link></div>
         {error && <div className="bg-red-50 border border-red-200 rounded-[10px] px-4 py-3 text-red-600 text-sm mb-3">{error}</div>}
         {uploadError && <div className="bg-red-50 border border-red-200 rounded-[10px] px-4 py-3 text-red-600 text-sm mb-3">{uploadError}</div>}

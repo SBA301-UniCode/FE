@@ -4,8 +4,8 @@ import type { AxiosResponse } from 'axios'
 const ROLES_BASE = '/api/v1/roles'
 
 export const roleApi = {
-  getAll: (page = 0, size = 50): Promise<AxiosResponse> =>
-    apiClient.get(ROLES_BASE, { params: { page, size } }),
+  getAll: (page = 0, size = 50, deleted = false): Promise<AxiosResponse> =>
+    apiClient.get(ROLES_BASE, { params: { page, size, deleted } }),
   getById: (roleCode: string): Promise<AxiosResponse> =>
     apiClient.get(`${ROLES_BASE}/${roleCode}`),
   create: (data: Record<string, unknown>): Promise<AxiosResponse> =>

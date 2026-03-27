@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/useAuth'
 import { courseSlugOrId } from '../utils/slug'
 import StarRating from '../components/StarRating'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 
 /* ── helpers ── */
 const extractList = (p: unknown): unknown[] => {
@@ -81,12 +82,13 @@ const SkeletonCard = () => (
 
 const Courses = () => {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [courses, setCourses] = useState<AnyObj[]>([])
   const [enrolledMap, setEnrolledMap] = useState<Record<string, boolean>>({})
+  const [bannedMap, setBannedMap] = useState<Record<string, boolean>>({})
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({})
   const [selectedCourseId, setSelectedCourseId] = useState('')
   const [feedbackByCourse, setFeedbackByCourse] = useState<Record<string, AnyObj[]>>({})
@@ -169,6 +171,38 @@ const Courses = () => {
     }; run(); return () => { cancelled = true }
   }, [isAuthenticated, pagedCourses])
 
+  /* Check banned ONLY for visible page courses (max 12), with cache */
+  useEffect(() => {
+    const uid = ((user as AnyObj | null)?.userId || (user as AnyObj | null)?.id || '') as string
+    if (!isAuthenticated || !uid || pagedCourses.length === 0) return
+    let cancelled = false
+    const unchecked = pagedCourses.filter((c) => {
+      const id = getCourseKey(c)
+      return id && bannedMap[id] === undefined
+    })
+    if (unchecked.length === 0) return
+    const run = async () => {
+      const map: Record<string, boolean> = {}
+      for (let i = 0; i < unchecked.length; i += 6) {
+        const batch = unchecked.slice(i, i + 6)
+        await Promise.all(batch.map(async (c) => {
+          const id = getCourseKey(c)
+          if (!id) return
+          try {
+            const res = await enrollmentApi.isBanned({ userId: uid, coureId: id })
+            const data = unwrap(res)
+            map[id] = data === true || data === 'true'
+          } catch {
+            map[id] = false
+          }
+        }))
+      }
+      if (!cancelled) setBannedMap((prev) => ({ ...prev, ...map }))
+    }
+    run()
+    return () => { cancelled = true }
+  }, [isAuthenticated, user, pagedCourses, bannedMap])
+
   /* Load rating summary ONLY for visible page courses, with cache */
   useEffect(() => {
     if (pagedCourses.length === 0) return; let cancelled = false
@@ -200,7 +234,28 @@ const Courses = () => {
     try { const r = unwrap(await feedbackApi.canFeedback(courseId)); setCanFeedbackByCourse((p) => ({ ...p, [courseId]: r === true || r === 'true' })) } catch { setCanFeedbackByCourse((p) => ({ ...p, [courseId]: false })) }
   }
   const [joiningId, setJoiningId] = useState('')
-  const handleBuy = async (c: AnyObj) => { const id = (c?.courseId || c?.id) as string; if (!id) return; if (!isAuthenticated) { navigate('/login', { state: { from: '/courses', returnTo: isFree(c?.price) ? `/courses` : `/payment?courseId=${id}` } }); return }; if (isFree(c?.price)) { try { setJoiningId(id); await enrollmentApi.join(id); setEnrolledMap((p) => ({ ...p, [id]: true })) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; alert(err.response?.data?.message || err.message || 'Tham gia thất bại') } finally { setJoiningId('') }; return }; navigate(`/payment?courseId=${id}`, { state: { course: c } }) }
+  const handleBuy = async (c: AnyObj) => {
+    const id = (c?.courseId || c?.id) as string
+    if (!id) return
+    if (!isAuthenticated) { navigate('/login', { state: { from: '/courses', returnTo: isFree(c?.price) ? `/courses` : `/payment?courseId=${id}` } }); return }
+    try {
+      const uid = ((user as AnyObj | null)?.userId || (user as AnyObj | null)?.id || '') as string
+      if (uid) {
+        const res = await enrollmentApi.isBanned({ userId: uid, coureId: id })
+        const v = unwrap(res)
+        if (v === true || v === 'true') { toast.error('Bạn đã bị ban'); return }
+      }
+    } catch {
+      // ignore ban check failures
+    }
+    if (isFree(c?.price)) {
+      try { setJoiningId(id); await enrollmentApi.join(id); setEnrolledMap((p) => ({ ...p, [id]: true })) }
+      catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; toast.error(err.response?.data?.message || err.message || 'Tham gia thất bại') }
+      finally { setJoiningId('') }
+      return
+    }
+    navigate(`/payment?courseId=${id}`, { state: { course: c } })
+  }
   const handleOpenDetail = (courseId: string, title?: string) => { if (courseId) navigate(`/courses/${courseSlugOrId(courseId, title)}`) }
   const handleCreateFeedback = async (courseId: string) => { const draft = draftByCourse[courseId] || { comment: '', rating: 5 }; if (!draft.comment?.trim()) return; try { await feedbackApi.create(courseId, { comment: draft.comment.trim(), rating: clampRating(draft.rating) }); setDraftByCourse((p) => ({ ...p, [courseId]: { comment: '', rating: 5 } })); await Promise.all([loadFeedbackDetail(courseId), loadCanFeedback(courseId)]) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackErrorByCourse((p) => ({ ...p, [courseId]: err.response?.data?.message || err.message || 'Gửi bình luận thất bại.' })) } }
   const handleSaveEdit = async (courseId: string) => { const edit = editingByCourse[courseId]; if (!edit?.feedbackId || !edit.comment?.trim()) return; try { await feedbackApi.update(edit.feedbackId, { comment: edit.comment.trim(), rating: clampRating(edit.rating) }); setEditingByCourse((p) => ({ ...p, [courseId]: null })); await loadFeedbackDetail(courseId) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackErrorByCourse((p) => ({ ...p, [courseId]: err.response?.data?.message || err.message || 'Cập nhật bình luận thất bại.' })) } }
@@ -313,6 +368,7 @@ const Courses = () => {
               {pagedCourses.map((c) => {
                 const id = getCourseKey(c)
                 const enrolled = enrolledMap[id]
+                const isBanned = bannedMap[id] === true
                 const imageUrl = getCourseImage(c)
                 const showImage = Boolean(imageUrl) && !brokenImages[id]
                 const title = getCourseTitle(c)
@@ -371,7 +427,9 @@ const Courses = () => {
                           {Number(c?.chapterCount) >= 0 && <span className="text-[0.82rem] font-semibold text-text-muted">{t('courses.chapterCount', { count: c.chapterCount as number })}</span>}
                         </div>
                         <button type="button" className="py-2.5 px-3 rounded-[var(--radius-btn)] border border-border-medium bg-transparent text-text-secondary font-bold cursor-pointer transition-colors hover:bg-[#F5F7F8] hover:border-border-strong" onClick={() => handleOpenDetail(id)}>{t('courses.viewDesc')}</button>
-                        {enrolled ? (
+                        {isBanned ? (
+                          <button type="button" className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border border-red-200 bg-red-50 text-red-700 cursor-not-allowed text-center" disabled>Đã bị ban</button>
+                        ) : enrolled ? (
                           <Link to={`/learning/${courseSlugOrId(id, title)}`} className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white no-underline text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)]">{t('courses.enterCourse')}</Link>
                         ) : isFree(c.price) ? (
                           <button type="button" className="py-3 px-4 rounded-[var(--radius-btn)] font-bold text-base border-none cursor-pointer bg-green-600 text-white text-center transition-all shadow-[0_2px_8px_rgba(15,123,15,0.2)] hover:-translate-y-px hover:shadow-[0_10px_22px_rgba(16,185,129,0.42)] disabled:opacity-60" onClick={() => handleBuy(c)} disabled={joiningId === id}>{joiningId === id ? t('courses.joining') : t('courses.joinFree')}</button>

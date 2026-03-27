@@ -6,12 +6,20 @@ import { useTranslation } from 'react-i18next'
 const OAuthCallback = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { handleGoogleCallback } = useAuth()
+  const { handleGoogleCallback, user } = useAuth()
   const { t } = useTranslation()
 
   useEffect(() => {
+    const resolveByRole = (role?: string) => {
+      const r = String(role || '').toUpperCase()
+      if (r === 'ADMIN' || r === 'INSTRUCTOR') return '/courses'
+      if (r === 'LEARNER') return '/my-learning'
+      return '/'
+    }
+    const run = async () => {
     const accessToken = searchParams.get('accessToken')
     const refreshToken = searchParams.get('refreshToken')
+    const role = searchParams.get('role')
     const error = searchParams.get('error')
 
     if (error) {
@@ -20,12 +28,15 @@ const OAuthCallback = () => {
     }
 
     if (accessToken && refreshToken) {
-      handleGoogleCallback(accessToken, refreshToken)
-      navigate('/', { replace: true })
+      await handleGoogleCallback(accessToken, refreshToken)
+      const roleFromUser = (user?.roles as Array<{ roleCode?: string }> | undefined)?.[0]?.roleCode
+      navigate(resolveByRole(role || roleFromUser), { replace: true })
     } else {
       navigate('/login?error=missing_tokens', { replace: true })
     }
-  }, [searchParams, navigate, handleGoogleCallback])
+    }
+    run().catch(() => navigate('/login?error=google_login_failed', { replace: true }))
+  }, [searchParams, navigate, handleGoogleCallback, user])
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-bg-page">

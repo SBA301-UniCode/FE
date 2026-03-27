@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
 import { useAuth } from '../contexts/useAuth'
 import { subscriptionApi, courseApi, enrollmentApi } from '../api'
 import { useTranslation } from 'react-i18next'
@@ -281,6 +280,14 @@ export default function Dashboard() {
     const numeric = Number(value || 0)
     return [label === 'Doanh thu' ? fmtMoney(numeric) : numeric, label] as [string | number, string]
   }
+  const adminPeriodLabel =
+    period === '7d'
+      ? t('dashboard.period7d')
+      : period === '14d'
+        ? t('dashboard.period14d')
+        : period === '30d'
+          ? t('dashboard.period30d')
+          : (customFrom && customTo ? `${customFrom} - ${customTo}` : t('dashboard.periodCustom'))
 
   /* ── Status badge ── */
   const statusBadge = (s: string) => {
@@ -294,7 +301,7 @@ export default function Dashboard() {
   if (isAdmin) return (
     <div className="min-h-screen bg-bg-page text-text-main">
       <Header />
-      <div className="bg-[linear-gradient(135deg,#3f3bb8_0%,#4f46e5_52%,#6366f1_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+      <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_50%,#4338ca_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
         <div className="w-full max-w-[1320px] mx-auto">
           <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('dashboard.adminTitle')}</h1>
           <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('dashboard.adminSubtitle')}</p>
@@ -334,7 +341,7 @@ export default function Dashboard() {
           {/* Revenue chart */}
           <div className={`${cardBase} mb-4`}>
             <div className={`${cardHeader} flex items-center justify-between flex-wrap gap-2`}>
-              <span>{t('dashboard.revenueChart')}</span>
+              <span>{`${t('dashboard.revenue')} (${adminPeriodLabel})`}</span>
               {/* Period selector */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button className={pillBtn(period === '7d')} onClick={() => handlePeriodChange('7d')}>{t('dashboard.period7d')}</button>
@@ -434,7 +441,7 @@ export default function Dashboard() {
             <div className={cardBase}>
               <div className={`${cardHeader} flex items-center justify-between`}>
                 <span>{t('dashboard.recentTx')}</span>
-                <Link to="/admin" className="text-[0.78rem] text-primary-500 font-semibold no-underline hover:underline">{t('dashboard.viewAll')}</Link>
+                <Link to="/admin?tab=subscriptions" className="text-[0.78rem] text-primary-500 font-semibold no-underline hover:underline">{t('dashboard.viewAll')}</Link>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
@@ -460,7 +467,6 @@ export default function Dashboard() {
           </div>
         </div>}
       </main>
-      <Footer />
     </div>
   )
 
@@ -630,7 +636,6 @@ export default function Dashboard() {
           </div>
         </div>}
       </main>
-      <Footer />
     </div>
   )
 

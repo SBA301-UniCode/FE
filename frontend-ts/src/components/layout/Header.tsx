@@ -44,11 +44,19 @@ const Header = () => {
     return () => document.body.classList.remove('with-role-sidebar')
   }, [hasRoleSidebar])
 
-  const roleMenuItems = [
+  const roleMenuItems: Array<{ to: string; labelKey: string; match?: (pathname: string, search: string) => boolean }> = [
     { to: '/courses', labelKey: 'header.dashboard' },
-    ...(isAdmin ? [{ to: '/admin', labelKey: 'header.adminPanel' }] : []),
+    ...(isAdmin
+      ? [
+          { to: '/admin?tab=users', labelKey: 'header.adminUsers', match: (pathname: string, search: string) => pathname === '/admin' && new URLSearchParams(search).get('tab') === 'users' },
+          { to: '/admin?tab=roles', labelKey: 'header.adminRoles', match: (pathname: string, search: string) => pathname === '/admin' && new URLSearchParams(search).get('tab') === 'roles' },
+          { to: '/admin?tab=privileges', labelKey: 'header.adminPrivileges', match: (pathname: string, search: string) => pathname === '/admin' && new URLSearchParams(search).get('tab') === 'privileges' },
+          { to: '/admin?tab=subscriptions', labelKey: 'header.adminPayments', match: (pathname: string, search: string) => pathname === '/admin' && new URLSearchParams(search).get('tab') === 'subscriptions' },
+        ]
+      : []),
     { to: '/my-courses', labelKey: 'header.management' },
-    { to: '/syllabuses', labelKey: 'header.syllabuses' },
+    ...(!isAdmin ? [{ to: '/instructor/learners', labelKey: 'header.learnersManagement' }] : []),
+    ...(isLecturer ? [{ to: '/syllabuses', labelKey: 'header.syllabuses' }] : []),
     { to: '/verify-content', labelKey: 'header.verify' },
   ]
 
@@ -58,10 +66,32 @@ const Header = () => {
     admin: 'bg-orange-50 text-orange-800',
   }
 
+  const isPathActive = (to: string) => location.pathname === to || location.pathname.startsWith(`${to}/`)
+
   const NavLink = ({ to, children }: { to: string; children: ReactNode }) => (
     <Link
       to={to}
-      className="px-3 py-2 rounded-[var(--radius-btn)] text-sm font-semibold text-text-secondary no-underline transition-colors hover:bg-[rgba(0,86,210,0.06)] hover:text-primary-500"
+      aria-current={isPathActive(to) ? 'page' : undefined}
+      className={`px-3 py-2 rounded-[var(--radius-btn)] text-sm font-semibold no-underline transition-colors ${
+        isPathActive(to)
+          ? 'text-primary-600 bg-transparent shadow-[inset_0_-2px_0_0_#0056D2]'
+          : 'text-text-secondary hover:bg-[rgba(0,86,210,0.06)] hover:text-primary-500'
+      }`}
+    >
+      {children}
+    </Link>
+  )
+
+  const MobileNavLink = ({ to, onClick, children }: { to: string; onClick: () => void; children: ReactNode }) => (
+    <Link
+      to={to}
+      aria-current={isPathActive(to) ? 'page' : undefined}
+      className={`block no-underline px-3 py-2.5 rounded-[var(--radius-btn)] text-[0.95rem] font-semibold transition-colors ${
+        isPathActive(to)
+          ? 'text-primary-600 bg-transparent shadow-[inset_0_-2px_0_0_#0056D2]'
+          : 'text-text-secondary hover:bg-[rgba(0,86,210,0.06)] hover:text-primary-500'
+      }`}
+      onClick={onClick}
     >
       {children}
     </Link>
@@ -118,7 +148,6 @@ const Header = () => {
               <>
                 <NavLink to="/admin">{t('header.adminPanel')}</NavLink>
                 <NavLink to="/my-courses">{t('header.management')}</NavLink>
-                <NavLink to="/syllabuses">{t('header.syllabuses')}</NavLink>
                 <NavLink to="/verify-content">{t('header.verify')}</NavLink>
               </>
             ) : isLecturer ? (
@@ -218,7 +247,7 @@ const Header = () => {
                       {(isAdmin || isLecturer) && (
                         <>
                           <DropdownItem to="/my-courses" onClick={() => setShowUserMenu(false)}>{t('header.management')}</DropdownItem>
-                          <DropdownItem to="/syllabuses" onClick={() => setShowUserMenu(false)}>{t('header.syllabuses')}</DropdownItem>
+                          {isLecturer && <DropdownItem to="/syllabuses" onClick={() => setShowUserMenu(false)}>{t('header.syllabuses')}</DropdownItem>}
                           <DropdownItem to="/verify-content" onClick={() => setShowUserMenu(false)}>{t('header.verifyContent')}</DropdownItem>
                         </>
                       )}
@@ -259,8 +288,12 @@ const Header = () => {
       </div>
 
       {hasRoleSidebar && (
-        <aside className="hidden md:flex fixed left-0 top-0 h-screen w-[220px] bg-[linear-gradient(180deg,#f8fbff_0%,#f3f7ff_100%)] border-r border-indigo-100 z-[90] flex-col">
-          <div className="px-3.5 pt-3 pb-2 border-b border-border-subtle bg-bg-deep/55">
+        <aside className="hidden md:flex fixed left-0 top-0 h-screen w-[240px] bg-[linear-gradient(180deg,#dceaff_0%,#cde2ff_45%,#c3dcff_100%)] border-r border-blue-400/70 z-[90] flex-col shadow-[4px_0_30px_rgba(37,99,235,0.2)]">
+          <div className="px-3.5 pt-3 pb-2 border-b border-blue-300/50 bg-transparent">
+            <Link to="/courses" className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg no-underline text-blue-600 hover:bg-blue-50/90 transition-colors">
+              <span className="text-[1.55rem] font-extrabold text-blue-600 leading-none">&lt;/&gt;</span>
+              <span className="text-[1.25rem] font-black tracking-tight text-blue-700 leading-none">UniCode.com</span>
+            </Link>
             <div className="flex items-center gap-2 px-1 py-1.5 rounded-lg">
               <span className="w-8 h-8 rounded-full bg-white border border-border-medium flex items-center justify-center text-text-secondary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -273,7 +306,7 @@ const Header = () => {
                 <div className="text-[0.66rem] text-text-muted uppercase">{isAdmin ? 'Admin' : 'Lecturer'}</div>
               </div>
             </div>
-            <div className="mt-1 rounded-xl border border-border-subtle bg-white p-1 flex">
+            <div className="mt-1 rounded-xl border border-blue-300/60 bg-white/80 p-1 flex backdrop-blur-sm">
               <button
                 type="button"
                 onClick={() => setLang('vi')}
@@ -290,17 +323,18 @@ const Header = () => {
               </button>
             </div>
           </div>
-          <nav className="p-2 flex flex-col gap-1 overflow-y-auto">
+          <nav className="p-2.5 flex flex-col gap-1 overflow-y-auto">
             {roleMenuItems.map((item) => {
-              const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
+              const pathOnly = item.to.split('?')[0]
+              const active = item.match ? item.match(location.pathname, location.search) : (location.pathname === pathOnly || location.pathname.startsWith(`${pathOnly}/`))
               return (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`px-3 py-2.5 rounded-lg no-underline text-[0.84rem] font-semibold transition-all ${
+                  className={`px-3 py-2.5 rounded-xl no-underline text-[0.84rem] font-semibold transition-all ${
                     active
-                      ? 'bg-[linear-gradient(135deg,rgba(79,70,229,0.13),rgba(99,102,241,0.11))] text-indigo-700 border border-indigo-200'
-                      : 'text-text-secondary hover:bg-white hover:text-text-main border border-transparent'
+                    ? 'text-blue-900 bg-[linear-gradient(135deg,#ffffff,#e1efff)] border border-blue-400 shadow-[inset_0_-2px_0_0_#1D4ED8,0_10px_22px_rgba(37,99,235,0.22)]'
+                      : 'text-slate-800 hover:bg-[linear-gradient(135deg,#ffffff,#ecf4ff)] hover:text-slate-900 border border-transparent'
                   }`}
                 >
                   {t(item.labelKey)}
@@ -308,10 +342,10 @@ const Header = () => {
               )
             })}
           </nav>
-          <div className="mt-auto p-2.5 border-t border-border-subtle bg-bg-deep/45">
+          <div className="mt-auto p-2.5 border-t border-blue-300/50 bg-transparent">
             <button
               type="button"
-              className="w-full px-3 py-2 rounded-lg border border-border-medium bg-white text-[0.8rem] font-semibold text-text-secondary cursor-pointer hover:bg-bg-deep transition-colors"
+              className="w-full px-3 py-2 rounded-lg border border-blue-300/70 bg-white/90 text-[0.8rem] font-semibold text-slate-700 cursor-pointer hover:bg-white transition-colors"
               onClick={handleLogout}
             >
               {t('header.logout')}
@@ -344,7 +378,6 @@ const Header = () => {
                   <>
                     <MobileNavLink to="/admin" onClick={() => setShowMobileMenu(false)}>{t('header.adminPanel')}</MobileNavLink>
                     <MobileNavLink to="/my-courses" onClick={() => setShowMobileMenu(false)}>{t('header.management')}</MobileNavLink>
-                    <MobileNavLink to="/syllabuses" onClick={() => setShowMobileMenu(false)}>{t('header.syllabuses')}</MobileNavLink>
                     <MobileNavLink to="/verify-content" onClick={() => setShowMobileMenu(false)}>{t('header.verify')}</MobileNavLink>
                   </>
                 )}
@@ -379,15 +412,5 @@ const Header = () => {
     </header>
   )
 }
-
-const MobileNavLink = ({ to, onClick, children }: { to: string; onClick: () => void; children: ReactNode }) => (
-  <Link
-    to={to}
-    className="block text-text-secondary no-underline px-3 py-2.5 rounded-[var(--radius-btn)] text-[0.95rem] font-semibold transition-colors hover:bg-[rgba(0,86,210,0.06)] hover:text-primary-500"
-    onClick={onClick}
-  >
-    {children}
-  </Link>
-)
 
 export default Header

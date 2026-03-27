@@ -5,7 +5,7 @@ export interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   loading: boolean
-  login: (username: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string }>
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string; user?: User | null }>
   handleGoogleCallback: (accessToken: string, refreshToken: string) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<void>

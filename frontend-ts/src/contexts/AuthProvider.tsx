@@ -8,13 +8,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
-  const fetchUser = async () => {
+  const fetchUser = async (): Promise<User | null> => {
     try {
       const res = await userApi.getMe()
       const data = res.data?.data ?? res.data
-      setUser(data as User)
+      const me = data as User
+      setUser(me)
+      return me
     } catch {
       setUser(null)
+      return null
     }
   }
 
@@ -52,8 +55,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setIsAuthenticated(true)
-      await fetchUser()
-      return { success: true }
+      const me = await fetchUser()
+      return { success: true, user: me }
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string; errorCode?: string } } }
       return {
@@ -89,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     handleGoogleCallback,
     logout,
-    refreshUser: fetchUser,
+    refreshUser: async () => { await fetchUser() },
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

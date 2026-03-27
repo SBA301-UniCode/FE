@@ -97,6 +97,7 @@ const MyLearning = () => {
   const completedCount = enrollments.filter((e) => (progressByEnrollment[e.enrollmentId as string] ?? 0) >= 99.99).length
 
   const statusColors: Record<string, string> = { COMPLETED: 'bg-emerald-50 border-emerald-200 text-green-600', IN_PROGRESS: 'bg-blue-50 border-blue-200 text-blue-600', NOT_STARTED: 'bg-gray-100 border-gray-200 text-gray-500' }
+  const statusLabels: Record<string, string> = { COMPLETED: t('myLearning.tabCompleted'), IN_PROGRESS: t('myLearning.tabInProgress'), NOT_STARTED: t('myLearning.tabNotStarted') }
 
   return (
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
@@ -122,7 +123,14 @@ const MyLearning = () => {
             <div className="flex-1 py-5 pr-5 flex flex-col justify-center gap-2 max-[640px]:px-5">
               <span className="text-[0.75rem] font-bold text-primary-500 uppercase tracking-widest">{t('myLearning.continueLearning')}</span>
               <h2 className="m-0 text-xl font-extrabold leading-snug">{(cc.title as string) || t('courses.pageTitle')}</h2>
-              <div className="flex items-center gap-3"><div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-[260px]"><div className="h-full rounded-full bg-[linear-gradient(90deg,#22c55e,#84cc16)] transition-all duration-300" style={{ width: `${pct}%` }} /></div><span className="text-[0.82rem] font-semibold text-text-secondary">{t('myLearning.complete', { percent: pct })}</span></div>
+              {pct > 0 && (
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-[260px]">
+                    <div className="h-full rounded-full bg-[linear-gradient(90deg,#22c55e,#84cc16)] transition-all duration-300" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-[0.82rem] font-semibold text-text-secondary">{t('myLearning.complete', { percent: pct })}</span>
+                </div>
+              )}
               <button type="button" className="self-start px-5 py-2.5 bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white border-none rounded-[10px] font-bold text-sm cursor-pointer font-[inherit] shadow-[0_4px_12px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-0.5" onClick={() => handleContinueLearning(continueCourse)}>{t('myLearning.resume')}</button>
             </div>
           </div>
@@ -168,12 +176,12 @@ const MyLearning = () => {
                   </div>
                   <div className="flex items-start justify-between gap-3">
                     <div className="font-black text-[1.08rem] leading-snug tracking-tight line-clamp-2">{(course.title as string) || t('courses.pageTitle')}</div>
-                    <span className={`text-[0.72rem] font-extrabold tracking-wide px-2.5 py-0.5 rounded-full border whitespace-nowrap uppercase ${statusColors[displayStatus] || statusColors.IN_PROGRESS}`}>{displayStatus}</span>
+                    <span className={`text-[0.72rem] font-extrabold tracking-wide px-2.5 py-0.5 rounded-full border whitespace-nowrap uppercase ${statusColors[displayStatus] || statusColors.IN_PROGRESS}`}>{statusLabels[displayStatus] || displayStatus}</span>
                   </div>
                   {!!course.instructorName && <p className="m-0 text-[0.85rem] text-text-muted">{t('myLearning.instructor', { name: String(course.instructorName) })}</p>}
                   {!!course.description && <p className="m-0 text-text-secondary leading-relaxed text-[0.92rem] line-clamp-3">{String(course.description)}</p>}
                   <div className="flex items-center justify-between gap-3 mt-auto pt-1">{Number(chapterCount) >= 0 && <span className="text-[0.85rem] text-text-muted">{t('courses.chapterCount', { count: chapterCount })}</span>}<span className="text-[0.85rem] text-text-main font-semibold">{t('myLearning.progress', { percent: formatPercent(percent) })}</span></div>
-                  <div className="mt-1"><div className="w-full h-[7px] rounded-full bg-gray-200 overflow-hidden"><div className="h-full rounded-full bg-[linear-gradient(90deg,#22c55e_0%,#84cc16_100%)] transition-all duration-300" style={{ width: formatPercent(percent) }} /></div></div>
+                  {percent > 0 && <div className="mt-1"><div className="w-full h-[7px] rounded-full bg-gray-200 overflow-hidden"><div className="h-full rounded-full bg-[linear-gradient(90deg,#22c55e_0%,#84cc16_100%)] transition-all duration-300" style={{ width: formatPercent(percent) }} /></div></div>}
                   <div className="flex flex-col gap-2 mt-2">
                     {canFeedbackByCourse[courseId] && <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => setActiveCommentCourseId(courseId)}>{t('myLearning.comment')}</button>}
                     <button type="button" className="px-4 py-2.5 rounded-xl font-bold border-none bg-primary-500 text-white cursor-pointer shadow-[0_4px_12px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-px hover:bg-primary-600" onClick={() => handleContinueLearning(e)}>{t('myLearning.continueBtn')}</button>

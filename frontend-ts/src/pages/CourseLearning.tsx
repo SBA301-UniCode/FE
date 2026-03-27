@@ -23,11 +23,54 @@ const extractStatus = (item: AnyObj) => (item?.statusContent ?? item?.status ?? 
 const getVideoUrl = (v: AnyObj | null) => { if (!v) return ''; const raw = (v.url ?? v.videoUrl ?? v.videoURL ?? v.video_url ?? v.secureUrl ?? v.secure_url ?? '') as string; const url = raw.trim(); if (!url) return ''; return url.startsWith('http://res.cloudinary.com/') ? `https://${url.slice(7)}` : url }
 const extractPlaybackUrl = (p: unknown) => { if (!p) return ''; if (typeof p === 'string') return p; const o = p as AnyObj; return String(o.url || o.videoUrl || o.playbackUrl || o.signedUrl || '').trim() }
 const isHlsUrl = (url: string) => url.toLowerCase().includes('.m3u8')
-const extractPracticeStarterCode = (p: unknown) => { if (!p) return ''; const o = p as AnyObj; return String(o?.starterCode ?? o?.startCode ?? o?.starter_code ?? (o?.practice as AnyObj)?.starterCode ?? (o?.practiceExam as AnyObj)?.starterCode ?? '') }
+const extractJavaSolveFunction = (code: string) => {
+  const m = code.match(/(?:public|private|protected)?\s*(?:static\s+)?[\w<>\[\]]+\s+solve\s*\([^)]*\)\s*\{/m)
+  if (!m || m.index === undefined) return ''
+  const start = m.index
+  const open = code.indexOf('{', start)
+  if (open < 0) return ''
+  let depth = 0
+  for (let i = open; i < code.length; i++) {
+    if (code[i] === '{') depth++
+    else if (code[i] === '}') {
+      depth--
+      if (depth === 0) return code.slice(start, i + 1).trim()
+    }
+  }
+  return ''
+}
+const normalizeJavaCompileMessage = (msg: string, lineOffset = 5) =>
+  String(msg || '').replace(/Main\.java:(\d+):/g, (_m, n) => {
+    const line = Math.max(1, Number(n) - lineOffset)
+    return `Main.java:${line}:`
+  })
+const extractPracticeStarterCode = (p: unknown) => {
+  if (!p) return ''
+  const o = p as AnyObj
+  const raw = String(o?.starterCode ?? o?.startCode ?? o?.starter_code ?? (o?.practice as AnyObj)?.starterCode ?? (o?.practiceExam as AnyObj)?.starterCode ?? '').trim()
+  const lang = String(o?.language ?? (o?.practice as AnyObj)?.language ?? (o?.practiceExam as AnyObj)?.language ?? '').toLowerCase()
+  const isJava = lang === 'java'
+
+  if (!isJava) return raw
+  if (raw.includes('class Solution') && raw.includes('solve(')) return raw
+  const defaultSolve = [
+    'static String solve(int n) {',
+    '    // TODO: implement your logic',
+    '    return "";',
+    '}',
+  ].join('\n')
+  const solveFn = extractJavaSolveFunction(raw) || defaultSolve
+  return [
+    'class Solution {',
+    '',
+    `    ${solveFn.replace(/\n/g, '\n    ')}`,
+    '}',
+  ].join('\n')
+}
 const normalizeContent = (c: AnyObj) => ({ ...c, contentId: getContentId(c) })
 
 const CONTENT_ICONS: Record<string, string> = { VIDEO: '▶', DOCUMENT: '📄', QUIZ: '✏️', PRACTICE: '💻' }
-const STATUS_ICONS: Record<string, string> = { COMPLETED: '✅', IN_PROCESS: '🔵', NOT_STARTED: '○' }
+const STATUS_ICONS: Record<string, string> = { COMPLETED: '✓', IN_PROCESS: '•', NOT_STARTED: '○' }
 const LEARNING_STATE_KEY_PREFIX = 'unicode_learning_state_v1'
 const COURSE_PROGRESS_CACHE_KEY_PREFIX = 'unicode_course_progress_v1'
 
@@ -227,13 +270,37 @@ const CourseLearning = () => {
 
   const handleVideoPlay = () => { const cid = getContentId(selectedContent) || getVideoContentId(currentVideo); if (isTrackableContentId(cid)) trackContent(cid, 'IN_PROCESS') }
   const handleVideoEnded = () => { const cid = getContentId(selectedContent) || getVideoContentId(currentVideo); if (isTrackableContentId(cid)) trackContent(cid, 'COMPLETED') }
+  const handleToggleChapter = (chId: string) => {
+    if (selectedChapterId === chId) {
+      setSelectedChapterId('')
+      setSelectedLessonId('')
+      setSelectedContent(null)
+      setCurrentVideo(null)
+      return
+    }
+    setSelectedChapterId(chId)
+  }
   const findRealContentId = (ct: AnyObj | null) => { if (!ct) return ''; const cid = getContentId(ct); if (isTrackableContentId(cid)) return cid; if (ct._virtual && ct.contentType === 'DOCUMENT') { const docs = documentsByLesson[selectedLessonId]; if (docs) { const realDoc = Object.entries(docs).find(([, d]) => d); if (realDoc) return realDoc[0] } } const contents = contentsByLesson[selectedLessonId] || []; const real = contents.find((c) => (c as AnyObj).contentType === ct.contentType && isTrackableContentId(getContentId(c))); return real ? getContentId(real) : '' }
   const handleMarkDocRead = () => { const cid = findRealContentId(selectedContent); if (cid) { setDocRead(true); trackContent(cid, 'COMPLETED') } else { setDocRead(true) } }
   const handleGoToQuiz = () => { if (!selectedContent) return; const scid = getContentId(selectedContent); const qId = selectedContent._virtual ? selectedContent.lessonId as string : scid; const p = new URLSearchParams(); if (enrollmentId) p.set('enrollmentId', enrollmentId); if (courseId) p.set('courseId', courseId); const lid = (selectedContent.lessonId || selectedLessonId) as string; if (lid) p.set('lessonId', lid); if (selectedChapterId) p.set('chapterId', selectedChapterId); if (scid) p.set('contentId', scid); navigate(`/quiz/${qId}?${p.toString()}`) }
 
   useEffect(() => { let c = false; const load = async () => { if (selectedContent?.contentType !== 'PRACTICE') { setPracticeError(''); setPracticeSession(null); setPracticeCode(''); setPracticeResult(null); setPracticeSubmitError(''); return }; const cid = getContentId(selectedContent); if (!isTrackableContentId(cid)) { setPracticeError(t('learning.invalidContentId')); return }; setPracticeLoading(true); setPracticeError(''); try { const res = await practiceApi.startPractice(cid); if (c) return; const pp = unwrap(res) as AnyObj; setPracticeSession(pp || null); setPracticeCode(extractPracticeStarterCode(pp)); setPracticeResult(null); setPracticeSubmitError(''); trackContent(cid, 'IN_PROCESS') } catch (err: unknown) { if (c) return; setPracticeSession(null); setPracticeCode(''); const e = err as { response?: { data?: { message?: string } }; message?: string }; setPracticeError(e.response?.data?.message || e.message || t('learning.loadPracticeFailed')) } finally { if (!c) setPracticeLoading(false) } }; load(); return () => { c = true } }, [selectedContent])
 
-  const handleSubmitPractice = async () => { if (!practiceSession?.submissionId) { setPracticeSubmitError(t('learning.missingSubmissionId')); return }; setSubmittingPractice(true); setPracticeSubmitError(''); try { const res = await practiceApi.submitPractice({ submissionId: practiceSession.submissionId as string, learnerCode: practiceCode }); const pp = unwrap(res) as AnyObj; setPracticeResult(pp || null); const scid = getContentId(selectedContent); if (isTrackableContentId(scid) && Number(pp?.failed || 0) === 0) trackContent(scid, 'COMPLETED') } catch (err: unknown) { const e = err as { response?: { data?: { message?: string } }; message?: string }; setPracticeSubmitError(e.response?.data?.message || e.message || t('learning.submitPracticeFailed')); setPracticeResult(null) } finally { setSubmittingPractice(false) } }
+  const handleSubmitPractice = async () => {
+    if (!practiceSession?.submissionId) { setPracticeSubmitError(t('learning.missingSubmissionId')); return }
+    setSubmittingPractice(true); setPracticeSubmitError('')
+    try {
+      const codeToSubmit = practiceCode
+      const res = await practiceApi.submitPractice({ submissionId: practiceSession.submissionId as string, learnerCode: codeToSubmit })
+      const pp = unwrap(res) as AnyObj; setPracticeResult(pp || null)
+      const scid = getContentId(selectedContent); if (isTrackableContentId(scid) && Number(pp?.failed || 0) === 0) trackContent(scid, 'COMPLETED')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string }
+      const rawMsg = e.response?.data?.message || e.message || t('learning.submitPracticeFailed')
+      const msg = String(practiceSession?.language || '').toLowerCase() === 'java' ? normalizeJavaCompileMessage(rawMsg) : rawMsg
+      setPracticeSubmitError(msg); setPracticeResult(null)
+    } finally { setSubmittingPractice(false) }
+  }
 
   const getChapterTitle = (c: AnyObj) => (c?.title ?? c?.chapterTitle ?? t('learning.chapter')) as string
   const getLessonTitle = (l: AnyObj) => (l?.title ?? l?.lessonTitle ?? t('learning.lesson')) as string
@@ -259,11 +326,11 @@ const CourseLearning = () => {
   return (
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
-      <main className="w-full mx-auto pb-12">
+      <main className="course-learning-main w-full mx-auto pb-12">
         <div className={`grid ${sidebarOpen ? 'grid-cols-[340px_minmax(0,1fr)]' : 'grid-cols-[0px_minmax(0,1fr)]'} relative transition-all duration-[350ms] ease-[cubic-bezier(0.4,0,0.2,1)]`}>
           {sidebarOpen && <div className="hidden max-[768px]:block fixed inset-0 bg-black/30 z-[1050]" onClick={() => setSidebarOpen(false)} />}
           {/* Toggle – only visible when sidebar closed */}
-          {!sidebarOpen && <button type="button" className="fixed top-20 z-[1100] w-10 h-10 rounded-xl border border-border-medium bg-white text-text-secondary text-lg cursor-pointer flex items-center justify-center transition-all shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:bg-[rgba(0,86,210,0.06)] hover:border-primary-500 hover:text-primary-500 left-4" onClick={() => setSidebarOpen(true)} title={t('learning.openMenu')}>☰</button>}
+          {!sidebarOpen && <button type="button" className="fixed top-20 left-4 z-[1100] w-10 h-10 rounded-xl border border-border-medium bg-white text-text-secondary text-lg cursor-pointer flex items-center justify-center transition-all shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:bg-[rgba(0,86,210,0.06)] hover:border-primary-500 hover:text-primary-500" onClick={() => setSidebarOpen(true)} title={t('learning.openMenu')}>☰</button>}
 
           {/* Sidebar */}
           <aside className={`bg-white border-r border-border-medium h-[calc(100vh-64px)] sticky top-16 overflow-hidden transition-all duration-[350ms] ease-[cubic-bezier(0.4,0,0.2,1)] flex flex-col ${sidebarOpen ? 'w-[340px] min-w-[340px]' : 'w-0 min-w-0 border-r-0 p-0'}`}>
@@ -274,14 +341,16 @@ const CourseLearning = () => {
               <div className="flex-1 overflow-y-auto px-3 pb-4 pt-2 scrollbar-thin scrollbar-thumb-gray-300">
                 {chapters.map((ch) => { const chId = (ch.chapterId || ch.id) as string; const isActive = chId === selectedChapterId; const cpP = Math.round(getChapterPercent(chId)); const chSt = getChapterStatus(chId); return (
                   <div key={chId} className="mb-1">
-                    <button type="button" className={`w-full flex justify-between items-center gap-1.5 text-left px-2.5 py-2 rounded-[10px] border-none bg-transparent text-text-main text-[0.88rem] font-semibold cursor-pointer transition-all whitespace-nowrap hover:bg-bg-deep ${isActive ? 'bg-indigo-100 text-primary-500 border-l-[3px] border-l-primary-500 shadow-[inset_0_0_0_1px_rgba(99,102,241,0.2)]' : ''}`} onClick={() => setSelectedChapterId(chId)}>
+                    <button type="button" aria-current={isActive ? 'true' : undefined} className={`w-full flex justify-between items-center gap-1.5 text-left px-2.5 py-2 rounded-[10px] border-0 text-text-main text-[0.88rem] font-semibold cursor-pointer transition-all whitespace-nowrap hover:bg-bg-deep ${isActive ? 'bg-[rgba(0,86,210,0.12)] text-primary-600 border-l-4 border-l-primary-500 shadow-[inset_0_0_0_1px_rgba(0,86,210,0.18)] ring-2 ring-primary-500/25' : 'bg-transparent border-l-4 border-l-transparent'}`} onClick={() => handleToggleChapter(chId)}>
                       <span className="flex-1 overflow-hidden text-ellipsis">{getChapterTitle(ch)}</span>
-                      <span className={`text-[0.78rem] font-bold shrink-0 ${chSt === 'COMPLETED' ? 'text-green-600' : 'text-primary-500'}`}>{chSt === 'COMPLETED' ? '✅' : `${cpP}%`}</span>
+                      {chSt === 'COMPLETED'
+                        ? <span className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-300 text-[0.68rem] font-extrabold shadow-sm">✓</span>
+                        : <span className="text-[0.78rem] font-bold shrink-0 text-primary-500">{cpP}%</span>}
                     </button>
                     {isActive && (lessonsByChapter[chId] || []).map((lesson) => { const lId = (lesson.lessonId || lesson.id) as string; const isLActive = lId === selectedLessonId; const lContents = contentsByLesson[lId] || []; return (
                       <div key={lId} className="ml-2 mt-0.5">
-                        <button type="button" className={`w-full text-left border-none bg-transparent text-text-secondary text-[0.84rem] px-2 py-1.5 rounded-lg cursor-pointer font-medium whitespace-nowrap overflow-hidden text-ellipsis transition-all hover:bg-bg-deep ${isLActive ? 'bg-indigo-50 text-primary-500 font-bold border-l-[3px] border-l-primary-500' : ''}`} onClick={() => setSelectedLessonId(lId)}>{getLessonTitle(lesson)}</button>
-                        {isLActive && lContents.length > 0 && <ul className="list-none p-0 mt-0.5 mb-1 ml-4">{lContents.map((ct, idx) => <li key={getContentId(ct) || `${ct.contentType}-${idx}`}><button type="button" className={`w-full text-left border-none bg-transparent text-text-muted text-[0.78rem] px-1.5 py-0.5 rounded-md cursor-pointer flex items-center gap-1 transition-all whitespace-nowrap hover:bg-bg-deep ${getContentId(selectedContent) === getContentId(ct) ? 'bg-indigo-100 text-primary-500 font-semibold' : ''}`} onClick={() => handleSelectContent(ct)}><span className="text-[0.72rem] shrink-0">{CONTENT_ICONS[ct.contentType as string] || '•'}</span><span className="flex-1">{ct.contentType === 'VIDEO' ? 'Video' : ct.contentType === 'DOCUMENT' ? t('learning.document') : ct.contentType === 'PRACTICE' ? t('learning.practice') : t('learning.quiz')}</span><span className="text-[0.65rem] shrink-0">{getStatusIcon(getContentId(ct))}</span></button></li>)}</ul>}
+                        <button type="button" aria-current={isLActive ? 'true' : undefined} className={`w-full text-left border-0 text-[0.84rem] px-2 py-1.5 rounded-lg cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis transition-all hover:bg-bg-deep ${isLActive ? 'bg-[rgba(0,86,210,0.08)] text-primary-600 font-bold border-l-4 border-l-primary-500 shadow-sm' : 'bg-transparent text-text-secondary font-medium border-l-4 border-l-transparent'}`} onClick={() => setSelectedLessonId(lId)}>{getLessonTitle(lesson)}</button>
+                        {isLActive && lContents.length > 0 && <ul className="list-none p-0 mt-0.5 mb-1 ml-3 border-l-2 border-border-subtle pl-1.5">{lContents.map((ct, idx) => { const sel = normalizeId(getContentId(selectedContent)) === normalizeId(getContentId(ct)); const cStatus = contentStatusMap[normalizeId(getContentId(ct))] || 'NOT_STARTED'; return <li key={getContentId(ct) || `${ct.contentType}-${idx}`}><button type="button" aria-current={sel ? 'true' : undefined} className={`w-full text-left border-0 text-[0.78rem] px-2 py-1 rounded-md cursor-pointer flex items-center gap-1.5 transition-all whitespace-nowrap hover:bg-bg-deep ${sel ? 'bg-primary-500/12 text-primary-600 font-semibold border-l-4 border-l-primary-500' : 'bg-transparent text-text-muted border-l-4 border-l-transparent'}`} onClick={() => handleSelectContent(ct)}><span className="text-[0.72rem] shrink-0 w-5 text-center">{CONTENT_ICONS[ct.contentType as string] || '•'}</span><span className="flex-1 min-w-0 overflow-hidden text-ellipsis">{ct.contentType === 'VIDEO' ? 'Video' : ct.contentType === 'DOCUMENT' ? t('learning.document') : ct.contentType === 'PRACTICE' ? t('learning.practice') : t('learning.quiz')}</span><span className={`text-[0.65rem] shrink-0 ${cStatus === 'COMPLETED' ? 'text-emerald-600 font-bold' : cStatus === 'IN_PROCESS' ? 'text-primary-500' : 'text-text-muted'}`}>{getStatusIcon(getContentId(ct))}</span></button></li> })}</ul>}
                       </div>
                     ) })}
                   </div>
@@ -291,7 +360,7 @@ const CourseLearning = () => {
           </aside>
 
           {/* Main Content */}
-          <section className="px-6 py-5 flex flex-col gap-4 min-h-[calc(100vh-64px)]">
+          <section className={`pl-3 pr-2 sm:pl-4 sm:pr-3 md:px-5 ${sidebarOpen ? 'py-5' : 'pt-16 pb-5'} flex flex-col gap-4 min-h-[calc(100vh-64px)] min-w-0`}>
             {/* Progress header */}
             <div className="bg-white border border-border-medium rounded-2xl px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
               <div className="flex justify-between items-center mb-1">
@@ -302,7 +371,7 @@ const CourseLearning = () => {
             </div>
 
             {/* Chapter cards */}
-            {chapters.length > 0 && <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-300">{chapters.map((ch) => { const chId = (ch.chapterId || ch.id) as string; const pct = Math.round(getChapterPercent(chId)); const st = getChapterStatus(chId); return <button key={chId} type="button" className={`shrink-0 min-w-[150px] max-w-[200px] text-left bg-bg-deep border rounded-xl px-2.5 py-2 cursor-pointer transition-all text-text-secondary flex flex-col gap-0.5 hover:border-primary-500 hover:bg-white ${chId === selectedChapterId ? 'border-primary-500 bg-[rgba(0,86,210,0.04)]' : 'border-border-medium'} ${st === 'COMPLETED' ? '!border-green-600' : ''}`} onClick={() => setSelectedChapterId(chId)}><span className="text-[0.78rem] font-semibold overflow-hidden text-ellipsis whitespace-nowrap text-text-main">{getChapterTitle(ch)}</span><span className={`text-[0.72rem] font-bold ${pct >= 100 ? 'text-green-600' : 'text-primary-500'}`}>{pct}%</span><MiniBar percent={pct} color={pct >= 100 ? 'linear-gradient(90deg,#22c55e,#86efac)' : 'linear-gradient(90deg,#6366f1,#a5b4fc)'} /></button> })}</div>}
+            {chapters.length > 0 && <div className="flex gap-2.5 overflow-x-auto pb-1.5 pt-0.5 scrollbar-thin scrollbar-thumb-gray-300">{chapters.map((ch) => { const chId = (ch.chapterId || ch.id) as string; const pct = Math.round(getChapterPercent(chId)); const st = getChapterStatus(chId); const sel = chId === selectedChapterId; return <button key={chId} type="button" aria-current={sel ? 'true' : undefined} className={`shrink-0 min-w-[160px] max-w-[220px] text-left border-2 rounded-xl px-3 py-2.5 cursor-pointer transition-all flex flex-col gap-1 hover:border-primary-400 hover:bg-white ${sel ? 'border-primary-500 bg-white shadow-[0_4px_18px_rgba(0,86,210,0.12)] ring-2 ring-primary-500/20' : 'border-border-medium bg-bg-deep text-text-secondary'} ${st === 'COMPLETED' && !sel ? '!border-green-500/60' : ''} ${st === 'COMPLETED' && sel ? '!border-primary-500' : ''}`} onClick={() => handleToggleChapter(chId)}><span className={`text-[0.78rem] font-semibold overflow-hidden text-ellipsis whitespace-nowrap ${sel ? 'text-primary-600' : 'text-text-main'}`}>{getChapterTitle(ch)}</span><span className={`text-[0.72rem] font-bold ${pct >= 100 ? 'text-green-600' : 'text-primary-500'}`}>{pct}%</span><MiniBar percent={pct} color={pct >= 100 ? 'linear-gradient(90deg,#22c55e,#86efac)' : 'linear-gradient(90deg,#6366f1,#a5b4fc)'} /></button> })}</div>}
 
             {/* Certificate banners */}
             {cpct >= 100 && certChecked && !certDone && <div className="flex items-center justify-between gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 font-semibold flex-wrap"><span>{certLoading ? t('learning.certGenerating') : t('learning.certPreparing')}</span></div>}
@@ -321,8 +390,87 @@ const CourseLearning = () => {
             {selectedContent?.contentType === 'QUIZ' && <div className="bg-white border border-border-medium rounded-[18px] overflow-hidden"><div className="flex items-center gap-2.5 px-4 py-3 bg-purple-50 border-b border-border-subtle"><span className="text-xl">✏️</span><h3 className="m-0 text-lg font-bold">{t('learning.quiz')}</h3></div><div className="px-6 py-10 text-center flex flex-col items-center gap-1.5">{contentStatusMap[normalizeId(getContentId(selectedContent))] === 'COMPLETED' ? <><div className="text-[2.8rem] mb-0.5">✅</div><h4 className="m-0 text-lg font-bold">{t('learning.quizCompleted')}</h4><p className="m-0 text-text-muted text-[0.88rem]">{t('learning.quizRetryHint')}</p><button type="button" className="mt-1.5 px-7 py-2.5 rounded-xl font-bold text-sm border-none cursor-pointer bg-primary-500 text-white transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]" onClick={handleGoToQuiz}>{t('learning.retakeQuiz')}</button></> : <><div className="text-[2.8rem] mb-0.5">📝</div><h4 className="m-0 text-lg font-bold">{t('learning.quizReady')}</h4><div className="flex gap-1.5 items-center text-text-muted text-[0.82rem] mb-1"><span>{t('learning.quizTime')}</span><span>•</span><span>{t('learning.quizPassScore')}</span></div><button type="button" className="mt-1.5 px-7 py-2.5 rounded-xl font-bold text-sm border-none cursor-pointer bg-primary-500 text-white transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]" onClick={handleGoToQuiz}>{t('learning.startQuiz')}</button></>}</div></div>}
 
             {/* PRACTICE */}
-            {selectedContent?.contentType === 'PRACTICE' && <div className="bg-white border border-border-medium rounded-[18px] p-4"><div className="flex items-center gap-3 mb-4"><span className="text-2xl">💻</span><div><h3 className="m-0 text-lg font-bold">{(practiceSession?.title as string) || t('learning.practice')}</h3><p className="m-0 text-text-muted text-sm">{(practiceSession?.language as string) || 'N/A'} • {(practiceSession?.difficulty as string) || 'N/A'}</p></div></div>{practiceLoading && <div className="text-sm text-text-muted py-4">{t('learning.loadingPractice')}</div>}{!practiceLoading && practiceError && <div className="text-sm text-text-muted py-4">{practiceError}</div>}{!practiceLoading && !practiceError && practiceSession && <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><div><h4 className="m-0 mb-2 text-base font-bold">{t('learning.problemDesc')}</h4><p className="text-text-secondary text-sm leading-relaxed">{(practiceSession.description as string) || t('learning.noProblemDesc')}</p><h4 className="mt-4 mb-2 text-base font-bold">{t('learning.visibleTestCases')}</h4><div className="flex flex-col gap-2">{((practiceSession.visibleTestCases as AnyObj[]) || []).length === 0 && <p className="text-text-muted text-sm">{t('learning.noTestCases')}</p>}{((practiceSession.visibleTestCases as AnyObj[]) || []).map((tc, idx) => <div key={(tc.testcaseId as string) || idx} className="bg-bg-deep border border-border-subtle rounded-xl px-3 py-2 text-sm"><div className="font-semibold text-text-main mb-1">Case {idx + 1} · {String(tc.outputType)}</div><div><strong>Input:</strong> <code className="bg-gray-100 px-1 rounded">{String(tc.inputData || t('learning.empty'))}</code></div><div><strong>Expected:</strong> <code className="bg-gray-100 px-1 rounded">{String(tc.expectedOutput || t('learning.empty'))}</code></div>{!!tc.description && <div><strong>{t('learning.description')}:</strong> {String(tc.description)}</div>}</div>)}</div></div><div><div className="bg-slate-800 text-slate-300 rounded-t-xl px-3 py-2 text-sm font-semibold flex items-center gap-2"><span className="text-lg">⚡</span> Code Editor ({String(practiceSession.language)}) <span className="text-[0.72rem] bg-white/15 px-2 py-0.5 rounded-full">Monaco</span></div><div className="border border-slate-700 rounded-b-xl overflow-hidden" style={{ height: '350px' }}><MonacoEditor height="350px" language={String(practiceSession.language).toLowerCase() === 'python' ? 'python' : 'java'} theme="vs-dark" value={practiceCode} onChange={(v) => setPracticeCode(v || '')} options={{ fontSize: 14, minimap: { enabled: false }, lineNumbers: 'on', scrollBeyondLastLine: false, wordWrap: 'on', automaticLayout: true, tabSize: 4, padding: { top: 8 } }} /></div>{!practiceCode && <p className="text-text-muted text-[0.82rem] mt-1">{t('learning.noStarterCode')}</p>}<div className="flex gap-2 mt-2"><button type="button" className="px-5 py-2 rounded-xl font-bold text-sm border-none cursor-pointer bg-primary-500 text-white transition-all hover:-translate-y-px" onClick={() => setPracticeCode(extractPracticeStarterCode(practiceSession))}>{t('learning.resetCode')}</button><button type="button" className="px-5 py-2 rounded-xl font-bold text-sm border-none cursor-pointer bg-primary-500 text-white transition-all hover:-translate-y-px disabled:opacity-60" onClick={handleSubmitPractice} disabled={submittingPractice}>{submittingPractice ? t('learning.grading') : '▶ Run / Submit'}</button></div>{practiceSubmitError && <p className="text-red-500 text-sm mt-2">{practiceSubmitError}</p>}{practiceResult && <div className="mt-3 border border-border-medium rounded-xl p-3"><div className="font-bold text-sm mb-2"><strong>{t('learning.result')}:</strong> Pass {(practiceResult.passed as number) ?? 0} • Fail {(practiceResult.failed as number) ?? 0}</div><div className="flex flex-col gap-2">{((practiceResult.results as AnyObj[]) || []).map((r, idx) => <div key={String(r.testcaseId || idx)} className="bg-bg-deep border border-border-subtle rounded-xl px-3 py-2 text-sm"><div className="font-semibold mb-1">Case {idx + 1} · {r.status === 'PASS' ? '✅ PASS' : '❌ FAIL'} {r.hidden ? '(hidden)' : ''}</div><div><strong>Input:</strong> <code className="bg-gray-100 px-1 rounded">{String(r.inputData || t('learning.empty'))}</code></div><div><strong>Expected:</strong> <code className="bg-gray-100 px-1 rounded">{String(r.expectedOutput || t('learning.empty'))}</code></div><div><strong>Actual:</strong> <code className="bg-gray-100 px-1 rounded">{String(r.actualOutput || t('learning.empty'))}</code></div></div>)}</div></div>}<AIHintsPanel code={practiceCode} language={String(practiceSession.language)} description={String(practiceSession.description || '')} testResults={practiceResult} visible={true} /></div></div>}
-            </div>}
+            {selectedContent?.contentType === 'PRACTICE' && (
+              <div className="bg-white border border-border-medium rounded-[18px] p-4 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
+                <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <span className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-600 grid place-items-center text-xl">💻</span>
+                    <div>
+                      <h3 className="m-0 text-lg font-bold">{(practiceSession?.title as string) || t('learning.practice')}</h3>
+                      <p className="m-0 text-text-muted text-sm">{(practiceSession?.language as string) || 'N/A'} • {(practiceSession?.difficulty as string) || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <span className="text-[0.75rem] font-semibold px-2.5 py-1 rounded-full border border-border-subtle bg-bg-page text-text-secondary">Interactive Coding</span>
+                </div>
+
+                {practiceLoading && <div className="text-sm text-text-muted py-4">{t('learning.loadingPractice')}</div>}
+                {!practiceLoading && practiceError && <div className="text-sm text-red-600 py-4">{practiceError}</div>}
+
+                {!practiceLoading && !practiceError && practiceSession && (
+                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,0.78fr)_minmax(520px,1.22fr)] gap-4 items-start">
+                    <div className="bg-bg-page border border-border-subtle rounded-xl p-3.5">
+                      <h4 className="m-0 mb-2 text-base font-bold">{t('learning.problemDesc')}</h4>
+                      <p className="text-text-secondary text-sm leading-relaxed m-0 line-clamp-4">{(practiceSession.description as string) || t('learning.noProblemDesc')}</p>
+
+                      <h4 className="mt-4 mb-2 text-base font-bold">{t('learning.visibleTestCases')}</h4>
+                      <div className="flex flex-col gap-2 max-h-[280px] overflow-auto pr-1">
+                        {((practiceSession.visibleTestCases as AnyObj[]) || []).length === 0 && <p className="text-text-muted text-sm">{t('learning.noTestCases')}</p>}
+                        {((practiceSession.visibleTestCases as AnyObj[]) || []).map((tc, idx) => (
+                          <div key={(tc.testcaseId as string) || idx} className="bg-white border border-border-subtle rounded-lg px-2.5 py-2 text-[0.82rem]">
+                            <div className="font-semibold text-text-main mb-1">Case {idx + 1} · {String(tc.outputType)}</div>
+                            <div className="line-clamp-1"><strong>Input:</strong> <code className="bg-gray-100 px-1 rounded">{String(tc.inputData || t('learning.empty'))}</code></div>
+                            <div className="line-clamp-1"><strong>Expected:</strong> <code className="bg-gray-100 px-1 rounded">{String(tc.expectedOutput || t('learning.empty'))}</code></div>
+                            {!!tc.description && <div className="line-clamp-1"><strong>{t('learning.description')}:</strong> {String(tc.description)}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="bg-slate-800 text-slate-200 rounded-t-xl px-3 py-2 text-sm font-semibold flex items-center gap-2">
+                        <span className="text-lg">⚡</span>
+                        <span className="truncate">Code Editor ({String(practiceSession.language)})</span>
+                        <span className="text-[0.72rem] bg-white/15 px-2 py-0.5 rounded-full ml-auto">Monaco</span>
+                        <button type="button" className="ml-2 px-3 py-1 rounded-lg font-bold text-[0.78rem] border border-white/25 bg-white/10 text-white cursor-pointer transition-all hover:bg-white/20" onClick={() => setPracticeCode(extractPracticeStarterCode(practiceSession))}>{t('learning.resetCode')}</button>
+                        <button type="button" className="px-3 py-1 rounded-lg font-bold text-[0.78rem] border-none cursor-pointer bg-primary-500 text-white transition-all hover:bg-primary-600 disabled:opacity-60" onClick={handleSubmitPractice} disabled={submittingPractice}>{submittingPractice ? t('learning.grading') : '▶ Run'}</button>
+                      </div>
+                      <div className="border border-slate-700 rounded-b-xl overflow-hidden" style={{ height: '480px' }}>
+                        <MonacoEditor
+                          height="480px"
+                          language={String(practiceSession.language).toLowerCase() === 'python' ? 'python' : 'java'}
+                          theme="vs-dark"
+                          value={practiceCode}
+                          onChange={(v) => setPracticeCode(v || '')}
+                          options={{ fontSize: 14, minimap: { enabled: false }, lineNumbers: 'on', scrollBeyondLastLine: false, wordWrap: 'on', automaticLayout: true, tabSize: 4, padding: { top: 8 } }}
+                        />
+                      </div>
+                      {!practiceCode && <p className="text-text-muted text-[0.82rem] mt-1">{t('learning.noStarterCode')}</p>}
+
+                      {practiceSubmitError && <p className="text-red-500 text-sm mt-2">{practiceSubmitError}</p>}
+                      {practiceResult && (
+                        <div className="mt-3 border border-border-medium rounded-xl p-3 bg-bg-page">
+                          <div className="font-bold text-sm mb-2"><strong>{t('learning.result')}:</strong> Pass {(practiceResult.passed as number) ?? 0} • Fail {(practiceResult.failed as number) ?? 0}</div>
+                          <div className="flex flex-col gap-2 max-h-[220px] overflow-auto pr-1">
+                            {((practiceResult.results as AnyObj[]) || []).map((r, idx) => (
+                              <div key={String(r.testcaseId || idx)} className="bg-white border border-border-subtle rounded-xl px-3 py-2 text-sm">
+                                <div className="font-semibold mb-1">Case {idx + 1} · {r.status === 'PASS' ? '✅ PASS' : '❌ FAIL'} {r.hidden ? '(hidden)' : ''}</div>
+                                <div><strong>Input:</strong> <code className="bg-gray-100 px-1 rounded">{String(r.inputData || t('learning.empty'))}</code></div>
+                                <div><strong>Expected:</strong> <code className="bg-gray-100 px-1 rounded">{String(r.expectedOutput || t('learning.empty'))}</code></div>
+                                <div><strong>Actual:</strong> <code className="bg-gray-100 px-1 rounded">{String(r.actualOutput || t('learning.empty'))}</code></div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-3">
+                        <AIHintsPanel code={practiceCode} language={String(practiceSession.language)} description={String(practiceSession.description || '')} testResults={practiceResult} visible={true} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         </div>
       </main>

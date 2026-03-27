@@ -4,6 +4,7 @@ import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import { syllabusApi, courseApi } from '../api'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 
 type AnyObj = Record<string, unknown>
 const unwrap = (res: unknown) => { const r = res as { data?: { data?: unknown } }; return r?.data?.data ?? r?.data ?? r }
@@ -29,7 +30,7 @@ const SyllabusManagement = () => {
 
   const openCreate = () => { setEditing(null); setForm({ courseId: '', courseContent: '', method: '', referenceMaterial: '' }); setFormError(''); setShowModal(true) }
   const openEdit = (s: AnyObj) => { setEditing(s); setForm({ courseId: (s.courseId || '') as string, courseContent: (s.courseContent || '') as string, method: (s.method || '') as string, referenceMaterial: (s.referenceMaterial || '') as string }); setFormError(''); setShowModal(true) }
-  const handleDelete = async (s: AnyObj) => { if (!window.confirm(t('syllabus.confirmDelete'))) return; try { await syllabusApi.delete(s.sylabusId as string); load() } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } } }; alert(err.response?.data?.message || t('common.errorGeneric')) } }
+  const handleDelete = async (s: AnyObj) => { if (!window.confirm(t('syllabus.confirmDelete'))) return; try { await syllabusApi.delete(s.sylabusId as string); load() } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } } }; toast.error(err.response?.data?.message || t('common.errorGeneric')) } }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

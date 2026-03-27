@@ -91,10 +91,21 @@ div[class*="bg-[linear-gradient"] {
   padding-right: 10% !important;
 }
 
+/* Course player: full-width feel (global main uses 10% side padding) */
+main.course-learning-main {
+  padding-left: clamp(0.75rem, 2vw, 1.5rem) !important;
+  padding-right: clamp(0.75rem, 2vw, 1.5rem) !important;
+}
+
 /* Left role menu for Admin/Lecturer (desktop) */
 body.with-role-sidebar main {
   padding-left: 244px !important;
   padding-right: 2.5% !important;
+}
+
+body.with-role-sidebar main.course-learning-main {
+  padding-left: calc(244px + clamp(0.5rem, 1.5vw, 1rem)) !important;
+  padding-right: clamp(0.75rem, 2vw, 1.5rem) !important;
 }
 
 body.with-role-sidebar div[class*="bg-[linear-gradient"] {
@@ -115,6 +126,11 @@ table th, table td {
   body.with-role-sidebar div[class*="bg-[linear-gradient"] {
     padding-left: 10% !important;
     padding-right: 10% !important;
+  }
+
+  body.with-role-sidebar main.course-learning-main {
+    padding-left: clamp(0.75rem, 3vw, 1.25rem) !important;
+    padding-right: clamp(0.75rem, 3vw, 1.25rem) !important;
   }
 }
 

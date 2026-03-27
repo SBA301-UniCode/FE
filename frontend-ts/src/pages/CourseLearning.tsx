@@ -201,13 +201,13 @@ const CourseLearning = () => {
   const [lessonProgressMap, setLessonProgressMap] = useState<Record<string, { percent: number }>>({})
   const [contentStatusMap, setContentStatusMap] = useState<Record<string, string>>({})
 
-  const refreshAllProgress = useCallback(() => { if (!isUuid(courseId) || !isValidId(enrollmentId)) return; processApi.getCourseProgress({ courseId: courseId!, enrollmentId }).then((res) => { const p = (res as { data?: { data?: AnyObj } }).data?.data ?? (res as { data?: unknown }).data as AnyObj; setCourseProgress({ percent: (p?.percentComplete as number) ?? 0, chapters: ((p?.processResponseList as AnyObj[]) || []).map((r) => ({ id: extractProcessId(r), status: extractStatus(r) })) }); /* Bug 4: Deep parse nested processResponseList to restore ALL content statuses on reload */ const statusMap: Record<string, string> = {}; const parseNested = (list: AnyObj[] | undefined) => { if (!Array.isArray(list)) return; list.forEach((item) => { const id = extractProcessId(item); const status = extractStatus(item); if (id && status && status !== 'NOT_STARTED') statusMap[id] = status; parseNested((item?.processResponseList as AnyObj[]) || undefined) }) }; parseNested((p?.processResponseList as AnyObj[]) || undefined); if (Object.keys(statusMap).length > 0) setContentStatusMap((prev) => ({ ...statusMap, ...prev })) }).catch(() => { }) }, [courseId, enrollmentId])
+  const refreshAllProgress = useCallback(() => { if (!isValidId(courseId) || !isValidId(enrollmentId)) return; processApi.getCourseProgress({ courseId: courseId!, enrollmentId }).then((res) => { const p = (res as { data?: { data?: AnyObj } }).data?.data ?? (res as { data?: unknown }).data as AnyObj; setCourseProgress({ percent: (p?.percentComplete as number) ?? 0, chapters: ((p?.processResponseList as AnyObj[]) || []).map((r) => ({ id: extractProcessId(r), status: extractStatus(r) })) }); /* Bug 4: Deep parse nested processResponseList to restore ALL content statuses on reload */ const statusMap: Record<string, string> = {}; const parseNested = (list: AnyObj[] | undefined) => { if (!Array.isArray(list)) return; list.forEach((item) => { const id = extractProcessId(item); const status = extractStatus(item); if (id && status && status !== 'NOT_STARTED') statusMap[id] = status; parseNested((item?.processResponseList as AnyObj[]) || undefined) }) }; parseNested((p?.processResponseList as AnyObj[]) || undefined); if (Object.keys(statusMap).length > 0) setContentStatusMap((prev) => ({ ...statusMap, ...prev })) }).catch(() => { }) }, [courseId, enrollmentId])
 
   const refreshChapterProgress = useCallback((chId: string) => { if (!isValidId(enrollmentId) || !isValidId(chId)) return; processApi.getChapterProgress({ chapterId: chId, enrollmentId }).then((res) => { const p = (res as { data?: { data?: AnyObj } }).data?.data ?? (res as { data?: unknown }).data as AnyObj; setChapterProgressMap((prev) => ({ ...prev, [chId]: { percent: (p?.percentComplete as number) ?? 0, lessons: ((p?.processResponseList as AnyObj[]) || []).map((r) => ({ id: extractProcessId(r), status: extractStatus(r) })) } })) }).catch(() => { }) }, [enrollmentId])
 
   const refreshLessonProgress = useCallback((lId: string) => { if (!isValidId(enrollmentId) || !isValidId(lId)) return; processApi.getLessonProgress({ lessonId: lId, enrollmentId }).then((res) => { const p = (res as { data?: { data?: AnyObj } }).data?.data ?? (res as { data?: unknown }).data as AnyObj; setLessonProgressMap((prev) => ({ ...prev, [lId]: { percent: (p?.percentComplete as number) ?? 0 } })); const list = (p?.processResponseList as AnyObj[]) || []; const map: Record<string, string> = {}; list.forEach((r) => { const id = extractProcessId(r); if (id) map[id] = extractStatus(r) }); setContentStatusMap((prev) => ({ ...prev, ...map })) }).catch(() => { }) }, [enrollmentId])
 
-  useEffect(() => { let c = false; const resolve = async () => { if (enrollmentId || !isUuid(courseId)) return; for (const s of ['IN_PROGRESS', 'NOT_STARTED', 'COMPLETED'] as const) { try { const res = await enrollmentApi.getMyLearning(s, 0, 50); const page = unwrap(res) as AnyObj; const list = (Array.isArray(page?.content) ? page.content : Array.isArray(page?.data) ? page.data : Array.isArray(page) ? page : []) as AnyObj[]; const found = list.find((e) => (e?.courseResponse as AnyObj)?.courseId && String((e.courseResponse as AnyObj).courseId) === String(courseId)); if (!c && isValidId(found?.enrollmentId)) { setEnrollmentId(found!.enrollmentId as string); return } } catch { } } }; resolve(); return () => { c = true } }, [courseId, enrollmentId])
+  useEffect(() => { let c = false; const resolve = async () => { if (enrollmentId || !courseId) return; for (const s of ['IN_PROGRESS', 'NOT_STARTED', 'COMPLETED'] as const) { try { const res = await enrollmentApi.getMyLearning(s, 0, 50); const page = unwrap(res) as AnyObj; const list = (Array.isArray(page?.content) ? page.content : Array.isArray(page?.data) ? page.data : Array.isArray(page) ? page : []) as AnyObj[]; const found = list.find((e) => (e?.courseResponse as AnyObj)?.courseId && String((e.courseResponse as AnyObj).courseId) === String(courseId)); if (!c && isValidId(found?.enrollmentId)) { setEnrollmentId(found!.enrollmentId as string); return } } catch { } } }; resolve(); return () => { c = true } }, [courseId, enrollmentId])
 
   useEffect(() => { if (!isUuid(courseId)) return; let c = false; setLoading(true); setError(''); chapterApi.getByCourseId(courseId).then((res) => { if (c) return; const arr = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; setChapters(arr); if (arr.length > 0) { const rid = initialResumeRef.current?.chapterId; const rch = rid ? arr.find((ch) => normalizeId(ch.chapterId || ch.id) === rid) : null; setSelectedChapterId(((rch?.chapterId || rch?.id || arr[0].chapterId || arr[0].id || '') as string)) } }).catch((e: { response?: { data?: { message?: string } }; message?: string }) => { if (!c) setError(e.response?.data?.message || e.message || t('learning.loadChaptersFailed')) }).finally(() => { if (!c) setLoading(false) }); return () => { c = true } }, [courseId])
 
@@ -281,9 +281,20 @@ const CourseLearning = () => {
     setSelectedChapterId(chId)
   }
   const findRealContentId = (ct: AnyObj | null) => { if (!ct) return ''; const cid = getContentId(ct); if (isTrackableContentId(cid)) return cid; if (ct._virtual && ct.contentType === 'DOCUMENT') { const docs = documentsByLesson[selectedLessonId]; if (docs) { const realDoc = Object.entries(docs).find(([, d]) => d); if (realDoc) return realDoc[0] } } const contents = contentsByLesson[selectedLessonId] || []; const real = contents.find((c) => (c as AnyObj).contentType === ct.contentType && isTrackableContentId(getContentId(c))); return real ? getContentId(real) : '' }
-  const handleMarkDocRead = () => { const cid = findRealContentId(selectedContent); if (cid) { setDocRead(true); trackContent(cid, 'COMPLETED') } else { setDocRead(true) } }
-  const handleGoToQuiz = () => { if (!selectedContent) return; const scid = getContentId(selectedContent); const qId = selectedContent._virtual ? selectedContent.lessonId as string : scid; const p = new URLSearchParams(); if (enrollmentId) p.set('enrollmentId', enrollmentId); if (courseId) p.set('courseId', courseId); const lid = (selectedContent.lessonId || selectedLessonId) as string; if (lid) p.set('lessonId', lid); if (selectedChapterId) p.set('chapterId', selectedChapterId); if (scid) p.set('contentId', scid); navigate(`/quiz/${qId}?${p.toString()}`) }
 
+  const handleMarkDocRead = () => { const cid = findRealContentId(selectedContent); if (cid) { setDocRead(true); trackContent(cid, 'COMPLETED') } else { setDocRead(true) } }
+  const handleGoToQuiz = () => {
+    if (!selectedContent) return;
+
+    // Lấy ID thật sự (ưu tiên examId để Backend không trả về rỗng)
+    const qId = findRealContentId(selectedContent);
+
+    const p = new URLSearchParams();
+    // ... (giữ nguyên các dòng set param khác)
+
+    // QUAN TRỌNG: Phải dùng qId đã tìm được ở trên
+    navigate(`/quiz/${qId}?${p.toString()}`);
+  };
   useEffect(() => { let c = false; const load = async () => { if (selectedContent?.contentType !== 'PRACTICE') { setPracticeError(''); setPracticeSession(null); setPracticeCode(''); setPracticeResult(null); setPracticeSubmitError(''); return }; const cid = getContentId(selectedContent); if (!isTrackableContentId(cid)) { setPracticeError(t('learning.invalidContentId')); return }; setPracticeLoading(true); setPracticeError(''); try { const res = await practiceApi.startPractice(cid); if (c) return; const pp = unwrap(res) as AnyObj; setPracticeSession(pp || null); setPracticeCode(extractPracticeStarterCode(pp)); setPracticeResult(null); setPracticeSubmitError(''); trackContent(cid, 'IN_PROCESS') } catch (err: unknown) { if (c) return; setPracticeSession(null); setPracticeCode(''); const e = err as { response?: { data?: { message?: string } }; message?: string }; setPracticeError(e.response?.data?.message || e.message || t('learning.loadPracticeFailed')) } finally { if (!c) setPracticeLoading(false) } }; load(); return () => { c = true } }, [selectedContent])
 
   const handleSubmitPractice = async () => {
@@ -345,7 +356,6 @@ const CourseLearning = () => {
             {error && <div className="px-5 py-4 text-[0.88rem] text-red-600">{error}</div>}
             {!loading && !error && (
               <div className="flex-1 overflow-y-auto px-3 pb-4 pt-2 scrollbar-thin scrollbar-thumb-gray-300">
-<<<<<<< HEAD
                 {chapters.map((ch) => { const chId = (ch.chapterId || ch.id) as string; const isActive = chId === selectedChapterId; const cpP = Math.round(getChapterPercent(chId)); const chSt = getChapterStatus(chId); return (
                   <div key={chId} className="mb-1">
                     <button type="button" aria-current={isActive ? 'true' : undefined} className={`w-full flex justify-between items-center gap-1.5 text-left px-2.5 py-2 rounded-[10px] border-0 text-text-main text-[0.88rem] font-semibold cursor-pointer transition-all whitespace-nowrap hover:bg-bg-deep ${isActive ? 'bg-[rgba(0,86,210,0.12)] text-primary-600 border-l-4 border-l-primary-500 shadow-[inset_0_0_0_1px_rgba(0,86,210,0.18)] ring-2 ring-primary-500/25' : 'bg-transparent border-l-4 border-l-transparent'}`} onClick={() => handleToggleChapter(chId)}>
@@ -362,26 +372,6 @@ const CourseLearning = () => {
                     ) })}
                   </div>
                 ) })}
-=======
-                {chapters.map((ch) => {
-                  const chId = (ch.chapterId || ch.id) as string; const isActive = chId === selectedChapterId; const cpP = Math.round(getChapterPercent(chId)); const chSt = getChapterStatus(chId); return (
-                    <div key={chId} className="mb-1">
-                      <button type="button" className={`w-full flex justify-between items-center gap-1.5 text-left px-2.5 py-2 rounded-[10px] border-none bg-transparent text-text-main text-[0.88rem] font-semibold cursor-pointer transition-all whitespace-nowrap hover:bg-bg-deep ${isActive ? 'bg-indigo-100 text-primary-500 border-l-[3px] border-l-primary-500 shadow-[inset_0_0_0_1px_rgba(99,102,241,0.2)]' : ''}`} onClick={() => setSelectedChapterId(chId)}>
-                        <span className="flex-1 overflow-hidden text-ellipsis">{getChapterTitle(ch)}</span>
-                        <span className={`text-[0.78rem] font-bold shrink-0 ${chSt === 'COMPLETED' ? 'text-green-600' : 'text-primary-500'}`}>{chSt === 'COMPLETED' ? '✅' : `${cpP}%`}</span>
-                      </button>
-                      {isActive && (lessonsByChapter[chId] || []).map((lesson) => {
-                        const lId = (lesson.lessonId || lesson.id) as string; const isLActive = lId === selectedLessonId; const lContents = contentsByLesson[lId] || []; return (
-                          <div key={lId} className="ml-2 mt-0.5">
-                            <button type="button" className={`w-full text-left border-none bg-transparent text-text-secondary text-[0.84rem] px-2 py-1.5 rounded-lg cursor-pointer font-medium whitespace-nowrap overflow-hidden text-ellipsis transition-all hover:bg-bg-deep ${isLActive ? 'bg-indigo-50 text-primary-500 font-bold border-l-[3px] border-l-primary-500' : ''}`} onClick={() => setSelectedLessonId(lId)}>{getLessonTitle(lesson)}</button>
-                            {isLActive && lContents.length > 0 && <ul className="list-none p-0 mt-0.5 mb-1 ml-4">{lContents.map((ct, idx) => <li key={getContentId(ct) || `${ct.contentType}-${idx}`}><button type="button" className={`w-full text-left border-none bg-transparent text-text-muted text-[0.78rem] px-1.5 py-0.5 rounded-md cursor-pointer flex items-center gap-1 transition-all whitespace-nowrap hover:bg-bg-deep ${getContentId(selectedContent) === getContentId(ct) ? 'bg-indigo-100 text-primary-500 font-semibold' : ''}`} onClick={() => handleSelectContent(ct)}><span className="text-[0.72rem] shrink-0">{CONTENT_ICONS[ct.contentType as string] || '•'}</span><span className="flex-1">{ct.contentType === 'VIDEO' ? 'Video' : ct.contentType === 'DOCUMENT' ? t('learning.document') : ct.contentType === 'PRACTICE' ? t('learning.practice') : t('learning.quiz')}</span><span className="text-[0.65rem] shrink-0">{getStatusIcon(getContentId(ct))}</span></button></li>)}</ul>}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })}
->>>>>>> origin/developv2
               </div>
             )}
           </aside>

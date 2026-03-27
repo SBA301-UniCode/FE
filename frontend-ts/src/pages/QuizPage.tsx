@@ -57,11 +57,8 @@ const QuizPage = () => {
       /* Step 1: resolve the real contentId for the QUIZ content */
       let examId = ''
       try {
-        const cRes = await contentApi.getByLessonId(lessonId)
-        const list = Array.isArray(unwrap(cRes)) ? unwrap(cRes) as AnyObj[] : []
-        const quiz = list.find((c) => c.contentType === 'QUIZ')
-        const id = getContentId(quiz as AnyObj)
-        if (isUuid(id)) { setRealContentId(id); examId = id }
+        const cRes = await contentApi.getByContentId(lessonId)
+        examId = cRes.data.data.contentId
       } catch { }
       /* Step 2: try to get exam questions from examApi */
       let loaded = false

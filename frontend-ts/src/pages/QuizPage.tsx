@@ -44,9 +44,16 @@ const QuizPage = () => {
   const [timeLeft, setTimeLeft] = useState(DURATION_DEFAULT)
   const [examDuration, setExamDuration] = useState(DURATION_DEFAULT)
   const [examPassScore, setExamPassScore] = useState(PASS_SCORE_DEFAULT)
-  const [examName, setExamName] = useState('')
   const [result, setResult] = useState<QResult | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [exam, setExam] = useState('')
+  const [examName, setExamName] = useState('')
+  const [examAttemptId, setExamAttemptId] = useState<string | null>(null)
+  const [history, setHistory] = useState<any[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [isReviewMode, setIsReviewMode] = useState(false)
+
+
 
   useEffect(() => {
     if (!lessonId) { setLoadError(t('quiz.noQuestionsLesson')); setLoading(false); return }
@@ -57,6 +64,7 @@ const QuizPage = () => {
       try {
         const cRes = await contentApi.getByContentId(lessonId)
         examId = cRes.data.data.contentId
+        setExam(examId);
       } catch { }
       /* Step 2: try to get exam questions from examApi */
       let loaded = false
@@ -95,17 +103,103 @@ const QuizPage = () => {
     loadQ().finally(() => setLoading(false))
   }, [lessonId])
 
-  const startQuiz = useCallback(() => { setPhase('taking'); setTimeLeft(examDuration); setAnswers({}); setFlagged({}); setCurrentIdx(0); setResult(null) }, [examDuration])
+  const startQuiz = useCallback(async () => {
+    const res = await examApi.startExam(exam)
+    const attemptData = unwrap(res) as any;
+
+    // Lưu lại ID của lượt thi này để tí nữa submit
+    setExamAttemptId(attemptData.examAttemptId);
+    setPhase('taking'); setTimeLeft(examDuration); setAnswers({}); setFlagged({}); setCurrentIdx(0); setResult(null)
+  }, [examDuration])
 
   useEffect(() => { if (phase !== 'taking') return; timerRef.current = setInterval(() => setTimeLeft((p) => { if (p <= 1) { clearInterval(timerRef.current!); return 0 }; return p - 1 }), 1000); return () => clearInterval(timerRef.current!) }, [phase])
 
-  const submitQuiz = useCallback(() => {
-    clearInterval(timerRef.current!); let correct = 0
-    questions.forEach((q) => { const sel = answers[q.questionBankId]; const cor = q.options.find((o) => o.isCorrect); if (sel && cor && String(sel) === String(cor.optionId)) correct++ })
-    const score = Math.round((correct / questions.length) * 100); const passed = score >= examPassScore
-    setResult({ correct, total: questions.length, score, passed }); setPhase('result')
-    const tId = contentId || ''; if (isUuid(tId) && enrollmentId) { processApi.trackContent({ contentId: tId, enrollmentId, status: (passed ? 'COMPLETED' : 'IN_PROCESS') as 'COMPLETED' | 'IN_PROCESS' }).then(() => { if (courseId) processApi.getCourseProgress({ courseId, enrollmentId }).catch(() => { }) }).catch(() => { }) }
-  }, [answers, questions, contentId, enrollmentId, courseId])
+  const submitQuiz = useCallback(async () => {
+    clearInterval(timerRef.current!);
+
+    // 1. Chuyển đổi dữ liệu từ state 'answers' sang format Backend yêu cầu
+    const formattedAnswers = Object.entries(answers).map(([qId, optId]) => ({
+      questionBankId: qId,
+      selectedOptionId: optId
+    }));
+
+    const submitRequest = {
+      examAttemptId: examAttemptId,
+      answers: formattedAnswers
+    };
+
+    try {
+      // 2. Gọi API Submit lên Backend
+      const res = await examApi.submitExam(submitRequest);
+      const serverResult = unwrap(res) as any;
+
+      // 3. Cập nhật kết quả dựa trên dữ liệu thật từ Database
+      // Giả sử serverResult trả về: score, passed, correctAnswers, totalQuestions...
+      setResult({
+        score: serverResult.score,
+        passed: serverResult.passed,
+        correct: serverResult.rightAnswer || 0,
+        total: questions.length
+      });
+
+      setPhase('result');
+
+      // 4. Track tiến độ (giữ nguyên logic cũ của bạn)
+      const tId = realContentId || contentId || '';
+      if (isUuid(tId) && enrollmentId) {
+        processApi.trackContent({
+          contentId: tId,
+          enrollmentId,
+          status: (serverResult.passed ? 'COMPLETED' : 'IN_PROCESS')
+        });
+      }
+    } catch (error) {
+      console.error("Lỗi khi nộp bài:", error);
+      alert("Có lỗi xảy ra khi nộp bài. Vui lòng thử lại!");
+    }
+  }, [answers, examAttemptId, questions, realContentId, contentId, enrollmentId]);
+  // 1. Hàm tải danh sách lịch sử từ Backend
+  const fetchHistory = useCallback(async () => {
+    if (!exam) return
+    try {
+      const res = await examApi.getMyAttemptResults(exam)
+      const data = unwrap(res)
+      setHistory(Array.isArray(data) ? data : [])
+      setShowHistory(true)
+    } catch (err) {
+      console.error("Lỗi tải lịch sử:", err)
+      alert("Không thể tải lịch sử làm bài.")
+    }
+  }, [exam])
+
+  // 2. Hàm xử lý khi nhấn vào "Xem lại" một dòng cụ thể
+  const reviewAttempt = (attempt: any) => {
+    const oldAnswers: Record<string, string> = {}
+
+    // Mapping lịch sử câu trả lời vào state answers của React
+    // Bạn hãy kiểm tra tên field 'answerHistoryList' có khớp với DTO Backend trả về không nhé
+    if (attempt.answerHistoryList) {
+      attempt.answerHistoryList.forEach((h: any) => {
+        // Logic lấy ID câu hỏi và ID phương án đã chọn
+        const qId = h.questionBankId || h.questionId
+        const optId = h.selectedOptionId
+        if (qId && optId) oldAnswers[qId] = optId
+      })
+    }
+
+    setAnswers(oldAnswers)
+    setResult({
+      score: attempt.score,
+      passed: attempt.passed,
+      correct: attempt.rightAnswer || 0,
+      total: questions.length
+    })
+
+    setIsReviewMode(true) // Đánh dấu là đang ở chế độ xem lại
+    setPhase('result')    // Chuyển sang màn hình kết quả
+    setShowHistory(false) // Đóng Modal lịch sử
+  }
+
 
   useEffect(() => { if (phase === 'taking' && timeLeft <= 0) submitQuiz() }, [timeLeft, phase, submitQuiz])
 
@@ -114,7 +208,44 @@ const QuizPage = () => {
   const handleSelect = (optId: string) => { if (!currentQ) return; setAnswers((p) => ({ ...p, [currentQ.questionBankId]: optId })) }
   const toggleFlag = () => { if (!currentQ) return; setFlagged((p) => ({ ...p, [currentQ.questionBankId]: !p[currentQ.questionBankId] })) }
   const goBack = () => { if (!courseId) { navigate(-1); return }; const p = new URLSearchParams(); if (enrollmentId) p.set('enrollmentId', enrollmentId); if (lessonId) p.set('lessonId', lessonId); if (chapterId) p.set('chapterId', chapterId); if (selectedContentId) p.set('contentId', selectedContentId); navigate(`/learning/${courseId}?${p.toString()}`) }
+  const HistoryModal = () => (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+      <div className="bg-white rounded-[24px] w-full max-w-[500px] max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
+        <div className="p-6 border-b border-border-subtle flex justify-between items-center bg-bg-deep">
+          <h2 className="text-xl font-bold text-text-main">Lịch sử làm bài</h2>
+          <button onClick={() => setShowHistory(false)} className="text-2xl text-text-muted hover:text-text-main transition-colors">&times;</button>
+        </div>
 
+        <div className="p-4 overflow-y-auto flex-1">
+          {history.length === 0 ? (
+            <div className="text-center py-12 text-text-muted">Bạn chưa thực hiện bài thi này lần nào.</div>
+          ) : (
+            history.map((att, idx) => (
+              <div key={att.examAttemptId} className="flex justify-between items-center p-4 mb-3 border border-border-medium rounded-xl hover:border-primary-500 hover:bg-primary-500/5 transition-all group">
+                <div className="flex flex-col gap-1">
+                  <span className="font-bold text-text-main">Lần {history.length - idx}</span>
+                  <span className="text-xs text-text-muted">
+                    {new Date(att.attemptStartTime).toLocaleString('vi-VN')}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className={`text-lg font-black ${att.passed ? 'text-green-600' : 'text-red-600'}`}>
+                    {att.score}%
+                  </div>
+                  <button
+                    className={`${btnOutline} group-hover:bg-primary-500 group-hover:text-white group-hover:border-primary-500`}
+                    onClick={() => reviewAttempt(att)}
+                  >
+                    Xem lại
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
   /* ─── LOADING / ERROR ─── */
   const IntroCard = ({ children }: { children: React.ReactNode }) => <div className="max-w-[580px] mx-auto bg-white border border-border-medium rounded-[20px] p-10 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">{children}</div>
 
@@ -129,7 +260,11 @@ const QuizPage = () => {
         <h1 className="m-0 mb-6 text-2xl font-extrabold">{examName || t('quiz.title')}</h1>
         <div className="flex justify-center gap-6 mb-6">{[{ l: 'Questions', v: questions.length }, { l: 'Time', v: formatTime(examDuration) }, { l: 'Pass', v: `${examPassScore}%` }].map((m) => <div key={m.l} className="flex flex-col items-center gap-0.5"><span className="text-[0.78rem] text-text-muted uppercase tracking-wider">{m.l}</span><span className="text-xl font-bold text-primary-500">{m.v}</span></div>)}</div>
         <div className="text-left bg-bg-deep border border-border-subtle rounded-[14px] p-4 mb-6"><h3 className="m-0 mb-2 text-sm text-text-main">{t('quiz.notesTitle')}</h3><ul className="m-0 pl-5">{[t('quiz.note1'), t('quiz.note2'), t('quiz.note3'), t('quiz.note4')].map((note) => <li key={note} className="text-[0.88rem] text-text-secondary mb-1 leading-relaxed">{note}</li>)}</ul></div>
-        <div className="flex flex-col gap-2.5 items-center"><button type="button" className={`${btnPrimary} ${btnLg}`} onClick={startQuiz}>{t('quiz.startBtn')}</button><button type="button" className={btnGhost} onClick={goBack}>{t('quiz.goBack')}</button></div>
+        <div className="flex flex-col gap-2.5 items-center">
+          <button type="button" className={`${btnPrimary} ${btnLg}`} onClick={startQuiz}>{t('quiz.startBtn')}</button>
+          <button type="button" className={`${btnOutline} w-full max-w-[200px]`} onClick={fetchHistory}>
+            🕒 {t('quiz.history')}
+          </button>          <button type="button" className={btnGhost} onClick={goBack}>{t('quiz.goBack')}</button></div>
       </IntroCard>
     </main></div>
   )

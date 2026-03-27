@@ -4,14 +4,15 @@ import Header from '../components/layout/Header'
 import './LandingPage.css'
 
 const LANGUAGES = [
-  { name: 'JavaScript', courses: 156, icon: '🟧', color: '#F7DF1E' },
-  { name: 'Python', courses: 142, icon: '🐍', color: '#3776AB' },
-  { name: 'Java', courses: 98, icon: '☕', color: '#ED8B00' },
-  { name: 'C++', courses: 87, icon: '⚡', color: '#00599C' },
-  { name: 'React', courses: 124, icon: '⚛️', color: '#61DAFB' },
-  { name: 'Node.js', courses: 93, icon: '🟢', color: '#339933' },
-  { name: 'TypeScript', courses: 76, icon: '🔷', color: '#3178C6' },
-  { name: 'Go', courses: 68, icon: '🔵', color: '#00ADD8' },
+  { name: 'JavaScript', courses: 156, icon: 'JS', color: '#F7DF1E' },
+  // Python dùng logo ảnh (đặt file tại public/python-logo.png)
+  { name: 'Python', courses: 142, icon: 'Py', iconSrc: '/python-logo.png', color: '#3776AB' },
+  { name: 'Java', courses: 98, icon: 'Jv', color: '#ED8B00' },
+  { name: 'C++', courses: 87, icon: 'C++', color: '#00599C' },
+  { name: 'React', courses: 124, icon: 'R', color: '#61DAFB' },
+  { name: 'Node.js', courses: 93, icon: 'Nd', color: '#339933' },
+  { name: 'TypeScript', courses: 76, icon: 'TS', color: '#3178C6' },
+  { name: 'Go', courses: 68, icon: 'Go', color: '#00ADD8' },
 ]
 
 const PARTNERS = [
@@ -146,11 +147,23 @@ const LandingPage = () => {
           <div className="landing-languages-grid">
             {LANGUAGES.map((lang) => (
               <Link to="/courses" key={lang.name} className="landing-lang-card">
-                <span className="landing-lang-icon">{lang.icon}</span>
+                <span
+                  className="landing-lang-icon"
+                  style={{ borderColor: lang.color, color: lang.color }}
+                >
+                  {lang.iconSrc ? (
+                    <img src={lang.iconSrc} alt={lang.name} />
+                  ) : (
+                    lang.icon
+                  )}
+                </span>
                 <span className="landing-lang-name">{lang.name}</span>
                 <span className="landing-lang-courses">{lang.courses} courses</span>
                 <div className="landing-lang-bar-wrap">
-                  <div className="landing-lang-bar" style={{ width: `${Math.round(lang.courses / 1.56)}%`, background: lang.color }} />
+                  <div
+                    className="landing-lang-bar"
+                    style={{ width: `${Math.round(lang.courses / 1.56)}%`, background: lang.color }}
+                  />
                 </div>
               </Link>
             ))}

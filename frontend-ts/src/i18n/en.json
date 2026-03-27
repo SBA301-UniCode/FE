@@ -31,35 +31,6 @@
   "header.adminPayments": "Payment Management",
   "header.learnersManagement": "Learner Management",
   "header.profileLabel": "My Profile",
-
-  "instructorLearners.title": "Learner Management",
-  "instructorLearners.subtitle": "Select a course to view learners, search, and ban/unban.",
-  "instructorLearners.yourCourses": "Your courses",
-  "instructorLearners.noCourses": "No courses yet.",
-  "instructorLearners.levelLabel": "Level: {{level}}",
-  "instructorLearners.selected": "Selected",
-
-  "instructorLearners.learners": "Learners",
-  "instructorLearners.coursePrefix": "Course: {{title}}",
-  "instructorLearners.noCourseSelected": "No course selected",
-  "instructorLearners.searchPlaceholder": "Search by email / name",
-  "instructorLearners.bannedOnly": "Banned only",
-  "instructorLearners.reload": "Reload",
-  "instructorLearners.noLearners": "No learners found.",
-
-  "instructorLearners.colLearner": "Learner",
-  "instructorLearners.colEmail": "Email",
-  "instructorLearners.colProgress": "Progress",
-  "instructorLearners.colActions": "Actions",
-  "instructorLearners.noName": "(No name)",
-  "instructorLearners.bannedBadge": "Banned",
-  "instructorLearners.ban": "Ban",
-  "instructorLearners.unban": "Unban",
-
-  "instructorLearners.toastBanned": "Learner banned",
-  "instructorLearners.toastUnbanned": "Learner unbanned",
-  "instructorLearners.toastActionFailed": "Action failed",
-
   "learnerCourses.title": "My Courses",
   "learnerCourses.subtitle": "Track your learning progress and access enrolled courses",
   "learnerCourses.tabInProgress": "In Progress",
@@ -73,7 +44,6 @@
   "learnerCourses.progress": "Progress",
   "learnerCourses.continueLearning": "Continue Learning",
   "learnerCourses.review": "Review",
-
   "chat.title": "Course Advisor",
   "chat.subtitle": "Ask anything about courses",
   "chat.openChat": "Open course advisor chat",
@@ -82,7 +52,6 @@
   "chat.welcomeTitle": "Welcome to UniCode!",
   "chat.welcomeHint": "Ask me anything about courses, e.g.: \"I want to learn Java\" or \"Are there any free courses?\"",
   "chat.error": "An error occurred. Please try again later.",
-
   "landing.badge": "💡 New: 50+ courses added this month",
   "landing.heroTitle1": "Learn to Code.",
   "landing.heroTitle2": "Build Your Future.",
@@ -124,7 +93,6 @@
   "landing.ctaSubtitle": "Join 500,000+ learners and transform your career with UniCode.",
   "landing.ctaBrowse": "Browse Courses",
   "landing.ctaCreate": "Create Free Account",
-
   "footer.desc": "The leading online learning platform with high-quality courses from top instructors.",
   "footer.explore": "Explore",
   "footer.allCourses": "All Courses",
@@ -149,7 +117,6 @@
   "footer.aboutUs": "About Us",
   "footer.careers": "Careers",
   "footer.allRights": "© {{year}} UniCode.com — All rights reserved.",
-
   "courses.title": "Explore Courses",
   "courses.search": "Search courses...",
   "courses.sortDefault": "Default",
@@ -177,7 +144,6 @@
   "courses.deleteReview": "Delete",
   "courses.noReviews": "No reviews yet.",
   "courses.avgRating": "{{avg}} / 5 ({{count}} reviews)",
-
   "myCourses.title": "My Courses",
   "myCourses.create": "➕ Create New Course",
   "myCourses.courseName": "Course Name",
@@ -198,7 +164,6 @@
   "myCourses.draftRestored": "Draft restored.",
   "myCourses.draftCleared": "Draft cleared.",
   "myCourses.clearDraft": "🗑️ Clear Draft",
-
   "profile.title": "Account Information",
   "profile.loading": "Loading...",
   "profile.loadError": "Could not load account information.",
@@ -227,7 +192,6 @@
   "profile.roleAdmin": "Admin",
   "profile.roleInstructor": "Instructor",
   "profile.roleLearner": "Student",
-
   "certs.title": "My Certificates",
   "certs.loading": "Loading certificates...",
   "certs.noCerts": "You don't have any certificates yet.",
@@ -239,7 +203,6 @@
   "certs.download": "Download",
   "certs.share": "Share",
   "certs.imageError": "Could not load certificate image",
-
   "learning.sidebar": "Course Content",
   "learning.chapter": "Chapter {{num}}",
   "learning.lesson": "Lesson {{num}}",
@@ -253,7 +216,6 @@
   "learning.progress": "Progress: {{percent}}%",
   "learning.loading": "Loading content...",
   "learning.noContent": "No content available.",
-
   "feedback.title": "Course Review",
   "feedback.rating": "Star Rating",
   "feedback.comment": "Your Review",
@@ -264,8 +226,13 @@
   "feedback.update": "Update",
   "feedback.cancel": "Cancel",
   "feedback.deleteConfirm": "Are you sure you want to delete this review?",
-  "feedback.ratingLabels": ["Terrible", "Bad", "OK", "Good", "Excellent"],
-
+  "feedback.ratingLabels": [
+    "Terrible",
+    "Bad",
+    "OK",
+    "Good",
+    "Excellent"
+  ],
   "admin.title": "Admin Panel",
   "admin.users": "Users",
   "admin.roles": "Roles",
@@ -299,7 +266,6 @@
   "admin.from": "From",
   "admin.to": "To",
   "admin.generate": "Generate Report",
-
   "login.title": "Log In",
   "login.email": "Email",
   "login.password": "Password",
@@ -308,7 +274,6 @@
   "login.noAccount": "Don't have an account?",
   "login.register": "Register now",
   "login.error": "Invalid email or password.",
-
   "register.title": "Register",
   "register.name": "Full Name",
   "register.email": "Email",
@@ -320,13 +285,11 @@
   "register.login": "Log in",
   "register.passwordMismatch": "Passwords do not match.",
   "register.success": "Registration successful! Please log in.",
-
   "payment.title": "Payment Result",
   "payment.success": "Payment Successful! 🎉",
   "payment.failed": "Payment Failed",
   "payment.goToCourse": "Go to Course",
   "payment.backToCourses": "Back to Courses",
-
   "myLearning.title": "My Learning",
   "myLearning.inProgress": "In Progress",
   "myLearning.completed": "Completed",
@@ -336,7 +299,6 @@
   "myLearning.review": "Review",
   "myLearning.noCourses": "You haven't enrolled in any courses yet.",
   "myLearning.exploreCourses": "Explore Courses",
-
   "verifyCert.title": "Verify Certificate",
   "verifyCert.placeholder": "Enter certificate serial (e.g. UC-2026-ABC123)",
   "verifyCert.submit": "Verify",
@@ -346,12 +308,10 @@
   "verifyCert.learner": "Learner",
   "verifyCert.course": "Course",
   "verifyCert.issuedDate": "Issued Date",
-
   "notFound.title": "404",
   "notFound.subtitle": "Page Not Found",
   "notFound.desc": "The page you're looking for doesn't exist or has been moved.",
   "notFound.backHome": "Back to Home",
-
   "common.loading": "Loading...",
   "common.error": "An error occurred.",
   "common.save": "Save",
@@ -370,7 +330,6 @@
   "common.free": "Free",
   "common.all": "All",
   "common.home": "Home",
-
   "courses.pageTitle": "Courses",
   "courses.pageSubtitle": "Choose a course and pay via MoMo to start learning.",
   "courses.searchPlaceholder": "Search courses...",
@@ -407,7 +366,6 @@
   "courses.next": "Next →",
   "courses.chapterCount": "{{count}} chapters",
   "courses.enrolledCount": "{{count}} enrolled",
-
   "myLearning.pageTitle": "My Learning",
   "myLearning.greeting": "{{greeting}}, {{name}}! 👋",
   "myLearning.trackingDesc": "You are tracking {{total}} courses — completed {{completed}}",
@@ -439,7 +397,6 @@
   "myLearning.certExists": "Certificate already exists.",
   "myLearning.certNotCompleted": "Course not yet 100% completed.",
   "myLearning.feedbackSuccess": "Comment submitted successfully!",
-
   "myCourses.instructorDashboard": "Instructor Dashboard",
   "myCourses.dashboardDesc": "Manage and grow your courses.",
   "myCourses.homePage": "← Home",
@@ -482,7 +439,6 @@
   "myCourses.paginationNext": "Next →",
   "myCourses.languageLabel": "Language / Technology",
   "myCourses.languagePlaceholder": "-- Select language --",
-
   "admin.breadcrumbHome": "Home",
   "admin.dashboardTitle": "🛡️ Admin Dashboard",
   "admin.dashboardDesc": "Manage users, permissions, transactions and system reports.",
@@ -533,7 +489,6 @@
   "admin.validationEmailInvalid": "Invalid email address",
   "admin.validationPasswordMin": "Password must be at least 6 characters",
   "admin.validationAvatarUrl": "Avatar URL must start with http:// or https://",
-
   "payment.successTitle": "Payment Successful! 🎉",
   "payment.successDesc": "You have successfully paid. The course is now ready in your account.",
   "payment.enrolling": "Enrolling in course...",
@@ -549,7 +504,6 @@
   "payment.retryPayment": "🔄 Retry Payment",
   "payment.chooseCourse": "Choose Another Course",
   "payment.goHome": "Go to Home",
-
   "verifyCert.pageTitle": "Verify Certificate",
   "verifyCert.pageDesc": "Enter the certificate serial number to verify its authenticity.",
   "verifyCert.verifying": "Verifying...",
@@ -563,7 +517,6 @@
   "verifyCert.goHome": "← Back to Home",
   "verifyCert.emptyError": "Please enter a certificate serial number.",
   "verifyCert.notFound": "No certificate found with this serial number. Please check and try again.",
-
   "feedback.commentLabel": "Comment",
   "feedback.commentPlaceholder": "Write your comment...",
   "feedback.ratingLabel": "Star Rating",
@@ -580,24 +533,22 @@
   "feedback.addImageHint": "PNG, JPG — max 5MB per image",
   "feedback.cancelBtn": "Cancel",
   "feedback.submitting": "Submitting...",
-
   "login.rememberMe": "Remember me",
   "login.forgotPassword": "Forgot password?",
   "login.or": "Or",
   "login.googleLogin": "Sign in with Google",
   "login.welcomeBack": "Welcome back!",
-
   "register.startJourney": "Start your learning journey",
   "register.passwordWeak": "Weak",
   "register.passwordMedium": "Medium",
   "register.passwordStrong": "Strong",
   "register.passwordNoMatch": "Passwords don't match",
-
   "quiz.loading": "Loading questions...",
   "quiz.noQuiz": "No quiz available",
   "quiz.noQuestionsLesson": "This lesson has no questions yet.",
   "quiz.cantLoadQuestions": "Could not load questions.",
   "quiz.goBack": "Go back",
+  "quiz.history": "View history attempt",
   "quiz.title": "Quiz",
   "quiz.notesTitle": "Before you begin",
   "quiz.note1": "The timer starts as soon as you click \"Start\".",
@@ -620,7 +571,6 @@
   "quiz.questionList": "Question List",
   "quiz.trueFalse": "True / False",
   "quiz.multipleChoice": "Multiple Choice",
-
   "syllabus.breadcrumbHome": "Home",
   "syllabus.breadcrumbMyCourses": "My Courses",
   "syllabus.breadcrumbSyllabus": "Syllabus",
@@ -645,7 +595,6 @@
   "syllabus.deleteBtn": "Delete",
   "syllabus.noData": "No syllabus yet",
   "syllabus.confirmDelete": "Delete this syllabus?",
-
   "manageContent.roleRequired": "This page is for Instructors/Admins only.",
   "manageContent.backMyCourses": "← My Courses",
   "manageContent.breadcrumbHome": "Home",
@@ -678,14 +627,12 @@
   "manageContent.deletedContentMsg": "Deleted {{label}}",
   "manageContent.noContentId": "Cannot determine contentId.",
   "manageContent.noDocId": "Cannot find documentId.",
-
   "verifyContent.title": "Verify Content",
   "verifyContent.desc": "Upload an image or PDF suspected of unauthorized sharing. The system will check hidden watermarks and match fingerprints to trace the source.",
   "verifyContent.dropzone": "Drag and drop files here or",
   "verifyContent.selectFile": "select file",
   "verifyContent.supportedFormats": "Supported: PNG, JPG, BMP, PDF",
   "verifyContent.goHome": "← Back to Home",
-
   "certs.heroDesc": "You have earned {{count}} certificates. Keep growing your skills!",
   "certs.heroNoData": "Complete a course to earn a certificate here.",
   "certs.sortNewest": "Newest",
@@ -694,23 +641,18 @@
   "certs.error": "Error",
   "certs.certLabel": "Certificate",
   "certs.certImageNotReady": "Image not ready",
-
   "courseDetail.deleteFeedbackConfirm": "Delete this review?",
   "courseDetail.deleteFeedbackFailed": "Delete failed.",
-
   "payment.backToCourses": "← Go back",
   "oauth.processing": "Processing Google login...",
-
   "mindmap.confirmReset": "Reset to default tree?",
   "mindmap.resetSuccess": "Reset complete!",
   "mindmap.resetFailed": "Reset failed",
-
   "common.confirmDeleteUser": "Delete user \"{{name}}\"?",
   "common.confirmDeleteRole": "Delete role \"{{name}}\"?",
   "common.confirmDeletePrivilege": "Delete privilege \"{{name}}\"?",
   "common.confirmDeleteCourse": "Delete \"{{name}}\"?",
   "common.errorGeneric": "Error",
-
   "register.subtitle": "Start your learning journey",
   "register.namePlaceholder": "Enter your full name",
   "register.passwordPlaceholder": "At least 6 characters",
@@ -725,7 +667,6 @@
   "register.strengthWeak": "Weak",
   "register.strengthMedium": "Medium",
   "register.strengthStrong": "Strong",
-
   "verifyContent.noFile": "Please select a file to verify.",
   "verifyContent.errorGeneric": "An error occurred.",
   "verifyContent.analyzing": "⏳ Analyzing...",
@@ -741,7 +682,6 @@
   "verifyContent.methodFingerprint": "Fingerprint matching",
   "verifyContent.methodNone": "Not detected",
   "verifyContent.methodError": "Processing error",
-
   "payment.missingCourse": "Missing course information.",
   "payment.notFound": "Course not found.",
   "payment.loadFailed": "Could not load course information.",
@@ -749,11 +689,9 @@
   "payment.momoFailed": "Could not create MoMo transaction.",
   "payment.courseDefault": "Course",
   "payment.redirecting": "Redirecting...",
-
   "certs.loadFailed": "Could not load certificate list.",
   "certs.count": "{{count}} certificate(s)",
   "certs.courseDefault": "Course",
-
   "manageContent.loadChaptersFailed": "Could not load chapter list.",
   "manageContent.createChapterSuccess": "Chapter created successfully!",
   "manageContent.createChapterFailed": "Failed to create chapter.",
@@ -874,7 +812,6 @@
   "manageContent.helperUploadFailed": "S3 upload failed ({{status}}).",
   "manageContent.helperNetworkError": "Network error during upload.",
   "manageContent.helperUploadAborted": "Upload aborted.",
-
   "mindmap.loadFailed": "Could not load mind-map",
   "mindmap.saved": "Mind-map saved!",
   "mindmap.saveFailed": "Save failed",
@@ -892,17 +829,14 @@
   "mindmap.viewContent": "📎 View Content",
   "mindmap.close": "✕ Close",
   "mindmap.clickNode": "Click a node to view details and notes",
-
   "quiz.resultPassed": "Congratulations! You passed!",
   "quiz.resultFailed": "Did not pass",
   "quiz.resultPassedDesc": "You have passed the quiz successfully.",
   "quiz.resultFailedDesc": "You need at least {{score}}% to pass.",
   "quiz.unflag": "🚩 Unflag",
   "quiz.flag": "🏳️ Flag for review",
-
   "common.edit": "Edit",
   "common.delete": "Delete",
-
   "courseDetail.untitled": "Course",
   "courseDetail.noDescription": "No description available.",
   "courseDetail.ratingCount": "{{count}} ratings",
@@ -935,7 +869,6 @@
   "courseDetail.learnPoint2": "Apply knowledge to real-world projects",
   "courseDetail.learnPoint3": "Develop programming thinking skills",
   "courseDetail.learnPoint4": "Be ready for career opportunities",
-
   "learning.courseContent": "Course content",
   "learning.loading": "Loading...",
   "learning.openMenu": "Open menu",
@@ -989,7 +922,6 @@
   "learning.resetCode": "Reset starter code",
   "learning.grading": "Grading...",
   "learning.result": "Result",
-
   "certs.serial": "Serial",
   "certs.issued": "Issued",
   "certs.learner": "Learner",
@@ -1001,7 +933,6 @@
   "certs.copied": "Copied!",
   "certs.copyLink": "Copy Link",
   "certs.certOfCompletion": "Certificate of Completion",
-
   "dashboard.adminTitle": "Admin Dashboard",
   "dashboard.adminSubtitle": "Platform overview for the last 30 days",
   "dashboard.instructorTitle": "Instructor Dashboard",

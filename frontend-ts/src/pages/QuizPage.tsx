@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '../components/layout/Header'
-import { processApi, questionBankApi, contentApi, examApi } from '../api'
+import ConfirmModal from '../components/ConfirmModal'
+import { processApi, examApi } from '../api'
 import { useTranslation } from 'react-i18next'
 
 type AnyObj = Record<string, unknown>
@@ -24,13 +25,13 @@ const btnGhost = `${btnBase} px-4 py-2 bg-transparent text-text-muted hover:text
 const btnLg = 'px-8 py-3.5 text-base'
 
 const QuizPage = () => {
-  const { contentId } = useParams()
+  const { contentId } = useParams()                        // contentId từ URL
   const [searchParams] = useSearchParams()
   const enrollmentId = searchParams.get('enrollmentId') || ''
   const courseId = searchParams.get('courseId') || ''
-  const lessonId = searchParams.get('lessonId') || contentId || ''
+  const lessonId = searchParams.get('lessonId') || ''
   const chapterId = searchParams.get('chapterId') || ''
-  const selectedContentId = searchParams.get('contentId') || contentId || ''
+  const selectedContentId = contentId || ''
   const navigate = useNavigate()
   const { t } = useTranslation()
 
@@ -46,71 +47,69 @@ const QuizPage = () => {
   const [examPassScore, setExamPassScore] = useState(PASS_SCORE_DEFAULT)
   const [result, setResult] = useState<QResult | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const [exam, setExam] = useState('')
+  const [exam, setExam] = useState('')  // examId thật lấy từ response getExamById
   const [examName, setExamName] = useState('')
   const [examAttemptId, setExamAttemptId] = useState<string | null>(null)
   const [history, setHistory] = useState<any[]>([])
   const [showHistory, setShowHistory] = useState(false)
-  const [isReviewMode, setIsReviewMode] = useState(false)
-
-
+  const [showSubmitModal, setShowSubmitModal] = useState(false)
+  const [historyPage, setHistoryPage] = useState(0)
+  const [isLastHistoryPage, setIsLastHistoryPage] = useState(false)
+  const [fetchingDetails, setFetchingDetails] = useState(false)
 
   useEffect(() => {
-    if (!lessonId) { setLoadError(t('quiz.noQuestionsLesson')); setLoading(false); return }
+    if (!selectedContentId) { setLoadError(t('quiz.noQuestionsLesson')); setLoading(false); return }
+    if (phase !== 'intro') return
+
     setLoading(true); setLoadError('')
+
     const loadQ = async () => {
-      /* Step 1: resolve the real contentId for the QUIZ content */
-      let examId = ''
+      // Gọi getExamById với contentId → backend trả examId
       try {
-        const cRes = await contentApi.getByContentId(lessonId)
-        examId = cRes.data.data.contentId
-        setExam(examId);
-      } catch { }
-      /* Step 2: try to get exam questions from examApi */
-      let loaded = false
-      if (examId) {
-        try {
-          const examRes = await examApi.getExamById(examId)
-          const examData = unwrap(examRes) as AnyObj
-          if (examData) {
-            const dur = Number(examData.duration); if (Number.isFinite(dur) && dur > 0) { setExamDuration(dur); setTimeLeft(dur) }
-            const ps = Number(examData.passScore); if (Number.isFinite(ps) && ps > 0) setExamPassScore(ps)
-            if (examData.name || examData.examName) setExamName((examData.name || examData.examName) as string)
-          }
-          const qRes = await examApi.getQuestionsByExam(examId)
+        const examRes = await examApi.getExamById(selectedContentId)
+        const examData = unwrap(examRes) as AnyObj
+        if (examData) {
+          const dur = Number(examData.duration); if (Number.isFinite(dur) && dur > 0) { setExamDuration(dur); setTimeLeft(dur) }
+          const ps = Number(examData.passScore); if (Number.isFinite(ps) && ps > 0) setExamPassScore(ps)
+          if (examData.name || examData.examName) setExamName((examData.name || examData.examName) as string)
+          // Lấy examId thật từ response
+          const realExamId = (examData.examId) as string
+          if (realExamId) setExam(realExamId)
+
+          const qRes = await examApi.getQuestionsByExam(selectedContentId)
           const qRaw = unwrap(qRes)
           const qItems = (Array.isArray(qRaw) ? qRaw : (qRaw as AnyObj)?.content ?? (qRaw as AnyObj)?.items ?? []) as AnyObj[]
           if (qItems.length > 0) {
             setQuestions(qItems.map((q) => ({ questionBankId: (q.questionBankId || q.questionId || q.id) as string, text: (q.questionText || q.text) as string, imageUrl: q.imageUrl as string | undefined, type: (q.questionType || q.type || 'MULTIPLE_CHOICE') as string, options: ((q.options || q.answers || []) as AnyObj[]).map((o) => ({ optionId: (o.optionId || o.answerId || o.id) as string, text: (o.answerText || o.text) as string, isCorrect: (o.isCorrect || o.correct) as boolean })) })))
-            loaded = true
+            return
           }
-        } catch { }
-      }
-      /* Step 3: fallback to questionBankApi */
-      if (!loaded) {
-        try {
-          const res = await questionBankApi.getByLessonId(lessonId, 0, 100)
-          const raw = unwrap(res) as AnyObj
-          const items = (raw?.content ?? raw?.items ?? (Array.isArray(raw) ? raw : [])) as AnyObj[]
-          if (!items.length) { setLoadError(t('quiz.noQuestionsLesson')); return }
-          setQuestions(items.map((q) => ({ questionBankId: q.questionBankId as string, text: q.questionText as string, imageUrl: q.imageUrl as string | undefined, type: (q.questionType as string) || 'MULTIPLE_CHOICE', options: ((q.options as AnyObj[]) || []).map((o) => ({ optionId: o.optionId as string, text: o.answerText as string, isCorrect: (o.isCorrect || o.correct) as boolean })) })))
-        } catch (err: unknown) {
-          const e = err as { response?: { data?: { message?: string } }; message?: string }
-          setLoadError(e.response?.data?.message || e.message || t('quiz.cantLoadQuestions'))
         }
+        setLoadError(t('quiz.noQuestionsLesson'))
+      } catch (err: unknown) {
+        const e = err as { response?: { data?: { message?: string } }; message?: string }
+        setLoadError(e.response?.data?.message || e.message || t('quiz.cantLoadQuestions'))
       }
     }
+
     loadQ().finally(() => setLoading(false))
-  }, [lessonId])
+  }, [selectedContentId, phase, t])
 
   const startQuiz = useCallback(async () => {
-    const res = await examApi.startExam(exam)
-    const attemptData = unwrap(res) as any;
-
-    // Lưu lại ID của lượt thi này để tí nữa submit
-    setExamAttemptId(attemptData.examAttemptId);
-    setPhase('taking'); setTimeLeft(examDuration); setAnswers({}); setFlagged({}); setCurrentIdx(0); setResult(null)
-  }, [examDuration])
+    try {
+      const res = await examApi.startExam(selectedContentId)
+      const attemptData = unwrap(res) as any;
+      setExamAttemptId(attemptData.examAttemptId || attemptData.id);
+      setPhase('taking'); 
+      setTimeLeft(examDuration); 
+      setAnswers({}); 
+      setFlagged({}); 
+      setCurrentIdx(0); 
+      setResult(null);
+    } catch (err) {
+      console.error("Lỗi bắt đầu thi:", err);
+      alert("Không thể bắt đầu bài thi. Vui lòng thử lại.");
+    }
+  }, [exam, examDuration])
 
   useEffect(() => { if (phase !== 'taking') return; timerRef.current = setInterval(() => setTimeLeft((p) => { if (p <= 1) { clearInterval(timerRef.current!); return 0 }; return p - 1 }), 1000); return () => clearInterval(timerRef.current!) }, [phase])
 
@@ -125,7 +124,9 @@ const QuizPage = () => {
 
     const submitRequest = {
       examAttemptId: examAttemptId,
-      answers: formattedAnswers
+      answers: formattedAnswers,
+      examId: exam,
+      enrollmentId: enrollmentId
     };
 
     try {
@@ -145,7 +146,7 @@ const QuizPage = () => {
       setPhase('result');
 
       // 4. Track tiến độ (giữ nguyên logic cũ của bạn)
-      const tId = realContentId || contentId || '';
+      const tId = selectedContentId || contentId || '';
       if (isUuid(tId) && enrollmentId) {
         processApi.trackContent({
           contentId: tId,
@@ -157,47 +158,91 @@ const QuizPage = () => {
       console.error("Lỗi khi nộp bài:", error);
       alert("Có lỗi xảy ra khi nộp bài. Vui lòng thử lại!");
     }
-  }, [answers, examAttemptId, questions, realContentId, contentId, enrollmentId]);
+  }, [answers, examAttemptId, exam, enrollmentId, selectedContentId, contentId, questions, t]);
   // 1. Hàm tải danh sách lịch sử từ Backend
-  const fetchHistory = useCallback(async () => {
-    if (!exam) return
+  const fetchHistory = useCallback(async (page = 0) => {
+    const eId = exam || selectedContentId || lessonId || searchParams.get('examId')
+    if (!eId) {
+       console.error("Thiếu ExamId để tải lịch sử.")
+       return
+    }
     try {
-      const res = await examApi.getMyAttemptResults(exam)
+      const res = await examApi.getMyAttemptResults(eId, page, 10)
       const data = unwrap(res)
-      setHistory(Array.isArray(data) ? data : [])
+      const items = Array.isArray(data) ? data : (data as any)?.content || []
+      setHistory(items)
+      setHistoryPage(page)
+      setIsLastHistoryPage(Array.isArray(data) ? items.length < 10 : (data as any)?.last || items.length < 10)
       setShowHistory(true)
     } catch (err) {
       console.error("Lỗi tải lịch sử:", err)
-      alert("Không thể tải lịch sử làm bài.")
     }
   }, [exam])
 
-  // 2. Hàm xử lý khi nhấn vào "Xem lại" một dòng cụ thể
-  const reviewAttempt = (attempt: any) => {
-    const oldAnswers: Record<string, string> = {}
-
-    // Mapping lịch sử câu trả lời vào state answers của React
-    // Bạn hãy kiểm tra tên field 'answerHistoryList' có khớp với DTO Backend trả về không nhé
-    if (attempt.answerHistoryList) {
-      attempt.answerHistoryList.forEach((h: any) => {
-        // Logic lấy ID câu hỏi và ID phương án đã chọn
-        const qId = h.questionBankId || h.questionId
-        const optId = h.selectedOptionId
-        if (qId && optId) oldAnswers[qId] = optId
-      })
+  useEffect(() => {
+    if (searchParams.get('showHistory') === 'true' && exam && phase === 'intro') {
+      fetchHistory(0)
     }
+  }, [exam, fetchHistory, searchParams, phase])
 
-    setAnswers(oldAnswers)
-    setResult({
-      score: attempt.score,
-      passed: attempt.passed,
-      correct: attempt.rightAnswer || 0,
-      total: questions.length
-    })
+  // 2. Hàm xử lý khi nhấn vào "Xem lại" một dòng cụ thể
+  const reviewAttempt = async (attempt: any) => {
+    setFetchingDetails(true)
+    try {
+      const res = await examApi.getAttemptHistory(attempt.examAttemptId)
+      const historyData = unwrap(res) as any[]
 
-    setIsReviewMode(true) // Đánh dấu là đang ở chế độ xem lại
-    setPhase('result')    // Chuyển sang màn hình kết quả
-    setShowHistory(false) // Đóng Modal lịch sử
+      if (!historyData || historyData.length === 0) {
+        alert("Không tìm thấy dữ liệu chi tiết cho lượt thi này.")
+        return
+      }
+
+      // Tái cấu trúc questions và answers từ dữ liệu lịch sử
+      const reconstructedQuestions: QItem[] = historyData.map((h: any) => {
+        const qb = h.questionBankResponse || {}
+        const options = (qb.options || qb.answers || []).map((o: any) => ({
+          optionId: o.optionId || o.answerId || o.id,
+          text: o.answerText || o.text,
+          isCorrect: o.isCorrect || o.correct
+        }))
+
+        return {
+          questionBankId: h.questionBankId || qb.questionBankId || qb.id,
+          text: h.questionText || qb.questionText || qb.text,
+          imageUrl: qb.imageUrl,
+          type: qb.questionType || 'MULTIPLE_CHOICE',
+          options
+        }
+      })
+
+      const reconstructedAnswers: Record<string, string> = {}
+      historyData.forEach((h: any) => {
+        const qId = h.questionBankId || (h.questionBankResponse && (h.questionBankResponse.questionBankId || h.questionBankResponse.id))
+        if (qId) {
+          // Tìm optionId tương ứng với text selectedAnswer
+          const q = reconstructedQuestions.find(rq => rq.questionBankId === qId)
+          const selOpt = q?.options.find(o => o.text === h.selectedAnswer)
+          if (selOpt) reconstructedAnswers[qId] = selOpt.optionId
+          else reconstructedAnswers[qId] = 'REMOTE_' + h.selectedAnswer // Fallback if ID not found
+        }
+      })
+
+      setQuestions(reconstructedQuestions)
+      setAnswers(reconstructedAnswers)
+      setResult({
+        score: attempt.score,
+        passed: attempt.passed,
+        correct: attempt.rightAnswer || 0,
+        total: reconstructedQuestions.length
+      })
+
+      setPhase('result')
+      setShowHistory(false)
+    } catch (err) {
+      console.error("Lỗi tải chi tiết lịch sử:", err)
+    } finally {
+      setFetchingDetails(false)
+    }
   }
 
 
@@ -212,35 +257,59 @@ const QuizPage = () => {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
       <div className="bg-white rounded-[24px] w-full max-w-[500px] max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
         <div className="p-6 border-b border-border-subtle flex justify-between items-center bg-bg-deep">
-          <h2 className="text-xl font-bold text-text-main">Lịch sử làm bài</h2>
+          <h2 className="text-xl font-bold text-text-main">{t('quiz.historyTitle')}</h2>
           <button onClick={() => setShowHistory(false)} className="text-2xl text-text-muted hover:text-text-main transition-colors">&times;</button>
         </div>
 
         <div className="p-4 overflow-y-auto flex-1">
           {history.length === 0 ? (
-            <div className="text-center py-12 text-text-muted">Bạn chưa thực hiện bài thi này lần nào.</div>
+            <div className="text-center py-12 text-text-muted">{t('quiz.historyEmpty')}</div>
           ) : (
-            history.map((att, idx) => (
-              <div key={att.examAttemptId} className="flex justify-between items-center p-4 mb-3 border border-border-medium rounded-xl hover:border-primary-500 hover:bg-primary-500/5 transition-all group">
-                <div className="flex flex-col gap-1">
-                  <span className="font-bold text-text-main">Lần {history.length - idx}</span>
-                  <span className="text-xs text-text-muted">
-                    {new Date(att.attemptStartTime).toLocaleString('vi-VN')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className={`text-lg font-black ${att.passed ? 'text-green-600' : 'text-red-600'}`}>
-                    {att.score}%
+            <>
+              {history.map((att, idx) => (
+                <div key={att.examAttemptId} className="flex justify-between items-center p-4 mb-3 border border-border-medium rounded-xl hover:border-primary-500 hover:bg-primary-500/5 transition-all group">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-bold text-text-main">{t('quiz.historyAttempt', { n: history.length - idx + (historyPage * 10) })}</span>
+                    <span className="text-xs text-text-muted">
+                      {new Date(att.attemptStartTime).toLocaleString('vi-VN')}
+                    </span>
+                    <span className="text-[10px] text-text-dim">
+                      {t('quiz.historyCorrect', { right: att.rightAnswer, total: questions.length })}
+                    </span>
                   </div>
-                  <button
-                    className={`${btnOutline} group-hover:bg-primary-500 group-hover:text-white group-hover:border-primary-500`}
-                    onClick={() => reviewAttempt(att)}
-                  >
-                    Xem lại
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <div className={`text-lg font-black ${att.passed ? 'text-green-600' : 'text-red-600'}`}>
+                      {att.score}%
+                    </div>
+                    <button
+                      className={`${btnOutline} group-hover:bg-primary-500 group-hover:text-white group-hover:border-primary-500 disabled:opacity-50`}
+                      disabled={fetchingDetails}
+                      onClick={() => reviewAttempt(att)}
+                    >
+                      {fetchingDetails ? t('quiz.historyReviewing') : t('quiz.historyReview')}
+                    </button>
+                  </div>
                 </div>
+              ))}
+              
+              <div className="flex items-center justify-between mt-4 px-2">
+                <button 
+                  className={btnOutline} 
+                  disabled={historyPage === 0}
+                  onClick={() => fetchHistory(historyPage - 1)}
+                >
+                  {t('quiz.historyPrev')}
+                </button>
+                <span className="text-sm font-medium text-text-muted">{t('quiz.historyPage', { page: historyPage + 1 })}</span>
+                <button 
+                  className={btnOutline} 
+                  disabled={isLastHistoryPage}
+                  onClick={() => fetchHistory(historyPage + 1)}
+                >
+                  {t('quiz.historyNext')}
+                </button>
               </div>
-            ))
+            </>
           )}
         </div>
       </div>
@@ -262,9 +331,11 @@ const QuizPage = () => {
         <div className="text-left bg-bg-deep border border-border-subtle rounded-[14px] p-4 mb-6"><h3 className="m-0 mb-2 text-sm text-text-main">{t('quiz.notesTitle')}</h3><ul className="m-0 pl-5">{[t('quiz.note1'), t('quiz.note2'), t('quiz.note3'), t('quiz.note4')].map((note) => <li key={note} className="text-[0.88rem] text-text-secondary mb-1 leading-relaxed">{note}</li>)}</ul></div>
         <div className="flex flex-col gap-2.5 items-center">
           <button type="button" className={`${btnPrimary} ${btnLg}`} onClick={startQuiz}>{t('quiz.startBtn')}</button>
-          <button type="button" className={`${btnOutline} w-full max-w-[200px]`} onClick={fetchHistory}>
+          <button type="button" className={`${btnOutline} w-full max-w-[200px] disabled:opacity-50`} onClick={() => fetchHistory(0)} disabled={loading}>
             🕒 {t('quiz.history')}
-          </button>          <button type="button" className={btnGhost} onClick={goBack}>{t('quiz.goBack')}</button></div>
+          </button>
+          <button type="button" className={btnGhost} onClick={goBack}>{t('quiz.goBack')}</button></div>
+        {showHistory && <HistoryModal />}
       </IntroCard>
     </main></div>
   )
@@ -323,7 +394,7 @@ const QuizPage = () => {
             <button type="button" className={`${btnGhost} text-[0.82rem] px-3 py-1.5`} onClick={toggleFlag}>{flagged[currentQ.questionBankId] ? t('quiz.unflag') : t('quiz.flag')}</button>
             <div className="flex gap-2">
               <button type="button" className={btnOutline} disabled={currentIdx === 0} onClick={() => setCurrentIdx((p) => p - 1)}>{t('quiz.prevQuestion')}</button>
-              {currentIdx < questions.length - 1 ? <button type="button" className={btnPrimary} onClick={() => setCurrentIdx((p) => p + 1)}>{t('quiz.nextQuestion')}</button> : <button type="button" className={btnSubmit} onClick={() => { if (window.confirm(t('quiz.submitConfirm', { answered: answeredCount, total: questions.length }))) submitQuiz() }}>{t('quiz.submitQuiz')}</button>}
+              {currentIdx < questions.length - 1 ? <button type="button" className={btnPrimary} onClick={() => setCurrentIdx((p) => p + 1)}>{t('quiz.nextQuestion')}</button> : <button type="button" className={btnSubmit} onClick={() => setShowSubmitModal(true)}>{t('quiz.submitQuiz')}</button>}
             </div>
           </div>
         </div>
@@ -333,9 +404,18 @@ const QuizPage = () => {
           <div className="text-[0.8rem] text-text-muted mb-3">{answeredCount}/{questions.length}</div>
           <div className="grid grid-cols-5 gap-1.5 mb-3 max-[768px]:grid-cols-8">{questions.map((q, i) => { let cls = 'relative w-full aspect-square flex items-center justify-center rounded-[10px] border text-[0.82rem] font-semibold cursor-pointer transition-all'; if (i === currentIdx) cls += ' border-primary-500 bg-[rgba(0,86,210,0.08)] text-primary-500'; else if (answers[q.questionBankId]) cls += ' bg-emerald-50 border-emerald-200 text-green-600'; else cls += ' bg-white border-border-medium text-text-muted hover:bg-bg-deep'; if (flagged[q.questionBankId]) cls += ' !border-amber-500'; return <button key={q.questionBankId} type="button" className={cls} onClick={() => setCurrentIdx(i)}>{i + 1}{flagged[q.questionBankId] && <span className="absolute -top-0.5 -right-0.5 text-[0.55rem]">🚩</span>}</button> })}</div>
           <div className="flex flex-wrap gap-x-3 gap-y-2 mb-4">{[{ cls: 'bg-[rgba(0,86,210,0.3)] border border-primary-500', label: 'Current' }, { cls: 'bg-emerald-50 border border-green-600', label: 'Answered' }, { cls: 'bg-transparent border border-amber-500', label: 'Flagged' }, { cls: 'bg-bg-deep border border-border-medium', label: 'Unanswered' }].map((d) => <div key={d.label} className="flex items-center gap-1 text-[0.72rem] text-text-muted"><span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${d.cls}`} />{d.label}</div>)}</div>
-          <button type="button" className={`${btnSubmit} w-full`} onClick={() => { if (window.confirm(t('quiz.submitConfirm', { answered: answeredCount, total: questions.length }))) submitQuiz() }}>{t('quiz.submitCount', { answered: answeredCount, total: questions.length })}</button>
+          <button type="button" className={`${btnSubmit} w-full`} onClick={() => setShowSubmitModal(true)}>{t('quiz.submitCount', { answered: answeredCount, total: questions.length })}</button>
         </div>
       </div>
+      <ConfirmModal
+        open={showSubmitModal}
+        type="primary"
+        title={t('quiz.submitQuiz')}
+        message={t('quiz.submitConfirm', { answered: answeredCount, total: questions.length })}
+        confirmText={t('quiz.submitQuiz')}
+        onConfirm={submitQuiz}
+        onClose={() => setShowSubmitModal(false)}
+      />
     </main></div>
   )
 }

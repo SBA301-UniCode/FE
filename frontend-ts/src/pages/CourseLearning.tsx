@@ -48,7 +48,12 @@ const normalizeJavaCompileMessage = (msg: string, lineOffset = 5) =>
 const extractPracticeStarterCode = (p: unknown) => {
   if (!p) return ''
   const o = p as AnyObj
-  const raw = String(o?.starterCode ?? o?.startCode ?? o?.starter_code ?? (o?.practice as AnyObj)?.starterCode ?? (o?.practiceExam as AnyObj)?.starterCode ?? '').trim()
+  // Normalize escape sequences từ backend (ví dụ \n literal → newline thật)
+  const raw = String(o?.starterCode ?? o?.startCode ?? o?.starter_code ?? (o?.practice as AnyObj)?.starterCode ?? (o?.practiceExam as AnyObj)?.starterCode ?? '')
+    .trim()
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t')
+    .replace(/\\r/g, '\r')
   const lang = String(o?.language ?? (o?.practice as AnyObj)?.language ?? (o?.practiceExam as AnyObj)?.language ?? '').toLowerCase()
   const isJava = lang === 'java'
 
@@ -281,28 +286,55 @@ const CourseLearning = () => {
     }
     setSelectedChapterId(chId)
   }
-  const findRealContentId = (ct: AnyObj | null) => { if (!ct) return ''; const cid = getContentId(ct); if (isTrackableContentId(cid)) return cid; if (ct._virtual && ct.contentType === 'DOCUMENT') { const docs = documentsByLesson[selectedLessonId]; if (docs) { const realDoc = Object.entries(docs).find(([, d]) => d); if (realDoc) return realDoc[0] } } const contents = contentsByLesson[selectedLessonId] || []; const real = contents.find((c) => (c as AnyObj).contentType === ct.contentType && isTrackableContentId(getContentId(c))); return real ? getContentId(real) : '' }
+  const findRealContentId = (ct: AnyObj | null) => { 
+    if (!ct) return ''; 
+    const cid = getContentId(ct); 
+    if (isTrackableContentId(cid) || ct.contentType === 'QUIZ') return cid; 
+    if (ct._virtual && ct.contentType === 'DOCUMENT') { 
+      const docs = documentsByLesson[selectedLessonId]; 
+      if (docs) { 
+        const realDoc = Object.entries(docs).find(([, d]) => d); 
+        if (realDoc) return realDoc[0] 
+      } 
+    } 
+    const contents = contentsByLesson[selectedLessonId] || []; 
+    const real = contents.find((c) => (c as AnyObj).contentType === ct.contentType && (isTrackableContentId(getContentId(c)) || c.contentType === 'QUIZ')); 
+    return real ? getContentId(real) : '' 
+  }
 
   const handleMarkDocRead = () => { const cid = findRealContentId(selectedContent); if (cid) { setDocRead(true); trackContent(cid, 'COMPLETED') } else { setDocRead(true) } }
   const handleGoToQuiz = () => {
     if (!selectedContent) return;
-
-    // Lấy ID thật sự (ưu tiên examId để Backend không trả về rỗng)
-    const qId = findRealContentId(selectedContent);
-
+    const qId = (selectedContent as AnyObj).contentId as string || findRealContentId(selectedContent);
     const p = new URLSearchParams();
-    // ... (giữ nguyên các dòng set param khác)
-
-    // QUAN TRỌNG: Phải dùng qId đã tìm được ở trên
+    if (enrollmentId) p.set('enrollmentId', enrollmentId);
+    if (courseId && isValidId(courseId)) p.set('courseId', courseId);
+    if (selectedChapterId) p.set('chapterId', selectedChapterId);
+    if (selectedLessonId) p.set('lessonId', selectedLessonId);
     navigate(`/quiz/${qId}?${p.toString()}`);
   };
+  const handleViewQuizHistory = () => {
+    if (!selectedContent) return;
+    const qId = (selectedContent as AnyObj).contentId as string || findRealContentId(selectedContent);
+    const p = new URLSearchParams();
+    if (enrollmentId) p.set('enrollmentId', enrollmentId);
+    if (courseId && isValidId(courseId)) p.set('courseId', courseId);
+    if (selectedChapterId) p.set('chapterId', selectedChapterId);
+    if (selectedLessonId) p.set('lessonId', selectedLessonId);
+    p.set('showHistory', 'true');
+    navigate(`/quiz/${qId}?${p.toString()}`);
+  }
   useEffect(() => { let c = false; const load = async () => { if (selectedContent?.contentType !== 'PRACTICE') { setPracticeError(''); setPracticeSession(null); setPracticeCode(''); setPracticeResult(null); setPracticeSubmitError(''); return }; const cid = getContentId(selectedContent); if (!isTrackableContentId(cid)) { setPracticeError(t('learning.invalidContentId')); return }; setPracticeLoading(true); setPracticeError(''); try { const res = await practiceApi.startPractice(cid); if (c) return; const pp = unwrap(res) as AnyObj; setPracticeSession(pp || null); setPracticeCode(extractPracticeStarterCode(pp)); setPracticeResult(null); setPracticeSubmitError(''); trackContent(cid, 'IN_PROCESS') } catch (err: unknown) { if (c) return; setPracticeSession(null); setPracticeCode(''); const e = err as { response?: { data?: { message?: string } }; message?: string }; setPracticeError(e.response?.data?.message || e.message || t('learning.loadPracticeFailed')) } finally { if (!c) setPracticeLoading(false) } }; load(); return () => { c = true } }, [selectedContent])
 
   const handleSubmitPractice = async () => {
     if (!practiceSession?.submissionId) { setPracticeSubmitError(t('learning.missingSubmissionId')); return }
     setSubmittingPractice(true); setPracticeSubmitError('')
     try {
+      // Normalize escape sequences: chuyển \n literal → newline thật (fix lỗi compile Java)
       const codeToSubmit = practiceCode
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '\t')
+        .replace(/\\r/g, '\r')
       const res = await practiceApi.submitPractice({ submissionId: practiceSession.submissionId as string, learnerCode: codeToSubmit })
       const pp = unwrap(res) as AnyObj; setPracticeResult(pp || null)
       const scid = getContentId(selectedContent); if (isTrackableContentId(scid) && Number(pp?.failed || 0) === 0) trackContent(scid, 'COMPLETED')
@@ -405,7 +437,7 @@ const CourseLearning = () => {
             {selectedContent?.contentType === 'DOCUMENT' && <div className="bg-white border border-border-medium rounded-[18px] overflow-hidden"><div className="flex items-center gap-2.5 px-4 py-3 bg-bg-deep border-b border-border-subtle"><span className="text-xl">📄</span><h3 className="m-0 text-lg font-bold">{(selectedDoc?.title as string) || t('learning.documentTitle')}</h3></div><div className="px-4 py-5 text-text-secondary leading-relaxed text-sm">{(selectedDoc?.documentUrl) ? <><a href={selectedDoc.documentUrl as string} target="_blank" rel="noreferrer">📄 {t('learning.openDocument')}</a><button type="button" className="ml-3 bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] border-none text-white px-4 py-2 rounded-lg cursor-pointer text-[0.85rem]" onClick={async () => { try { const res = await watermarkApi.downloadWithWatermark((selectedDoc as AnyObj).documentId as string); const blob = new Blob([(res as { data: BlobPart }).data]); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; let fn = (selectedDoc?.title || 'document') as string; const cd = ((res as { headers?: Record<string, string> }).headers || {})['content-disposition']; if (cd) { const m = cd.match(/filename="?([^"]+)"?/); if (m?.[1]) fn = m[1] } else if (!fn.includes('.')) fn += '.pdf'; a.download = fn; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; toast.error(t('learning.downloadFailed') + ': ' + (err.response?.data?.message || err.message)) } }}>🔒 {t('learning.downloadWatermark')}</button></> : <><p>{t('learning.noDocUrl')}</p><p>{t('learning.noDocUrlHint')}</p></>}</div><div className="px-4 py-3 border-t border-border-subtle flex justify-center">{contentStatusMap[normalizeId(getContentId(selectedContent))] === 'COMPLETED' || docRead ? <div className="font-bold text-green-600 text-sm">✅ {t('learning.docRead')}</div> : <button type="button" className="px-5 py-2.5 rounded-xl font-bold text-sm border-none cursor-pointer bg-primary-500 text-white transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]" onClick={handleMarkDocRead}>{t('learning.markDocRead')}</button>}</div></div>}
 
             {/* QUIZ */}
-            {selectedContent?.contentType === 'QUIZ' && <div className="bg-white border border-border-medium rounded-[18px] overflow-hidden"><div className="flex items-center gap-2.5 px-4 py-3 bg-purple-50 border-b border-border-subtle"><span className="text-xl">✏️</span><h3 className="m-0 text-lg font-bold">{t('learning.quiz')}</h3></div><div className="px-6 py-10 text-center flex flex-col items-center gap-1.5">{contentStatusMap[normalizeId(getContentId(selectedContent))] === 'COMPLETED' ? <><div className="text-[2.8rem] mb-0.5">✅</div><h4 className="m-0 text-lg font-bold">{t('learning.quizCompleted')}</h4><p className="m-0 text-text-muted text-[0.88rem]">{t('learning.quizRetryHint')}</p><button type="button" className="mt-1.5 px-7 py-2.5 rounded-xl font-bold text-sm border-none cursor-pointer bg-primary-500 text-white transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]" onClick={handleGoToQuiz}>{t('learning.retakeQuiz')}</button></> : <><div className="text-[2.8rem] mb-0.5">📝</div><h4 className="m-0 text-lg font-bold">{t('learning.quizReady')}</h4><div className="flex gap-1.5 items-center text-text-muted text-[0.82rem] mb-1"><span>{t('learning.quizTime')}</span><span>•</span><span>{t('learning.quizPassScore')}</span></div><button type="button" className="mt-1.5 px-7 py-2.5 rounded-xl font-bold text-sm border-none cursor-pointer bg-primary-500 text-white transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]" onClick={handleGoToQuiz}>{t('learning.startQuiz')}</button></>}</div></div>}
+            {selectedContent?.contentType === 'QUIZ' && <div className="bg-white border border-border-medium rounded-[18px] overflow-hidden"><div className="flex items-center gap-2.5 px-4 py-3 bg-purple-50 border-b border-border-subtle"><span className="text-xl">✏️</span><h3 className="m-0 text-lg font-bold">{t('learning.quiz')}</h3></div><div className="px-6 py-10 text-center flex flex-col items-center gap-1.5">{contentStatusMap[normalizeId(getContentId(selectedContent))] === 'COMPLETED' ? <><div className="text-[2.8rem] mb-0.5">✅</div><h4 className="m-0 text-lg font-bold">{t('learning.quizCompleted')}</h4><p className="m-0 text-text-muted text-[0.88rem]">{t('learning.quizRetryHint')}</p><div className="flex gap-3 mt-1.5"><button type="button" className="px-7 py-2.5 rounded-xl font-bold text-sm border-none cursor-pointer bg-primary-500 text-white transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]" onClick={handleGoToQuiz}>{t('learning.retakeQuiz')}</button><button type="button" className="px-7 py-2.5 rounded-xl font-bold text-sm border border-primary-500 cursor-pointer bg-white text-primary-500 transition-all hover:-translate-y-px" onClick={handleViewQuizHistory}>🕒 {t('quiz.history', 'Xem lịch sử')}</button></div></> : <><div className="text-[2.8rem] mb-0.5">📝</div><h4 className="m-0 text-lg font-bold">{t('learning.quizReady')}</h4><div className="flex gap-1.5 items-center text-text-muted text-[0.82rem] mb-1"><span>{t('learning.quizTime')}</span><span>•</span><span>{t('learning.quizPassScore')}</span></div><div className="flex gap-3 mt-1.5"><button type="button" className="px-7 py-2.5 rounded-xl font-bold text-sm border-none cursor-pointer bg-primary-500 text-white transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]" onClick={handleGoToQuiz}>{t('learning.startQuiz')}</button><button type="button" className="px-7 py-2.5 rounded-xl font-bold text-sm border border-primary-500 cursor-pointer bg-white text-primary-500 transition-all hover:-translate-y-px" onClick={handleViewQuizHistory}>🕒 {t('quiz.history', 'Xem lịch sử')}</button></div></>}</div></div>}
 
             {/* PRACTICE */}
             {selectedContent?.contentType === 'PRACTICE' && (

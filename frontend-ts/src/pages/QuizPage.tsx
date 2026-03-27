@@ -14,7 +14,7 @@ interface QOption { optionId: string; text: string; isCorrect: boolean }
 interface QItem { questionBankId: string; text: string; imageUrl?: string; type: string; options: QOption[] }
 interface QResult { correct: number; total: number; score: number; passed: boolean }
 
-const DURATION_DEFAULT = 600, PASS_SCORE_DEFAULT = 60
+const DURATION_DEFAULT = 500, PASS_SCORE_DEFAULT = 45
 
 /* ─── Shared button styles ─── */
 const btnBase = 'inline-flex items-center justify-center gap-1.5 rounded-xl font-semibold text-sm border-none cursor-pointer transition-all'
@@ -25,6 +25,7 @@ const btnGhost = `${btnBase} px-4 py-2 bg-transparent text-text-muted hover:text
 const btnLg = 'px-8 py-3.5 text-base'
 
 const QuizPage = () => {
+  
   const { contentId } = useParams()
   const [searchParams] = useSearchParams()
   const enrollmentId = searchParams.get('enrollmentId') || ''
@@ -57,11 +58,8 @@ const QuizPage = () => {
       /* Step 1: resolve the real contentId for the QUIZ content */
       let examId = ''
       try {
-        const cRes = await contentApi.getByLessonId(lessonId)
-        const list = Array.isArray(unwrap(cRes)) ? unwrap(cRes) as AnyObj[] : []
-        const quiz = list.find((c) => c.contentType === 'QUIZ')
-        const id = getContentId(quiz as AnyObj)
-        if (isUuid(id)) { setRealContentId(id); examId = id }
+        const cRes = await contentApi.getByContentId(lessonId)
+         examId = cRes.data.data.contentId 
       } catch {}
       /* Step 2: try to get exam questions from examApi */
       let loaded = false

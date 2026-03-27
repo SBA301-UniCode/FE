@@ -33,7 +33,7 @@
   "header.profileLabel": "My Profile",
 
   "instructorLearners.title": "Learner Management",
-  "instructorLearners.subtitle": "Select a course to view learners, search, and ban/unban.",
+  "instructorLearners.subtitle": "Overview of your learners.",
   "instructorLearners.yourCourses": "Your courses",
   "instructorLearners.noCourses": "No courses yet.",
   "instructorLearners.levelLabel": "Level: {{level}}",
@@ -440,8 +440,8 @@
   "myLearning.certNotCompleted": "Course not yet 100% completed.",
   "myLearning.feedbackSuccess": "Comment submitted successfully!",
 
-  "myCourses.instructorDashboard": "Instructor Dashboard",
-  "myCourses.dashboardDesc": "Manage and grow your courses.",
+  "myCourses.instructorDashboard": "Course Management",
+  "myCourses.dashboardDesc": "Overview of your courses.",
   "myCourses.homePage": "← Home",
   "myCourses.createCourse": "+ Create Course",
   "myCourses.searchPlaceholder": "Search courses...",
@@ -482,6 +482,11 @@
   "myCourses.paginationNext": "Next →",
   "myCourses.languageLabel": "Language / Technology",
   "myCourses.languagePlaceholder": "-- Select language --",
+  "myCourses.statsCourses": "Courses",
+  "myCourses.statsChapters": "Chapters",
+  "myCourses.loginRequired": "You need to log in to view this page. (Role: {{role}})",
+  "myCourses.tabNotDeleted": "Not deleted",
+  "myCourses.tabDeleted": "Deleted",
 
   "admin.breadcrumbHome": "Home",
   "admin.dashboardTitle": "🛡️ Admin Dashboard",
@@ -625,7 +630,7 @@
   "syllabus.breadcrumbMyCourses": "My Courses",
   "syllabus.breadcrumbSyllabus": "Syllabus",
   "syllabus.title": "📋 Manage Syllabus",
-  "syllabus.desc": "Manage course syllabus — content, teaching methods, and reference materials.",
+  "syllabus.desc": "Overview of your syllabus.",
   "syllabus.createBtn": "+ Create Syllabus",
   "syllabus.courseLabel": "Course",
   "syllabus.courseSelect": "-- Select course --",
@@ -645,6 +650,10 @@
   "syllabus.deleteBtn": "Delete",
   "syllabus.noData": "No syllabus yet",
   "syllabus.confirmDelete": "Delete this syllabus?",
+  "syllabus.listTitle": "Syllabus list",
+  "syllabus.listDesc": "Manage content, teaching methods, and reference materials for each course.",
+  "syllabus.modalEditTitle": "Update syllabus",
+  "syllabus.modalCreateTitle": "Create syllabus",
 
   "manageContent.roleRequired": "This page is for Instructors/Admins only.",
   "manageContent.backMyCourses": "← My Courses",
@@ -652,7 +661,7 @@
   "manageContent.breadcrumbMyCourses": "My Courses",
   "manageContent.breadcrumbContent": "Content",
   "manageContent.title": "🎬 Manage Course Content",
-  "manageContent.desc": "Select chapter → lesson → add Video, Document, Quiz, or Practice.",
+  "manageContent.desc": "Overview of your course content.",
   "manageContent.loadingChapters": "Loading chapters...",
   "manageContent.selectChapter": "1. Select or create a chapter",
   "manageContent.chapterSelect": "-- Select chapter --",
@@ -680,7 +689,7 @@
   "manageContent.noDocId": "Cannot find documentId.",
 
   "verifyContent.title": "Verify Content",
-  "verifyContent.desc": "Upload an image or PDF suspected of unauthorized sharing. The system will check hidden watermarks and match fingerprints to trace the source.",
+  "verifyContent.desc": "Overview of your content verification.",
   "verifyContent.dropzone": "Drag and drop files here or",
   "verifyContent.selectFile": "select file",
   "verifyContent.supportedFormats": "Supported: PNG, JPG, BMP, PDF",
@@ -736,6 +745,7 @@
   "verifyContent.confidence": "Confidence",
   "verifyContent.uploaderEmail": "Uploader email",
   "verifyContent.downloadTime": "Download time",
+  "verifyContent.userId": "User ID",
   "verifyContent.originalDoc": "Original document",
   "verifyContent.methodDirect": "Direct extraction (LSB/QIM)",
   "verifyContent.methodFingerprint": "Fingerprint matching",
@@ -1047,5 +1057,8 @@
   "dashboard.to": "To",
   "dashboard.apply": "Apply",
   "dashboard.instrRevenue": "Revenue",
-  "dashboard.instrRevenueChart": "Revenue Chart"
+  "dashboard.instrRevenueChart": "Revenue Chart",
+  "dashboard.chartArea": "Area",
+  "dashboard.chartBar": "Bar",
+  "dashboard.chartLine": "Line"
 }

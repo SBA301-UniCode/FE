@@ -51,8 +51,8 @@ const SyllabusManagement = () => {
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       {/* Banner */}
-      <div className="bg-[linear-gradient(135deg,#0f766e_0%,#0d9488_50%,#14b8a6_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
-        <div className="w-full mx-auto">
+      <div className="bg-[linear-gradient(135deg,#0d7a5f_0%,#11a87f_52%,#2bc292_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+        <div className="w-full max-w-[1320px] mx-auto">
           <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('syllabus.title')}</h1>
           <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('syllabus.desc')}</p>
         </div>
@@ -61,8 +61,8 @@ const SyllabusManagement = () => {
       <main className="w-full mx-auto px-6 py-4 pb-16">
         <div className="flex items-end justify-between mb-4 gap-3 flex-wrap">
           <div>
-            <h2 className="m-0 text-lg font-extrabold text-text-main">Danh sách giáo trình</h2>
-            <p className="m-0 mt-1 text-sm text-text-secondary">Quản lý nội dung, phương pháp và tài liệu tham khảo của từng khóa học.</p>
+            <h2 className="m-0 text-lg font-extrabold text-text-main">{t('syllabus.listTitle')}</h2>
+            <p className="m-0 mt-1 text-sm text-text-secondary">{t('syllabus.listDesc')}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Link to="/my-courses" className={`${btnGhost} no-underline inline-flex items-center gap-1`}>{t('manageContent.backMyCourses')}</Link>
@@ -74,13 +74,13 @@ const SyllabusManagement = () => {
         {showModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[900]" onClick={() => setShowModal(false)}>
             <form className="bg-white border border-border-medium rounded-[18px] px-7 py-6 w-[95%] max-w-[550px] flex flex-col gap-4 shadow-[0_8px_32px_rgba(0,0,0,0.12)]" onClick={(ev) => ev.stopPropagation()} onSubmit={handleSubmit}>
-              <h3 className="m-0 text-lg font-extrabold">{editing ? t('syllabus.updateBtn') + ' Syllabus' : t('syllabus.createSubmitBtn') + ' Syllabus'}</h3>
+              <h3 className="m-0 text-lg font-extrabold">{editing ? t('syllabus.modalEditTitle') : t('syllabus.modalCreateTitle')}</h3>
               {formError && <div className="bg-red-50 border border-red-200 rounded-[10px] p-2 text-[0.85rem] text-red-600">{formError}</div>}
               {!editing && <label className="flex flex-col gap-1 text-sm font-semibold">{t('syllabus.courseLabel')}<select className="bg-bg-deep border border-border-medium rounded-[10px] px-3 py-2 text-text-main text-sm font-normal outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(0,86,210,0.1)]" value={form.courseId} onChange={(ev) => setForm({ ...form, courseId: ev.target.value })}><option value="">{t('syllabus.courseSelect')}</option>{courses.map((c) => <option key={c.courseId as string} value={c.courseId as string}>{c.title as string}</option>)}</select></label>}
               <label className="flex flex-col gap-1 text-sm font-semibold">{t('syllabus.contentLabel')}<textarea className="bg-bg-deep border border-border-medium rounded-[10px] px-3 py-2 text-text-main text-sm font-normal outline-none resize-y focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(0,86,210,0.1)]" rows={3} value={form.courseContent} onChange={(ev) => setForm({ ...form, courseContent: ev.target.value })} required /></label>
               <label className="flex flex-col gap-1 text-sm font-semibold">{t('syllabus.methodLabel')}<input className="bg-bg-deep border border-border-medium rounded-[10px] px-3 py-2 text-text-main text-sm font-normal outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(0,86,210,0.1)]" value={form.method} onChange={(ev) => setForm({ ...form, method: ev.target.value })} /></label>
               <label className="flex flex-col gap-1 text-sm font-semibold">{t('syllabus.referenceLabel')}<textarea className="bg-bg-deep border border-border-medium rounded-[10px] px-3 py-2 text-text-main text-sm font-normal outline-none resize-y focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(0,86,210,0.1)]" rows={2} value={form.referenceMaterial} onChange={(ev) => setForm({ ...form, referenceMaterial: ev.target.value })} /></label>
-              <div className="flex gap-3 justify-end"><button type="button" className={btnGhost} onClick={() => setShowModal(false)}>{t('syllabus.cancelBtn')}</button><button type="submit" className={btnPrimary} disabled={saving}>{saving ? '...' : editing ? t('syllabus.updateBtn') : t('syllabus.createSubmitBtn')}</button></div>
+              <div className="flex gap-3 justify-end"><button type="button" className={btnGhost} onClick={() => setShowModal(false)}>{t('syllabus.cancelBtn')}</button><button type="submit" className={btnPrimary} disabled={saving}>{saving ? t('common.loading') : editing ? t('syllabus.updateBtn') : t('syllabus.createSubmitBtn')}</button></div>
             </form>
           </div>
         )}
@@ -124,7 +124,7 @@ const SyllabusManagement = () => {
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center justify-center gap-3 mt-4"><button type="button" className={btnGhost} disabled={page === 0} onClick={() => setPage(page - 1)}>Prev</button><span>Trang {page + 1} / {totalPages}</span><button type="button" className={btnGhost} disabled={page + 1 >= totalPages} onClick={() => setPage(page + 1)}>Next</button></div>
+            <div className="flex items-center justify-center gap-3 mt-4"><button type="button" className={btnGhost} disabled={page === 0} onClick={() => setPage(page - 1)}>{t('common.prev')}</button><span>{t('admin.paginationPage', { current: page + 1, total: totalPages })}</span><button type="button" className={btnGhost} disabled={page + 1 >= totalPages} onClick={() => setPage(page + 1)}>{t('common.next')}</button></div>
           </>}
         </div>
       </main>

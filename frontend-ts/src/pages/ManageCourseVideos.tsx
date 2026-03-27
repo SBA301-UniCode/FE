@@ -244,7 +244,7 @@ const ManageCourseVideos = () => {
   return (
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
-      <div className="bg-[linear-gradient(135deg,#312e81_0%,#4338ca_50%,#6366f1_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"><div className="w-full max-w-[1320px] mx-auto"><h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('manageContent.title')}</h1><p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('manageContent.desc')}</p></div></div>
+      <div className="bg-[linear-gradient(135deg,#0d7a5f_0%,#11a87f_52%,#2bc292_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"><div className="w-full max-w-[1320px] mx-auto"><h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('manageContent.title')}</h1><p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('manageContent.desc')}</p></div></div>
 
       {/* ── Toast popup container ── */}
       <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none" style={{ maxWidth: '420px' }}>

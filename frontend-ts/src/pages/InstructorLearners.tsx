@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Header from '../components/layout/Header'
 import { courseApi, enrollmentApi } from '../api'
-import { useAuth } from '../contexts/useAuth'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 
@@ -30,10 +29,7 @@ const getEmail = (u: AnyObj) => (u?.email || '') as string
 const getName = (u: AnyObj) => (u?.fullName || u?.name || u?.username || '') as string
 
 const InstructorLearners = () => {
-  const { user } = useAuth()
   const { t } = useTranslation()
-
-  const myUserId = ((user as AnyObj | null)?.userId || (user as AnyObj | null)?.id || '') as string
 
   const [courseLoading, setCourseLoading] = useState(true)
   const [courseError, setCourseError] = useState('')
@@ -54,14 +50,7 @@ const InstructorLearners = () => {
   const [bannedByUser, setBannedByUser] = useState<Record<string, boolean>>({})
   const [actingUserId, setActingUserId] = useState('')
 
-  const myCourses = useMemo(() => {
-    const list = allCourses
-    if (!myUserId) return list
-    return list.filter((c) => {
-      const ins = (c?.instructorId || (c?.instructorResponse as AnyObj | undefined)?.userId || (c?.instructor as AnyObj | undefined)?.userId) as string
-      return !ins || ins === myUserId
-    })
-  }, [allCourses, myUserId])
+  const myCourses = useMemo(() => allCourses, [allCourses])
 
   const courseTotal = myCourses.length
   const computedTotalPages = Math.max(1, Math.ceil(courseTotal / courseSize))
@@ -73,10 +62,44 @@ const InstructorLearners = () => {
     const run = async () => {
       setCourseLoading(true); setCourseError('')
       try {
-        const res = await courseApi.getAll(0, 500)
-        const data = unwrap(res)
-        const page = extractPage(data)
-        const list = page.content
+        const merged: AnyObj[] = []
+        const firstRes = await courseApi.getMyCourses({
+          keySearch: '',
+          sortBy: 'createdAt',
+          direction: 'asc',
+          deleted: false,
+          page: 0,
+          size: 100,
+        })
+        const firstPage = extractPage(unwrap(firstRes))
+        merged.push(...firstPage.content)
+
+        const totalPages = Math.max(1, Number(firstPage.totalPages || 1))
+        if (totalPages > 1) {
+          const rest = await Promise.all(
+            Array.from({ length: totalPages - 1 }, (_, i) =>
+              courseApi.getMyCourses({
+                keySearch: '',
+                sortBy: 'createdAt',
+                direction: 'asc',
+                deleted: false,
+                page: i + 1,
+                size: 100,
+              }),
+            ),
+          )
+          for (const res of rest) {
+            const pg = extractPage(unwrap(res))
+            merged.push(...pg.content)
+          }
+        }
+
+        const uniqueById = new Map<string, AnyObj>()
+        for (const c of merged) {
+          const cid = getCourseId(c)
+          uniqueById.set(cid || `${uniqueById.size}`, c)
+        }
+        const list = [...uniqueById.values()]
         if (!cancelled) {
           setAllCourses(list)
           setCourseTotalPages(Math.max(1, Math.ceil(list.length / courseSize)))
@@ -114,7 +137,7 @@ const InstructorLearners = () => {
       if (!opts?.keepPage) setLearnerPage(0)
 
       // Populate banned map for current page (only needed when not filtering bannedOnly)
-      if (!bannedOnly && myUserId) {
+      if (!bannedOnly) {
         const next: Record<string, boolean> = { ...bannedByUser }
         await Promise.all(pg.content.map(async (r) => {
           const u = (r?.userResponse || r?.user || {}) as AnyObj
@@ -175,8 +198,8 @@ const InstructorLearners = () => {
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
 
-      <div className="bg-[linear-gradient(135deg,#0f766e_0%,#14b8a6_52%,#2dd4bf_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
-        <div className="w-full mx-auto">
+      <div className="bg-[linear-gradient(135deg,#0d7a5f_0%,#11a87f_52%,#2bc292_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+        <div className="w-full max-w-[1320px] mx-auto">
           <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('instructorLearners.title')}</h1>
           <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('instructorLearners.subtitle')}</p>
         </div>

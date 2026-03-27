@@ -16,6 +16,7 @@ const VerifyContent = () => {
   const { user } = useAuth()
   const roleCode = (user?.roles as unknown as AnyObj[] | undefined)?.[0]?.roleCode as string | undefined
   const isAdmin = roleCode === 'ADMIN'
+  const isInstructor = roleCode === 'INSTRUCTOR'
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AnyObj | null>(null)
@@ -37,8 +38,8 @@ const VerifyContent = () => {
   return (
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
-      {isAdmin && (
-        <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_50%,#4338ca_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+      {(isAdmin || isInstructor) && (
+        <div className={`${isAdmin ? 'bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_50%,#4338ca_100%)]' : 'bg-[linear-gradient(135deg,#0d7a5f_0%,#11a87f_52%,#2bc292_100%)]'} px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]`}>
           <div className="w-full max-w-[1320px] mx-auto">
             <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('verifyContent.title')}</h1>
             <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('verifyContent.desc')}</p>
@@ -82,7 +83,7 @@ const VerifyContent = () => {
                   <Row label={t('verifyContent.confidence')} value={`${((result.confidence as number) * 100).toFixed(0)}%`} />
                   <div className="w-full h-1.5 bg-gray-200 rounded-sm overflow-hidden mt-1"><div className={`h-full rounded-sm transition-all duration-500 ${getConfidenceLevel(result.confidence as number) === 'high' ? 'bg-red-500' : getConfidenceLevel(result.confidence as number) === 'medium' ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${(result.confidence as number) * 100}%` }} /></div>
                   {result.email && <Row label={t('verifyContent.uploaderEmail')} value={result.email as string} cls="font-mono text-red-600 font-semibold tracking-wide" />}
-                  {result.userId && <Row label="User ID" value={result.userId as string} />}
+                  {result.userId && <Row label={t('verifyContent.userId')} value={result.userId as string} />}
                   {result.timestamp && <Row label={t('verifyContent.downloadTime')} value={result.timestamp as string} />}
                   {result.matchedUserEmail && <Row label={t('verifyContent.uploaderEmail')} value={result.matchedUserEmail as string} cls="font-mono text-red-600 font-semibold tracking-wide" />}
                   {result.matchedDocumentTitle && <Row label={t('verifyContent.originalDoc')} value={result.matchedDocumentTitle as string} />}

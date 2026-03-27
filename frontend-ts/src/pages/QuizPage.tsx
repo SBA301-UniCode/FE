@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 
 type AnyObj = Record<string, unknown>
 const unwrap = (res: unknown) => { const r = res as { data?: { data?: unknown } }; return r?.data?.data ?? r?.data ?? r }
-const getContentId = (c: AnyObj) => ((c?.contentId || c?.id || '') as string)
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v)
 const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
@@ -38,7 +37,6 @@ const QuizPage = () => {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [questions, setQuestions] = useState<QItem[]>([])
-  const [realContentId, setRealContentId] = useState<string | null>(null)
   const [phase, setPhase] = useState<'intro' | 'taking' | 'result'>('intro')
   const [currentIdx, setCurrentIdx] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -106,8 +104,8 @@ const QuizPage = () => {
     questions.forEach((q) => { const sel = answers[q.questionBankId]; const cor = q.options.find((o) => o.isCorrect); if (sel && cor && String(sel) === String(cor.optionId)) correct++ })
     const score = Math.round((correct / questions.length) * 100); const passed = score >= examPassScore
     setResult({ correct, total: questions.length, score, passed }); setPhase('result')
-    const tId = realContentId || contentId || ''; if (isUuid(tId) && enrollmentId) { processApi.trackContent({ contentId: tId, enrollmentId, status: (passed ? 'COMPLETED' : 'IN_PROCESS') as 'COMPLETED' | 'IN_PROCESS' }).then(() => { if (courseId) processApi.getCourseProgress({ courseId, enrollmentId }).catch(() => { }) }).catch(() => { }) }
-  }, [answers, questions, contentId, enrollmentId, realContentId, courseId])
+    const tId = contentId || ''; if (isUuid(tId) && enrollmentId) { processApi.trackContent({ contentId: tId, enrollmentId, status: (passed ? 'COMPLETED' : 'IN_PROCESS') as 'COMPLETED' | 'IN_PROCESS' }).then(() => { if (courseId) processApi.getCourseProgress({ courseId, enrollmentId }).catch(() => { }) }).catch(() => { }) }
+  }, [answers, questions, contentId, enrollmentId, courseId])
 
   useEffect(() => { if (phase === 'taking' && timeLeft <= 0) submitQuiz() }, [timeLeft, phase, submitQuiz])
 

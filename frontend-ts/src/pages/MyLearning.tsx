@@ -32,6 +32,7 @@ const MyLearning = () => {
   const [feedbackSubmittingByCourse, setFeedbackSubmittingByCourse] = useState<Record<string, boolean>>({})
   const [activeTab, setActiveTab] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
+  const [bannedByCourse, setBannedByCourse] = useState<Record<string, boolean>>({})
 
   const TABS = [{ key: 'ALL', label: t('myLearning.tabAll') }, { key: 'IN_PROGRESS', label: t('myLearning.tabInProgress') }, { key: 'COMPLETED', label: t('myLearning.tabCompleted') }, { key: 'NOT_STARTED', label: t('myLearning.tabNotStarted') }]
 
@@ -76,7 +77,33 @@ const MyLearning = () => {
     }; run(); return () => { cancelled = true }
   }, [])
 
-  const handleContinueLearning = (en: AnyObj) => { const cid = getCourseId(en); const cr = (en?.courseResponse || en?.course || {}) as AnyObj; const title = (cr.title || cr.courseName || '') as string; if (cid) navigate(`/learning/${courseSlugOrId(cid, title)}`) }
+  useEffect(() => {
+    let cancelled = false
+    const uid = (learnerId || (authUser as AnyObj | null)?.userId || '') as string
+    if (!uid || enrollments.length === 0) return
+    const run = async () => {
+      const next: Record<string, boolean> = {}
+      for (let i = 0; i < enrollments.length; i += 6) {
+        const batch = enrollments.slice(i, i + 6)
+        await Promise.all(batch.map(async (en) => {
+          const cid = getCourseId(en)
+          if (!cid) return
+          try {
+            const res = await enrollmentApi.isBanned({ userId: uid, coureId: cid })
+            const v = unwrap(res)
+            next[cid] = v === true || v === 'true'
+          } catch {
+            next[cid] = false
+          }
+        }))
+      }
+      if (!cancelled) setBannedByCourse(next)
+    }
+    run()
+    return () => { cancelled = true }
+  }, [enrollments, learnerId, authUser])
+
+  const handleContinueLearning = (en: AnyObj) => { const cid = getCourseId(en); if (cid && bannedByCourse[cid]) return; const cr = (en?.courseResponse || en?.course || {}) as AnyObj; const title = (cr.title || cr.courseName || '') as string; if (cid) navigate(`/learning/${courseSlugOrId(cid, title)}`) }
   const handleIssueCertificate = async (courseId: string) => {
     if (!learnerId || !courseId) return; setIssuingCourseId(courseId); setIssueMessage('')
     try { await certificateApi.create({ learnerId, courseId }); setIssueMessage(t('myLearning.certSuccess')); setCertifiedCourseIds((p) => new Set([...p, courseId])) }
@@ -118,7 +145,7 @@ const MyLearning = () => {
         </div>
 
         {/* Continue Learning */}
-        {continueCourse && (() => { const cc = (continueCourse.courseResponse || {}) as AnyObj; const pct = Math.round(progressByEnrollment[continueCourse.enrollmentId as string] ?? 0); return (
+        {continueCourse && (() => { const cc = (continueCourse.courseResponse || {}) as AnyObj; const pct = Math.round(progressByEnrollment[continueCourse.enrollmentId as string] ?? 0); const ccid = getCourseId(continueCourse); const isBanned = !!(ccid && bannedByCourse[ccid]); return (
           <div className="bg-white border border-border-medium rounded-2xl flex gap-5 overflow-hidden mb-6 transition-shadow hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] max-[640px]:flex-col">
             <div className="w-60 min-h-[140px] shrink-0 bg-blue-50 max-[640px]:w-full max-[640px]:h-40">{!!(cc.image || cc.imageUrl || cc.thumbnail) && <img src={(cc.image || cc.imageUrl || cc.thumbnail) as string} alt="" className="w-full h-full object-cover block" />}</div>
             <div className="flex-1 py-5 pr-5 flex flex-col justify-center gap-2 max-[640px]:px-5">
@@ -132,7 +159,11 @@ const MyLearning = () => {
                   <span className="text-[0.82rem] font-semibold text-text-secondary">{t('myLearning.complete', { percent: pct })}</span>
                 </div>
               )}
-              <button type="button" className="self-start px-5 py-2.5 bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white border-none rounded-[10px] font-bold text-sm cursor-pointer font-[inherit] shadow-[0_4px_12px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-0.5" onClick={() => handleContinueLearning(continueCourse)}>{t('myLearning.resume')}</button>
+              {isBanned ? (
+                <button type="button" className="self-start px-5 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-[10px] font-bold text-sm cursor-not-allowed font-[inherit]" disabled>Bạn đã bị ban</button>
+              ) : (
+                <button type="button" className="self-start px-5 py-2.5 bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white border-none rounded-[10px] font-bold text-sm cursor-pointer font-[inherit] shadow-[0_4px_12px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-0.5" onClick={() => handleContinueLearning(continueCourse)}>{t('myLearning.resume')}</button>
+              )}
             </div>
           </div>
         )})()}
@@ -168,6 +199,7 @@ const MyLearning = () => {
               const course = (e.courseResponse || {}) as AnyObj
               const percent = progressByEnrollment[e.enrollmentId as string] ?? 0
               const courseId = getCourseId(e)
+              const isBanned = !!(courseId && bannedByCourse[courseId])
               const chapterCount = chapterCountByCourse[courseId]
               const displayStatus = percent >= 99.99 ? 'COMPLETED' : ((e.statusCourse as string) || 'IN_PROGRESS')
               return (
@@ -177,17 +209,27 @@ const MyLearning = () => {
                   </div>
                   <div className="flex items-start justify-between gap-3">
                     <div className="font-black text-[1.08rem] leading-snug tracking-tight line-clamp-2">{(course.title as string) || t('courses.pageTitle')}</div>
-                    <span className={`text-[0.72rem] font-extrabold tracking-wide px-2.5 py-0.5 rounded-full border whitespace-nowrap uppercase ${statusColors[displayStatus] || statusColors.IN_PROGRESS}`}>{statusLabels[displayStatus] || displayStatus}</span>
+                    {isBanned ? (
+                      <span className="text-[0.72rem] font-extrabold tracking-wide px-2.5 py-0.5 rounded-full border whitespace-nowrap uppercase bg-red-50 border-red-200 text-red-700">Bị ban</span>
+                    ) : (
+                      <span className={`text-[0.72rem] font-extrabold tracking-wide px-2.5 py-0.5 rounded-full border whitespace-nowrap uppercase ${statusColors[displayStatus] || statusColors.IN_PROGRESS}`}>{statusLabels[displayStatus] || displayStatus}</span>
+                    )}
                   </div>
                   {!!course.instructorName && <p className="m-0 text-[0.85rem] text-text-muted">{t('myLearning.instructor', { name: String(course.instructorName) })}</p>}
                   {!!course.description && <p className="m-0 text-text-secondary leading-relaxed text-[0.92rem] line-clamp-3">{String(course.description)}</p>}
                   <div className="flex items-center justify-between gap-3 mt-auto pt-1">{Number(chapterCount) >= 0 && <span className="text-[0.85rem] text-text-muted">{t('courses.chapterCount', { count: chapterCount })}</span>}<span className="text-[0.85rem] text-text-main font-semibold">{t('myLearning.progress', { percent: formatPercent(percent) })}</span></div>
                   {percent > 0 && <div className="mt-1"><div className="w-full h-[7px] rounded-full bg-gray-200 overflow-hidden"><div className="h-full rounded-full bg-[linear-gradient(90deg,#22c55e_0%,#84cc16_100%)] transition-all duration-300" style={{ width: formatPercent(percent) }} /></div></div>}
                   <div className="flex flex-col gap-2 mt-2">
-                    {canFeedbackByCourse[courseId] && <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => setActiveCommentCourseId(courseId)}>{t('myLearning.comment')}</button>}
-                    <button type="button" className="px-4 py-2.5 rounded-xl font-bold border-none bg-primary-500 text-white cursor-pointer shadow-[0_4px_12px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-px hover:bg-primary-600" onClick={() => handleContinueLearning(e)}>{t('myLearning.continueBtn')}</button>
-                    <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => navigate(`/learning/${courseSlugOrId(courseId, course.title as string)}/mindmap`)}>{t('myLearning.mindMap')}</button>
-                    {percent >= 99.99 && <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px disabled:opacity-60 disabled:cursor-not-allowed" onClick={() => handleIssueCertificate(courseId)} disabled={!learnerId || issuingCourseId === courseId || certifiedCourseIds.has(courseId)}>{certifiedCourseIds.has(courseId) ? t('myLearning.hasCert') : issuingCourseId === courseId ? t('myLearning.issuingCert') : t('myLearning.getCert')}</button>}
+                    {isBanned ? (
+                      <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-red-200 bg-red-50 text-red-700 cursor-not-allowed" disabled>Đã bị ban</button>
+                    ) : (
+                      <>
+                        {canFeedbackByCourse[courseId] && <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => setActiveCommentCourseId(courseId)}>{t('myLearning.comment')}</button>}
+                        <button type="button" className="px-4 py-2.5 rounded-xl font-bold border-none bg-primary-500 text-white cursor-pointer shadow-[0_4px_12px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-px hover:bg-primary-600" onClick={() => handleContinueLearning(e)}>{t('myLearning.continueBtn')}</button>
+                        <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => navigate(`/learning/${courseSlugOrId(courseId, course.title as string)}/mindmap`)}>{t('myLearning.mindMap')}</button>
+                        {percent >= 99.99 && <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px disabled:opacity-60 disabled:cursor-not-allowed" onClick={() => handleIssueCertificate(courseId)} disabled={!learnerId || issuingCourseId === courseId || certifiedCourseIds.has(courseId)}>{certifiedCourseIds.has(courseId) ? t('myLearning.hasCert') : issuingCourseId === courseId ? t('myLearning.issuingCert') : t('myLearning.getCert')}</button>}
+                      </>
+                    )}
                   </div>
                 </article>
               )

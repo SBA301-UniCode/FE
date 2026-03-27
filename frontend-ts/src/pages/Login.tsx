@@ -18,9 +18,13 @@ const Login = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, user } = useAuth()
   const { t } = useTranslation()
   const returnTo = (location.state as { returnTo?: string })?.returnTo || '/'
+  const resolveDefaultAfterLogin = (roleCode?: string) => {
+    if (roleCode === 'ADMIN' || roleCode === 'INSTRUCTOR') return '/courses'
+    return returnTo
+  }
   const [formData, setFormData] = useState({ username: '', password: '' })
   const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -28,7 +32,11 @@ const Login = () => {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (isAuthenticated) { navigate(returnTo, { replace: true }); return }
+    if (isAuthenticated) {
+      const roleCode = (user?.roles as Array<{ roleCode?: string }> | undefined)?.[0]?.roleCode
+      navigate(resolveDefaultAfterLogin(roleCode), { replace: true })
+      return
+    }
     const urlError = searchParams.get('error')
     if (urlError) {
       setError(errorMessages[urlError] || 'Đã xảy ra lỗi. Vui lòng thử lại.')
@@ -39,7 +47,7 @@ const Login = () => {
       setFormData((prev) => ({ ...prev, username: savedUsername }))
       setRememberMe(true)
     }
-  }, [isAuthenticated, navigate, searchParams])
+  }, [isAuthenticated, navigate, searchParams, user])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -60,7 +68,8 @@ const Login = () => {
       if (result.success) {
         if (rememberMe) localStorage.setItem('savedUsername', formData.username.trim())
         else localStorage.removeItem('savedUsername')
-        navigate(returnTo, { replace: true })
+        const roleCode = (result.user?.roles as Array<{ roleCode?: string }> | undefined)?.[0]?.roleCode
+        navigate(resolveDefaultAfterLogin(roleCode), { replace: true })
       } else {
         setError(result.error || 'Đăng nhập thất bại. Vui lòng thử lại.')
       }
@@ -129,6 +138,7 @@ const Login = () => {
                   </svg>
                 </button>
               </div>
+              {error && <div className="mt-2 text-[0.86rem] font-semibold text-red-600">{error}</div>}
             </FormGroup>
 
             <div className="flex justify-between items-center text-sm">
@@ -158,9 +168,7 @@ const Login = () => {
               <span>Đăng nhập với Google</span>
             </button>
 
-            {error && (
-              <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm text-center animate-[shake_0.5s_ease]">{error}</div>
-            )}
+            
           </form>
 
           <div className="mt-8 text-center text-sm text-gray-500">

@@ -3,7 +3,6 @@ import { Link, useParams } from 'react-router-dom'
 import { resolveToId, isUuid, setSlugMap } from '../utils/slug'
 import { courseApi } from '../api'
 import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
 import { chapterApi, contentApi, lessonApi, videoApi, examApi, questionBankApi, documentApi, practiceApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import { useTranslation } from 'react-i18next'
@@ -85,6 +84,8 @@ const ManageCourseVideos = () => {
   const [savingQuizName, setSavingQuizName] = useState<Record<string, boolean>>({})
   const [deletedContentIdMap, setDeletedContentIdMap] = useState(() => readDeletedContentIdMap())
   const [creatingDoc, setCreatingDoc] = useState(false)
+  const [pendingDeleteContent, setPendingDeleteContent] = useState<AnyObj | null>(null)
+  const [deletingContent, setDeletingContent] = useState(false)
   // Bug 6: Quiz edit modal state
   const [showQuizEditModal, setShowQuizEditModal] = useState(false)
   const [editQuizCid, setEditQuizCid] = useState('')
@@ -165,7 +166,45 @@ const ManageCourseVideos = () => {
 
   const handleUploadVideo = async (e: React.FormEvent) => { e.preventDefault(); if (!selectedLessonId || !uploadFile) { setUploadError(t('manageContent.selectVideoFile')); return }; setUploadProgress(0); setUploading(true); clearMessages(); try { setUploadStep(t('manageContent.uploadStep1')); const presign = unwrap(await videoApi.generateUploadUrl({ fileName: uploadFile.name, contentType: uploadFile.type || 'video/mp4', size: String(uploadFile.size || 0) })) as AnyObj; const uploadUrl = (presign?.uploadUrl || presign?.presignedUrl || presign?.url) as string; const key = (presign?.key || presign?.s3Key || presign?.objectKey || presign?.fileKey) as string; if (!uploadUrl || !key) throw new Error(t('manageContent.noUploadUrl')); setUploadStep(t('manageContent.uploadStep2')); await uploadFileToS3WithProgress(uploadUrl, uploadFile, setUploadProgress); setUploadStep(t('manageContent.uploadStep3')); const dur = await getVideoDurationSecondsFromFile(uploadFile); const durMin = Math.max(1, Math.round(dur / 60)); const video = unwrap(await videoApi.createVideoRecord({ lessonId: selectedLessonId, duration: durMin, key })) as AnyObj; const cid = video?.contentId as string; setUploadStep(''); setUploadFile(null); setActionMsg(t('manageContent.uploadSuccess')); showToast('success', '🎬 Upload video thành công!'); if (video && cid) setVideoMap((p) => ({ ...p, [cid]: video })); if (cid) setContents((p) => p.some((c) => c.contentId === cid) ? p : [...p, { contentId: cid, contentType: 'VIDEO', lessonId: selectedLessonId }]); const r = await fetchContents(selectedLessonId); if (r) { setContents(r); setVideoMap(await fetchVideoMap(r)) } } catch (err) { const msg = getApiErrorMessage(err, t('manageContent.uploadFailed')); setUploadError(msg); showToast('error', '🎬 Upload video thất bại!'); setUploadStep('') } finally { setUploading(false); setUploadProgress(0) } }
   const handleCreateDocument = async (e: React.FormEvent) => { e.preventDefault(); if (!selectedLessonId) return; if (!uploadDocFile) { setUploadError(t('manageContent.selectDocFile')); return }; setCreatingDoc(true); clearMessages(); try { const created = unwrap(await documentApi.create({ lessonId: selectedLessonId, title: documentTitle.trim() || t('manageContent.docDefaultTitle') }, uploadDocFile)) as AnyObj; const cid = created?.contentId as string; if (!cid) throw new Error(t('manageContent.noContentIdReceived')); setDocumentTitle(''); setUploadDocFile(null); setActionMsg(t('manageContent.createDocSuccess')); showToast('success', '📄 Tạo tài liệu thành công!'); if (cid) setContents((p) => p.some((c) => c.contentId === cid) ? p : [...p, { contentId: cid, contentType: 'DOCUMENT', lessonId: selectedLessonId }]); await loadLessonContents(selectedLessonId) } catch (err) { const msg = getApiErrorMessage(err, t('manageContent.createDocFailed')); setUploadError(msg); showToast('error', '📄 Tạo tài liệu thất bại!') } finally { setCreatingDoc(false) } }
-  const handleDeleteContent = async (ct: AnyObj) => { const cid = getContentId(ct); if (!cid) { setUploadError(t('manageContent.noContentId')); return }; const label = CONTENT_LABELS[ct.contentType as string] || ct.contentType; if (!window.confirm(t('manageContent.confirmDeleteContent', { label }))) return; clearMessages(); try { if (ct.contentType === 'DOCUMENT') { const doc = documentMap[cid]; if (!doc?.documentId) throw new Error(t('manageContent.noDocId')); await documentApi.delete(doc.documentId as string) } else { await contentApi.delete(cid) }; const lid = selectedLessonId || (ct.lessonId as string); if (lid) { const nm = { ...readDeletedContentIdMap() }; const cd = Array.isArray(nm[lid]) ? nm[lid] : []; if (!cd.includes(cid)) nm[lid] = [...cd, cid]; writeDeletedContentIdMap(nm); setDeletedContentIdMap(nm) }; const dm = { ...documentMap }; if (dm[cid]) { delete dm[cid]; setDocumentMap(dm) }; setContents((p) => p.filter((i) => getContentId(i) !== cid)); setVideoMap((p) => { const n = { ...p }; delete n[cid]; return n }); setActionMsg(t('manageContent.deletedContentMsg', { label })); showToast('success', `🗑️ Đã xóa ${label} thành công!`) } catch (err) { const msg = getApiErrorMessage(err, t('manageContent.deleteContentFailed')); setUploadError(msg); showToast('error', `🗑️ Xóa ${label} thất bại!`) } }
+  const handleDeleteContent = (ct: AnyObj) => { const cid = getContentId(ct); if (!cid) { setUploadError(t('manageContent.noContentId')); return }; setPendingDeleteContent(ct) }
+  const confirmDeleteContent = async () => {
+    if (!pendingDeleteContent || deletingContent) return
+    const ct = pendingDeleteContent
+    const cid = getContentId(ct)
+    const label = CONTENT_LABELS[ct.contentType as string] || ct.contentType
+    setDeletingContent(true)
+    clearMessages()
+    try {
+      if (ct.contentType === 'DOCUMENT') {
+        const doc = documentMap[cid]
+        if (!doc?.documentId) throw new Error(t('manageContent.noDocId'))
+        await documentApi.delete(doc.documentId as string)
+      } else {
+        await contentApi.delete(cid)
+      }
+      const lid = selectedLessonId || (ct.lessonId as string)
+      if (lid) {
+        const nm = { ...readDeletedContentIdMap() }
+        const cd = Array.isArray(nm[lid]) ? nm[lid] : []
+        if (!cd.includes(cid)) nm[lid] = [...cd, cid]
+        writeDeletedContentIdMap(nm)
+        setDeletedContentIdMap(nm)
+      }
+      const dm = { ...documentMap }
+      if (dm[cid]) { delete dm[cid]; setDocumentMap(dm) }
+      setContents((p) => p.filter((i) => getContentId(i) !== cid))
+      setVideoMap((p) => { const n = { ...p }; delete n[cid]; return n })
+      setActionMsg(t('manageContent.deletedContentMsg', { label }))
+      showToast('success', `🗑️ Đã xóa ${label} thành công!`)
+      setPendingDeleteContent(null)
+    } catch (err) {
+      const msg = getApiErrorMessage(err, t('manageContent.deleteContentFailed'))
+      setUploadError(msg)
+      showToast('error', `🗑️ Xóa ${label} thất bại!`)
+    } finally {
+      setDeletingContent(false)
+    }
+  }
 
   // Quiz editor helpers
   const openQuizEditor = () => { setQuizQuestions([createEmptyQuestion()]); setQuizTitle('Bài kiểm tra'); setQuizDuration(600); setQuizPassScore(60); setQuizNumQuestions(0); setShowQuizEditor(true) }
@@ -218,6 +257,7 @@ const ManageCourseVideos = () => {
         ))}
       </div>
       <style>{`@keyframes toastSlideIn { from { transform: translateX(100%); opacity: 0 } to { transform: translateX(0); opacity: 1 } }`}</style>
+      {pendingDeleteContent && <div className="fixed inset-0 bg-black/45 z-[1100] flex items-center justify-center px-4" onClick={() => { if (!deletingContent) setPendingDeleteContent(null) }}><div className="w-full max-w-[460px] bg-white border border-border-medium rounded-2xl p-5 shadow-[0_12px_36px_rgba(0,0,0,0.2)]" onClick={(e) => e.stopPropagation()}><h3 className="m-0 text-lg font-extrabold">{t('common.delete')}</h3><p className="mt-2 mb-0 text-sm text-text-secondary">{t('manageContent.confirmDeleteContent', { label: CONTENT_LABELS[pendingDeleteContent.contentType as string] || pendingDeleteContent.contentType })}</p><div className="flex justify-end gap-2.5 mt-5"><button type="button" className={btnG} onClick={() => setPendingDeleteContent(null)} disabled={deletingContent}>{t('common.cancel')}</button><button type="button" className={btnD} onClick={confirmDeleteContent} disabled={deletingContent}>{deletingContent ? '...' : t('common.delete')}</button></div></div></div>}
 
       <main className="w-full mx-auto px-6 py-4 pb-16">
         <div className="flex items-center justify-between mb-4"><div /><Link to="/my-courses" className={`${btnG} no-underline`}>{t('manageContent.backMyCourses')}</Link></div>
@@ -329,7 +369,6 @@ const ManageCourseVideos = () => {
           <div className="px-6 py-4 border-t border-border-subtle"><div className="text-[0.82rem] text-text-muted mb-2">{practiceCases.length} test case • {practiceLanguage} • {practiceDifficulty}{savingPractice && practiceStep && <span className="text-indigo-500 ml-2">{practiceStep}</span>}</div><div className="flex gap-3 justify-end"><button type="button" className={btnG} onClick={() => setShowPracticeEditor(false)} disabled={savingPractice}>Hủy</button><button type="button" className={btnP} onClick={handleCreatePractice} disabled={savingPractice}>{savingPractice ? '...' : 'Tạo bài thực hành'}</button></div></div>
         </div></div>}
       </main>
-      <Footer />
     </div>
   )
 }

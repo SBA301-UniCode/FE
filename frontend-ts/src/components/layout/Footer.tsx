@@ -1,11 +1,20 @@
 import { Link } from 'react-router-dom'
 import type { MouseEvent } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '../../contexts/useAuth'
 
 const prevent = (e: MouseEvent) => e.preventDefault()
 
 const Footer = () => {
   const { t } = useTranslation()
+  const { user, isAuthenticated } = useAuth()
+  const location = useLocation()
+  const roleCode = (user?.roles as Array<{ roleCode?: string }> | undefined)?.[0]?.roleCode || ''
+  const isDashboardRole = roleCode === 'ADMIN' || roleCode === 'INSTRUCTOR'
+  const dashboardRoutes = ['/courses', '/admin', '/my-courses', '/syllabuses', '/verify-content']
+  const isDashboardMenuPage = dashboardRoutes.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))
+  if (isAuthenticated && isDashboardRole && isDashboardMenuPage) return null
 
   return (
     <footer className="bg-primary-800 text-white/85 pt-12 px-6 pb-6 mt-auto">

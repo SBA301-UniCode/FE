@@ -7,6 +7,7 @@ import FeedbackModal from '../components/feedback/FeedbackModal'
 import { courseApi, feedbackApi, chapterApi, lessonApi, enrollmentApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 
 type AnyObj = Record<string, unknown>
 const unwrap = (res: unknown) => { const r = res as { data?: { data?: unknown } }; return r?.data?.data ?? r?.data ?? r }
@@ -118,10 +119,13 @@ const StarDisplay = ({ rating, size = '1rem' }: { rating: number; size?: string 
 
 const CourseDetail = () => {
   const { courseSlug } = useParams()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [joining, setJoining] = useState(false)
+  const [isBanned, setIsBanned] = useState(false)
+  const [deletingCourse, setDeletingCourse] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [courseId, setCourseId] = useState('')
   const [course, setCourse] = useState<AnyObj | null>(null)
   const [loading, setLoading] = useState(true)
@@ -140,11 +144,25 @@ const CourseDetail = () => {
   const [openChapters, setOpenChapters] = useState<Record<string, boolean>>({})
   const [activeSection, setActiveSection] = useState('overview')
   const [isEnrolled, setIsEnrolled] = useState(false)
+  const roleCode = (user?.roles as Array<{ roleCode?: string }> | undefined)?.[0]?.roleCode || ''
+  const isAdmin = roleCode === 'ADMIN'
 
   const loadCanEdit = async (list: AnyObj[]) => { const m: Record<string, boolean> = {}; await Promise.all(list.map(async (fb) => { const fid = getFeedbackId(fb); if (!fid) return; try { const res = await feedbackApi.canEdit(fid); const d = unwrap(res); m[fid] = d === true || d === 'true' } catch { m[fid] = false } })); setCanEditMap(m) }
   const loadFeedback = async () => { if (!courseId) return; setFeedbackLoading(true); setFeedbackError(''); try { const res = await feedbackApi.getByCourse(courseId, 1, 50); const list = toFeedbackList(unwrap(res)); setFeedbacks(list); await loadCanEdit(list) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackError(err.response?.data?.message || err.message || t('courseDetail.loadFeedbackFailed')) } finally { setFeedbackLoading(false) } }
   const loadCanFeedback = async () => { if (!courseId || !isAuthenticated) { setCanFeedback(false); return }; try { const res = await feedbackApi.canFeedback(courseId); const d = unwrap(res); setCanFeedback(d === true || d === 'true') } catch { setCanFeedback(false) } }
   const loadIsEnrolled = async () => { if (!courseId || !isAuthenticated) { setIsEnrolled(false); return }; try { const res = await enrollmentApi.isEnrolled(courseId); const d = unwrap(res); setIsEnrolled(d === true || d === 'true') } catch { setIsEnrolled(false) } }
+  const loadIsBanned = async () => {
+    if (!courseId || !isAuthenticated) { setIsBanned(false); return }
+    const uid = ((user as AnyObj | null)?.userId || (user as AnyObj | null)?.id || '') as string
+    if (!uid) { setIsBanned(false); return }
+    try {
+      const res = await enrollmentApi.isBanned({ userId: uid, coureId: courseId })
+      const d = unwrap(res)
+      setIsBanned(d === true || d === 'true')
+    } catch {
+      setIsBanned(false)
+    }
+  }
 
   useEffect(() => {
     if (!courseSlug) return
@@ -181,7 +199,7 @@ const CourseDetail = () => {
     }).finally(() => { if (!c) setLoading(false) })
     return () => { c = true }
   }, [courseSlug])
-  useEffect(() => { loadFeedback(); loadCanFeedback(); loadIsEnrolled() }, [courseId, isAuthenticated])
+  useEffect(() => { loadFeedback(); loadCanFeedback(); loadIsEnrolled(); loadIsBanned() }, [courseId, isAuthenticated])
   useEffect(() => { if (!courseId) return; chapterApi.getByCourseId(courseId).then((res) => { const arr = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; setChapters(arr); if (arr.length > 0) setOpenChapters({ [(arr[0].chapterId || arr[0].id) as string]: true }) }).catch(() => { }) }, [courseId])
 
   const toggleChapter = (chId: string) => { setOpenChapters((p) => ({ ...p, [chId]: !p[chId] })); if (!lessonsByChapter[chId]) { lessonApi.getByChapterId(chId).then((res) => { const arr = Array.isArray(unwrap(res)) ? unwrap(res) as AnyObj[] : []; setLessonsByChapter((p) => ({ ...p, [chId]: arr })) }).catch(() => setLessonsByChapter((p) => ({ ...p, [chId]: [] }))) } }
@@ -208,7 +226,22 @@ const CourseDetail = () => {
 
   const handleCreateFeedback = async ({ comment, rating, fileList }: { comment: string; rating: number; fileList?: File[] }) => { setSubmitting(true); try { await feedbackApi.create(courseId!, { comment, rating }, fileList); setCreateModalOpen(false); await Promise.all([loadFeedback(), loadCanFeedback()]) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackError(err.response?.data?.message || err.message || t('courseDetail.createFeedbackFailed')) } finally { setSubmitting(false) } }
   const handleUpdateFeedback = async ({ comment, rating, imageRemoveId, fileList }: { comment: string; rating: number; imageRemoveId?: string[]; fileList?: File[] }) => { if (!editingFeedback) return; setSubmitting(true); try { const up = { comment, rating, ...(Array.isArray(imageRemoveId) && imageRemoveId.length > 0 ? { imageRemoveId } : {}) }; await feedbackApi.update(getFeedbackId(editingFeedback), up, fileList); setEditingFeedback(null); await loadFeedback() } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackError(err.response?.data?.message || err.message || t('courseDetail.updateFeedbackFailed')) } finally { setSubmitting(false) } }
-  const handleJoinFree = async () => { if (!courseId || joining) return; setJoining(true); try { await enrollmentApi.join(courseId); navigate(`/learning/${courseSlug}`) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; alert(err.response?.data?.message || err.message || t('courseDetail.joinFailed')) } finally { setJoining(false) } }
+  const handleJoinFree = async () => { if (!courseId || joining || isBanned) return; setJoining(true); try { await enrollmentApi.join(courseId); navigate(`/learning/${courseSlug}`) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; toast.error(err.response?.data?.message || err.message || t('courseDetail.joinFailed')) } finally { setJoining(false) } }
+  const handleDeleteCourse = async () => {
+    if (!courseId || deletingCourse) return
+    setDeletingCourse(true)
+    try {
+      await courseApi.delete(courseId)
+      toast.success(t('common.deleteSuccess', 'Xóa thành công'))
+      setConfirmDeleteOpen(false)
+      navigate('/courses', { replace: true })
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } }; message?: string }
+      toast.error(err.response?.data?.message || err.message || t('common.errorGeneric'))
+    } finally {
+      setDeletingCourse(false)
+    }
+  }
   const handleDeleteFeedback = async (fid: string) => { if (!fid || !window.confirm(t('courseDetail.deleteFeedbackConfirm'))) return; try { await feedbackApi.delete(fid); await Promise.all([loadFeedback(), loadCanFeedback()]) } catch (e: unknown) { const err = e as { response?: { data?: { message?: string } }; message?: string }; setFeedbackError(err.response?.data?.message || err.message || t('courseDetail.deleteFeedbackFailed')) } }
   const scrollToSection = (id: string) => { setActiveSection(id); document.getElementById(`cd-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
 
@@ -324,7 +357,11 @@ const CourseDetail = () => {
               {getCourseImage(course) && <img src={getCourseImage(course)} alt="" className="w-full h-[170px] object-cover" />}
               <div className="p-5">
                 <div className="text-2xl font-extrabold mb-3">{isFree(course?.price) ? <span className="text-green-600">{t('common.free')}</span> : <span className="text-primary-500">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(course?.price))}</span>}</div>
-                {!isAuthenticated ? (
+                {isAdmin ? (
+                  <button type="button" className="block w-full text-center py-3 rounded-xl bg-red-600 text-white font-bold text-sm border-none cursor-pointer transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(220,38,38,0.25)] hover:bg-red-700 disabled:opacity-60" onClick={() => setConfirmDeleteOpen(true)} disabled={deletingCourse}>{deletingCourse ? '...' : t('myCourses.deleteBtn')}</button>
+                ) : isBanned ? (
+                  <button type="button" className="block w-full text-center py-3 rounded-xl bg-red-50 text-red-700 font-bold text-sm border border-red-200 cursor-not-allowed" disabled>Đã bị ban</button>
+                ) : !isAuthenticated ? (
                   <Link to="/login" className="block w-full text-center py-3 rounded-xl bg-primary-500 text-white font-bold text-sm no-underline transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,86,210,0.25)]">{t('courseDetail.loginToLearn')}</Link>
                 ) : isEnrolled ? (
                   <Link to={`/learning/${courseSlug}`} className="block w-full text-center py-3 rounded-xl bg-[linear-gradient(135deg,#0056D2,#003E99)] text-white font-bold text-sm no-underline transition-all hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(0,86,210,0.25)]">📚 {t('courseDetail.goToLearning', 'Vào My Learning')}</Link>
@@ -341,6 +378,7 @@ const CourseDetail = () => {
       </main>
 
       {lightboxImageUrl && <div className="fixed inset-0 bg-black/80 z-[1000] flex items-center justify-center cursor-pointer" onClick={() => setLightboxImageUrl('')}><img src={lightboxImageUrl} alt="preview" className="max-w-[90vw] max-h-[90vh] rounded-xl" /></div>}
+      {confirmDeleteOpen && <div className="fixed inset-0 bg-black/45 z-[1100] flex items-center justify-center px-4" onClick={() => { if (!deletingCourse) setConfirmDeleteOpen(false) }}><div className="w-full max-w-[460px] bg-white border border-border-medium rounded-2xl p-5 shadow-[0_12px_36px_rgba(0,0,0,0.2)]" onClick={(e) => e.stopPropagation()}><h3 className="m-0 text-lg font-extrabold">{t('common.delete')}</h3><p className="mt-2 mb-0 text-sm text-text-secondary">{`${t('common.delete')} "${(course?.title || t('courseDetail.untitled')) as string}"?`}</p><div className="flex justify-end gap-2.5 mt-5"><button type="button" className="px-4 py-2 rounded-xl font-bold text-sm border border-border-medium bg-white text-text-main cursor-pointer hover:bg-bg-deep transition-colors disabled:opacity-60" onClick={() => setConfirmDeleteOpen(false)} disabled={deletingCourse}>{t('common.cancel')}</button><button type="button" className="px-4 py-2 rounded-xl font-bold text-sm border-none bg-red-600 text-white cursor-pointer hover:bg-red-700 transition-colors disabled:opacity-60" onClick={handleDeleteCourse} disabled={deletingCourse}>{deletingCourse ? '...' : t('myCourses.deleteBtn')}</button></div></div></div>}
       <FeedbackModal open={createModalOpen} title={t('courseDetail.writeReview')} submitText={t('courseDetail.submitReview')} submitting={submitting} onClose={() => setCreateModalOpen(false)} onSubmit={handleCreateFeedback} />
       <FeedbackModal open={Boolean(editingFeedback)} title={t('courseDetail.editReview')} submitText={t('courseDetail.saveChanges')} submitting={submitting} initialValues={{ comment: (editingFeedback?.comment || '') as string, rating: Number(editingFeedback?.rating) || 5 }} existingImages={getImageList(editingFeedback)} onClose={() => setEditingFeedback(null)} onSubmit={handleUpdateFeedback} />
       <Footer />

@@ -225,7 +225,22 @@
   border-color: var(--primary-500);
 }
 
-.landing-lang-icon { font-size: 1.8rem; }
+.landing-lang-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 2px solid currentColor;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.landing-lang-icon img {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+}
 .landing-lang-name { font-size: 1rem; font-weight: 700; }
 .landing-lang-courses { font-size: 0.82rem; color: var(--text-muted); }
 

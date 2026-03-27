@@ -22,4 +22,6 @@ export const examApi = {
     apiClient.get(`${EXAMS_BASE}/attempts/${examAttemptId}/history`),
   getAttemptResults: (examAttemptId: string): Promise<AxiosResponse> =>
     apiClient.get(`${EXAMS_BASE}/attempts/${examAttemptId}/results`),
+  getMyAttemptResults: (examId: string): Promise<AxiosResponse> =>
+    apiClient.get(`${EXAMS_BASE}/attempts/${examId}/my-attempt`),
 }

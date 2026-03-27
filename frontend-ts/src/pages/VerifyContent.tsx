@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
 import { watermarkApi } from '../api'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '../contexts/useAuth'
 
 type AnyObj = Record<string, unknown>
 
@@ -13,6 +13,9 @@ const getConfidenceLevel = (c: number) => c >= 0.8 ? 'high' : c >= 0.5 ? 'medium
 
 const VerifyContent = () => {
   const { t } = useTranslation()
+  const { user } = useAuth()
+  const roleCode = (user?.roles as unknown as AnyObj[] | undefined)?.[0]?.roleCode as string | undefined
+  const isAdmin = roleCode === 'ADMIN'
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AnyObj | null>(null)
@@ -34,6 +37,14 @@ const VerifyContent = () => {
   return (
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
+      {isAdmin && (
+        <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_50%,#4338ca_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+          <div className="w-full max-w-[1320px] mx-auto">
+            <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('verifyContent.title')}</h1>
+            <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('verifyContent.desc')}</p>
+          </div>
+        </div>
+      )}
       <main className="flex justify-center px-6 py-8 pb-16">
         <div className="max-w-[700px] w-full">
           {/* Hero */}
@@ -84,7 +95,6 @@ const VerifyContent = () => {
           <div className="text-center mt-4"><Link to="/" className="text-primary-500 no-underline text-sm hover:underline">{t('verifyContent.goHome')}</Link></div>
         </div>
       </main>
-      <Footer />
     </div>
   )
 }

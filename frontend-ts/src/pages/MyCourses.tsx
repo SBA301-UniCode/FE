@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Header from "../components/layout/Header";
-import Footer from "../components/layout/Footer";
 import { courseApi, enrollmentApi, processApi } from "../api";
 import { useAuth } from "../contexts/useAuth";
 import { courseSlugOrId } from "../utils/slug";
@@ -351,7 +350,6 @@ function LearnerMyCoursesView() {
           </div>
         )}
       </main>
-      <Footer />
     </div>
   );
 }
@@ -363,8 +361,10 @@ const MyCourses = () => {
     | string
     | undefined;
   const isLearner = roleCode === "LEARNER";
+  const isAdmin = roleCode === "ADMIN";
+  const isInstructor = roleCode === "INSTRUCTOR";
   const canView =
-    isLearner || roleCode === "INSTRUCTOR" || roleCode === "ADMIN";
+    isLearner || isInstructor || isAdmin;
 
   // LEARNER gets enrolled courses view
   if (isLearner) return <LearnerMyCoursesView />;
@@ -378,10 +378,12 @@ const MyCourses = () => {
   const [isObjectPreview, setIsObjectPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [deleteTargetCourse, setDeleteTargetCourse] = useState<AnyObj | null>(null);
+  const [deletingCourse, setDeletingCourse] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("default");
   const [currentPage, setCurrentPage] = useState(0);
-  const ITEMS_PER_PAGE = 6;
+  const ITEMS_PER_PAGE = isAdmin ? 8 : 6;
   const [serverTotalPages, setServerTotalPages] = useState(0);
   const [_serverTotalElements, setServerTotalElements] = useState(0);
 
@@ -484,16 +486,26 @@ const MyCourses = () => {
     setIsObjectPreview(true);
   };
   const handleDelete = async (c: AnyObj) => {
-    const id = getCourseKey(c);
-    if (!window.confirm(`${t("common.delete")} "${getCourseTitle(c)}"?`))
-      return;
+    setDeleteTargetCourse(c);
+  };
+  const confirmDeleteCourse = async () => {
+    if (!deleteTargetCourse || deletingCourse) return;
+    const id = getCourseKey(deleteTargetCourse);
+    setDeletingCourse(true);
     try {
       await courseApi.delete(id);
       setCourses((p) => p.filter((x) => getCourseKey(x) !== id));
+      setDeleteTargetCourse(null);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || "Error");
+    } finally {
+      setDeletingCourse(false);
     }
+  };
+  const cancelDeleteCourse = () => {
+    if (deletingCourse) return;
+    setDeleteTargetCourse(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -614,13 +626,13 @@ const MyCourses = () => {
       <Header />
       {/* Banner */}
       {canView && (
-        <div className="bg-[linear-gradient(135deg,#312e81_0%,#4338ca_50%,#6366f1_100%)] px-6 py-8 text-white">
-          <div className="w-full mx-auto flex items-center justify-between gap-6">
+        <div className={`${isAdmin ? 'bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_50%,#4338ca_100%)] py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]' : 'bg-[linear-gradient(135deg,#312e81_0%,#4338ca_50%,#6366f1_100%)] py-8'} px-6 text-white`}>
+          <div className={`w-full ${isAdmin ? 'max-w-[1320px]' : ''} mx-auto flex items-center justify-between gap-6`}>
             <div>
-              <h1 className="m-0 text-2xl font-extrabold">
+              <h1 className={`m-0 font-extrabold ${isAdmin ? 'text-[1.42rem] tracking-tight' : 'text-2xl'}`}>
                 {t("myCourses.instructorDashboard")}
               </h1>
-              <p className="mt-1 mb-0 text-white/70 text-sm">
+              <p className={`mt-1 mb-0 ${isAdmin ? 'text-white/80 text-[0.88rem]' : 'text-white/70 text-sm'}`}>
                 {t("myCourses.dashboardDesc")}
               </p>
             </div>
@@ -648,7 +660,7 @@ const MyCourses = () => {
             <Link to="/" className={`${btnGhost} no-underline`}>
               {t("myCourses.homePage")}
             </Link>
-            {canView && (
+            {canView && !isAdmin && (
               <button type="button" className={btnPrimary} onClick={openCreate}>
                 {t("myCourses.createCourse")}
               </button>
@@ -821,6 +833,35 @@ const MyCourses = () => {
             </form>
           </div>
         )}
+        {deleteTargetCourse && (
+          <div
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-[920]"
+            onClick={cancelDeleteCourse}
+          >
+            <div
+              className="bg-white border border-border-medium rounded-[18px] px-6 py-5 w-[92%] max-w-[460px] shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
+              onClick={(ev) => ev.stopPropagation()}
+            >
+              <h3 className="m-0 text-lg font-extrabold text-text-main">{t("common.delete")}</h3>
+              <p className="mt-2 mb-0 text-sm text-text-secondary leading-relaxed">
+                {`${t("common.delete")} "${getCourseTitle(deleteTargetCourse)}"?`}
+              </p>
+              <div className="flex justify-end gap-2.5 mt-5">
+                <button type="button" className={btnGhost} onClick={cancelDeleteCourse} disabled={deletingCourse}>
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-xl font-bold text-sm cursor-pointer bg-red-500/8 text-red-600 border border-red-200 hover:bg-red-500/15 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  onClick={confirmDeleteCourse}
+                  disabled={deletingCourse}
+                >
+                  {deletingCourse ? "..." : t("myCourses.deleteBtn")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {!canView && (
           <div className="bg-white border border-border-medium rounded-2xl px-5 py-4 text-text-muted">
@@ -846,14 +887,14 @@ const MyCourses = () => {
 
         {canView && !loading && !error && filteredCourses.length > 0 && (
           <>
-            <div className="grid grid-cols-3 gap-4 mt-5 max-[1000px]:grid-cols-2 max-[640px]:grid-cols-1">
+            <div className={`mt-5 ${isAdmin ? 'grid grid-cols-4 gap-3 max-[1280px]:grid-cols-3 max-[1000px]:grid-cols-2 max-[640px]:grid-cols-1' : 'grid grid-cols-3 gap-4 max-[1000px]:grid-cols-2 max-[640px]:grid-cols-1'}`}>
               {pagedCourses.map((c) => (
                 <article
                   key={getCourseKey(c)}
-                  className="bg-white border border-border-medium rounded-[18px] p-4 flex flex-col h-[420px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,86,210,0.08)]">
+                  className={`bg-white border border-border-medium rounded-[18px] p-4 flex flex-col overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,86,210,0.08)] ${isAdmin ? 'h-[330px]' : 'h-[420px]'}`}>
                   {/* Image — fixed height, shrink-0 */}
                   {getCourseImage(c) && (
-                    <div className="w-full h-[130px] shrink-0 rounded-xl overflow-hidden bg-blue-50 mb-0.5">
+                    <div className={`w-full shrink-0 rounded-xl overflow-hidden bg-blue-50 mb-0.5 ${isAdmin ? 'h-[100px]' : 'h-[130px]'}`}>
                       <img
                         src={getCourseImage(c)}
                         alt=""
@@ -864,7 +905,7 @@ const MyCourses = () => {
                   {/* Content area — flex-1 absorbs variable height */}
                   <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-hidden">
                     <div className="flex items-start justify-between gap-3 shrink-0">
-                      <div className="font-extrabold text-lg leading-tight line-clamp-2">
+                      <div className={`font-extrabold leading-tight line-clamp-2 ${isAdmin ? 'text-base' : 'text-lg'}`}>
                         {getCourseTitle(c)}
                       </div>
                       {!!c?.status && (
@@ -881,43 +922,48 @@ const MyCourses = () => {
                       </p>
                     )}
                     {getCourseDesc(c) && (
-                      <p className="m-0 text-text-secondary leading-relaxed text-sm line-clamp-2">
+                      <p className={`m-0 text-text-secondary leading-relaxed ${isAdmin ? 'text-[0.82rem] line-clamp-1' : 'text-sm line-clamp-2'}`}>
                         {getCourseDesc(c)}
                       </p>
                     )}
                   </div>
                   {/* Footer — always visible at bottom, never pushed off */}
-                  <div className="shrink-0 mt-auto pt-2 flex flex-col gap-2">
+                  <div className={`shrink-0 mt-auto flex flex-col ${isAdmin ? 'pt-1.5 gap-1.5' : 'pt-2 gap-2'}`}>
                     <div className="flex items-center justify-between gap-3">
                       {c?.price !== undefined && c?.price !== null && (
                         <span
-                          className={`font-extrabold ${isFree(c.price) ? "text-green-600" : "text-primary-500"}`}>
+                          className={`font-extrabold ${isAdmin ? 'text-[0.98rem]' : ''} ${isFree(c.price) ? "text-green-600" : "text-primary-500"}`}>
                           {formatPrice(c.price, t("common.free"))}
                         </span>
                       )}
                       {Number(c?.chapterCount) >= 0 && (
-                        <span className="text-[0.85rem] text-text-muted">
+                        <span className={`${isAdmin ? 'text-[0.78rem]' : 'text-[0.85rem]'} text-text-muted`}>
                           {t("courses.chapterCount", {
                             count: c.chapterCount as number,
                           })}
                         </span>
                       )}
                     </div>
-                    <div className="grid grid-cols-[minmax(0,1.8fr)_minmax(88px,1fr)] gap-2 max-[640px]:grid-cols-1">
-                      <Link
+                    <div className={`gap-2 max-[640px]:grid-cols-1 ${isAdmin ? 'grid grid-cols-[minmax(0,1.8fr)_minmax(88px,1fr)]' : 'grid grid-cols-[minmax(0,1.8fr)_minmax(88px,1fr)]'}`}>
+                      {isAdmin && <Link
+                        to={`/courses/${courseSlugOrId(getCourseKey(c), getCourseTitle(c))}`}
+                        className={`${btnGhost} no-underline min-h-[38px]`}>
+                        {t("courses.viewDetail", "Xem chi tiết")}
+                      </Link>}
+                      {!isAdmin && <Link
                         to={`/my-courses/${courseSlugOrId(getCourseKey(c), getCourseTitle(c))}/videos`}
                         className={`${btnGhost} no-underline min-h-[44px]`}>
                         {t("myCourses.manageContent")}
-                      </Link>
-                      <button
+                      </Link>}
+                      {!isAdmin && <button
                         type="button"
                         className={`${btnGhost} min-h-[44px]`}
                         onClick={() => openEdit(c)}>
                         {t("myCourses.editBtn")}
-                      </button>
+                      </button>}
                       <button
                         type="button"
-                        className="col-span-full justify-self-start px-4 py-2 rounded-xl font-bold text-sm cursor-pointer bg-red-500/8 text-red-600 border border-red-200 hover:bg-red-500/15 transition-all min-h-[40px] max-[640px]:w-full"
+                        className={`rounded-xl font-bold cursor-pointer bg-red-500/8 text-red-600 border border-red-200 hover:bg-red-500/15 transition-all max-[640px]:w-full ${isAdmin ? 'px-3 py-1.5 text-[0.82rem] min-h-[38px]' : 'px-4 py-2 text-sm min-h-[40px]'}`}
                         onClick={() => handleDelete(c)}>
                         {t("myCourses.deleteBtn")}
                       </button>
@@ -966,7 +1012,6 @@ const MyCourses = () => {
           </>
         )}
       </main>
-      <Footer />
     </div>
   );
 };

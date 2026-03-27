@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/layout/Header'
-import Footer from '../components/layout/Footer'
 import { syllabusApi, courseApi } from '../api'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
@@ -53,13 +52,13 @@ const SyllabusManagement = () => {
       <Header />
       {/* Banner */}
       <div className="bg-[linear-gradient(135deg,#0f766e_0%,#0d9488_50%,#14b8a6_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
-        <div className="w-full max-w-[1320px] mx-auto">
+        <div className="w-full mx-auto">
           <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('syllabus.title')}</h1>
           <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">{t('syllabus.desc')}</p>
         </div>
       </div>
 
-      <main className="w-full max-w-[1320px] mx-auto px-6 py-4 pb-16">
+      <main className="w-full mx-auto px-6 py-4 pb-16">
         <div className="flex items-end justify-between mb-4 gap-3 flex-wrap">
           <div>
             <h2 className="m-0 text-lg font-extrabold text-text-main">Danh sách giáo trình</h2>
@@ -129,7 +128,6 @@ const SyllabusManagement = () => {
           </>}
         </div>
       </main>
-      <Footer />
     </div>
   )
 }

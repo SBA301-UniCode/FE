@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './contexts/AuthProvider'
 import { useAuth } from './contexts/useAuth'
@@ -23,10 +24,44 @@ import Profile from './pages/Profile'
 import MyCourses from './pages/MyCourses'
 import ManageCourseVideos from './pages/ManageCourseVideos'
 import CourseDetail from './pages/CourseDetail'
+import InstructorLearners from './pages/InstructorLearners'
 import AdminPanel from './pages/AdminPanel'
 import SyllabusManagement from './pages/SyllabusManagement'
 import VerifyContent from './pages/VerifyContent'
 import ChatWidget from './components/ChatWidget'
+
+/** Handle backend redirects like /?accessToken=...&refreshToken=...&role=... */
+const AuthQueryHandler = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { handleGoogleCallback } = useAuth()
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const accessToken = params.get('accessToken')
+    const refreshToken = params.get('refreshToken')
+    const role = String(params.get('role') || '').toUpperCase()
+    if (!accessToken || !refreshToken) return
+
+    const target = role === 'ADMIN' || role === 'INSTRUCTOR'
+      ? '/courses'
+      : role === 'LEARNER'
+        ? '/my-learning'
+        : '/'
+
+    let cancelled = false
+    ;(async () => {
+      await handleGoogleCallback(accessToken, refreshToken)
+      if (!cancelled) navigate(target, { replace: true })
+    })().catch(() => {
+      if (!cancelled) navigate('/login?error=google_login_failed', { replace: true })
+    })
+
+    return () => { cancelled = true }
+  }, [location.search, navigate, handleGoogleCallback])
+
+  return null
+}
 
 const NotFound = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-bg-page text-text-main text-center p-8">
@@ -62,6 +97,7 @@ function App() {
         }}
       />
       <Router>
+        <AuthQueryHandler />
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
@@ -69,6 +105,7 @@ function App() {
           <Route path="/auth/callback" element={<OAuthCallback />} />
           <Route path="/dashboard" element={<Navigate to="/" replace />} />
           <Route path="/my-courses" element={<ProtectedRoute allowedRoles={['INSTRUCTOR', 'ADMIN']}><MyCourses /></ProtectedRoute>} />
+          <Route path="/instructor/learners" element={<ProtectedRoute allowedRoles={['INSTRUCTOR']}><InstructorLearners /></ProtectedRoute>} />
           <Route path="/my-learning" element={<ProtectedRoute allowedRoles={['LEARNER']}><MyLearning /></ProtectedRoute>} />
           <Route path="/my-courses/:courseSlug/videos" element={<ProtectedRoute><ManageCourseVideos /></ProtectedRoute>} />
           <Route path="/courses" element={<CoursesOrDashboard />} />
@@ -81,7 +118,7 @@ function App() {
           <Route path="/learning/:courseSlug/mindmap" element={<ProtectedRoute allowedRoles={['LEARNER']}><CourseMindMap /></ProtectedRoute>} />
           <Route path="/my-certificates" element={<ProtectedRoute allowedRoles={['LEARNER']}><MyCertificates /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPanel /></ProtectedRoute>} />
-          <Route path="/syllabuses" element={<ProtectedRoute allowedRoles={['INSTRUCTOR', 'ADMIN']}><SyllabusManagement /></ProtectedRoute>} />
+          <Route path="/syllabuses" element={<ProtectedRoute allowedRoles={['INSTRUCTOR']}><SyllabusManagement /></ProtectedRoute>} />
           <Route path="/quiz/:contentId" element={<ProtectedRoute allowedRoles={['LEARNER']}><QuizPage /></ProtectedRoute>} />
           <Route path="/verify-content" element={<ProtectedRoute allowedRoles={['INSTRUCTOR', 'ADMIN']}><VerifyContent /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />

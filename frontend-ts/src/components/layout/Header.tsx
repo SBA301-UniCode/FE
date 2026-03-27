@@ -29,7 +29,7 @@ const Header = () => {
   const roleLabel = roleCode === 'ADMIN' ? t('header.role.admin') : roleCode === 'INSTRUCTOR' ? t('header.role.instructor') : t('header.role.learner')
   const isLecturer = roleCode === 'INSTRUCTOR'
   const isAdmin = roleCode === 'ADMIN'
-  const hasRoleSidebar = isAuthenticated && (isAdmin || isLecturer)
+  const hasRoleSidebar = isAuthenticated
 
   const handleLogout = () => {
     setShowUserMenu(false)
@@ -43,13 +43,26 @@ const Header = () => {
     return () => document.body.classList.remove('with-role-sidebar')
   }, [hasRoleSidebar])
 
-  const roleMenuItems = [
-    { to: '/courses', label: 'Overview', icon: '🏠' },
-    ...(isAdmin ? [{ to: '/admin', label: 'System Management', icon: '🛡️' }] : []),
-    { to: '/my-courses', label: 'Course Management', icon: '📚' },
-    { to: '/syllabuses', label: 'Syllabus', icon: '🧾' },
-    { to: '/verify-content', label: 'Content Verification', icon: '✅' },
-  ]
+  const roleMenuItems = isAdmin
+    ? [
+      { to: '/courses', label: t('header.courses') || 'Overview', icon: '🏠' },
+      { to: '/admin', label: t('header.adminPanel') || 'System Management', icon: '🛡️' },
+      { to: '/my-courses', label: t('header.management') || 'Course Management', icon: '📚' },
+      { to: '/syllabuses', label: t('header.syllabuses') || 'Syllabus', icon: '🧾' },
+      { to: '/verify-content', label: t('header.verifyContent') || 'Content Verification', icon: '✅' },
+    ]
+    : isLecturer
+      ? [
+        { to: '/courses', label: t('header.courses') || 'Overview', icon: '🏠' },
+        { to: '/my-courses', label: t('header.management') || 'Course Management', icon: '📚' },
+        { to: '/syllabuses', label: t('header.syllabuses') || 'Syllabus', icon: '🧾' },
+        { to: '/verify-content', label: t('header.verifyContent') || 'Content Verification', icon: '✅' },
+      ]
+      : [
+        { to: '/courses', label: t('header.courses') || 'Overview', icon: '🏠' },
+        { to: '/my-learning', label: t('header.myLearning') || 'Khóa học của tôi', icon: '📚' },
+        { to: '/my-certificates', label: t('header.certificates') || 'Chứng chỉ', icon: '📜' }
+      ]
 
   const roleBadgeColors: Record<string, string> = {
     learner: 'bg-blue-50 text-blue-800',
@@ -153,44 +166,8 @@ const Header = () => {
 
           {isAuthenticated ? (
             <>
-              {/* Role badge */}
-              {!hasRoleSidebar && (
-                <div className="relative">
-                  <button
-                    type="button"
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold border-none cursor-pointer uppercase tracking-wide transition-opacity hover:opacity-85 ${roleBadgeColors[roleCode.toLowerCase()] || ''}`}
-                    onClick={() => setShowRoleMenu(!showRoleMenu)}
-                    aria-expanded={showRoleMenu}
-                  >
-                    {roleLabel}
-                  </button>
-                  {showRoleMenu && (
-                    <div className="absolute top-[calc(100%+6px)] right-0 min-w-[200px] bg-white rounded-[var(--radius-btn-lg)] shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-border-medium p-3 z-[101]">
-                      <div className="text-sm font-semibold text-text-main">{t('header.role', { role: roleLabel })}</div>
-                      <button
-                        type="button"
-                        className="mt-2 py-1 text-xs text-text-muted bg-transparent border-none cursor-pointer"
-                        onClick={() => setShowRoleMenu(false)}
-                      >
-                        {t('header.close')}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Action button */}
-              {isLecturer && (
-                <Link
-                  to="/my-courses"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-btn)] text-sm font-semibold no-underline border-none cursor-pointer transition-all bg-primary-500 text-white hover:-translate-y-px hover:bg-primary-600"
-                >
-                  <span className="text-base">+</span> {t('header.createCourse')}
-                </Link>
-              )}
-
-              {/* User menu */}
-              <div className="relative">
+              {/* User menu and actions replaced by Sidebar on desktop */}
+              <div className="hidden max-md:flex items-center gap-3">
                 <button
                   type="button"
                   className="w-10 h-10 rounded-full border border-border-medium bg-[#F5F7F8] text-text-secondary cursor-pointer flex items-center justify-center transition-colors hover:bg-[#E8E8E8] hover:border-border-strong"
@@ -210,22 +187,6 @@ const Header = () => {
                       <span className="text-[0.75rem] text-text-dim">{t('header.role', { role: roleLabel })}</span>
                     </div>
                     <DropdownItem to="/courses" onClick={() => setShowUserMenu(false)}>{(isAdmin || isLecturer) ? t('header.dashboard') : t('header.courses')}</DropdownItem>
-                    {isAdmin && (
-                      <DropdownItem to="/admin" onClick={() => setShowUserMenu(false)}>{t('header.adminPanel')}</DropdownItem>
-                    )}
-                    {(isAdmin || isLecturer) && (
-                      <>
-                        <DropdownItem to="/my-courses" onClick={() => setShowUserMenu(false)}>{t('header.management')}</DropdownItem>
-                        <DropdownItem to="/syllabuses" onClick={() => setShowUserMenu(false)}>{t('header.syllabuses')}</DropdownItem>
-                        <DropdownItem to="/verify-content" onClick={() => setShowUserMenu(false)}>{t('header.verifyContent')}</DropdownItem>
-                      </>
-                    )}
-                    {!isLecturer && !isAdmin && (
-                      <>
-                        <DropdownItem to="/my-learning" onClick={() => setShowUserMenu(false)}>{t('header.myLearning')}</DropdownItem>
-                        <DropdownItem to="/my-certificates" onClick={() => setShowUserMenu(false)}>{t('header.myCertificates')}</DropdownItem>
-                      </>
-                    )}
                     <DropdownItem to="/profile" onClick={() => setShowUserMenu(false)}>{t('header.profileLabel')}</DropdownItem>
                     <DropdownItem onClick={handleLogout} className="text-danger-500 font-semibold">{t('header.logout')}</DropdownItem>
                   </div>
@@ -256,55 +217,59 @@ const Header = () => {
       </div>
 
       {hasRoleSidebar && (
-        <aside className="hidden md:flex fixed left-0 top-16 h-[calc(100vh-64px)] w-[248px] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] border-r border-border-medium shadow-[3px_0_14px_rgba(0,0,0,0.05)] z-[90] flex-col">
-          <div className="px-4 pt-4 pb-3 border-b border-border-subtle bg-[linear-gradient(135deg,rgba(0,86,210,0.08),rgba(99,102,241,0.08))]">
-            <div className="flex items-center gap-2">
-              <span className="text-primary-500 text-[1.05rem] font-black">&lt;/&gt;</span>
-              <span className="text-[0.95rem] font-extrabold text-text-main">UniCode</span>
+        <aside className="hidden md:flex fixed left-0 top-16 h-[calc(100vh-64px)] w-[248px] bg-[linear-gradient(180deg,#ffffff_0%,#f9fafb_100%)] border-r border-border-medium shadow-[3px_0_14px_rgba(0,0,0,0.03)] z-[90] flex-col">
+          <div className="px-4 pt-5 pb-4 border-b border-border-subtle bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 shrink-0 rounded-full border border-border-medium bg-white flex items-center justify-center text-primary-500 font-bold shadow-sm">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 4-6 8-6s8 2 8 6" /></svg>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[0.9rem] font-bold text-text-main leading-tight line-clamp-1">{user?.name || user?.email || 'User'}</span>
+                <span className="text-[0.68rem] font-extrabold text-text-muted uppercase tracking-wider mt-0.5">{roleLabel}</span>
+              </div>
             </div>
-            <div className="mt-2.5 inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white border border-border-subtle">
-              <span className="w-5 h-5 rounded-full bg-bg-deep border border-border-medium flex items-center justify-center text-text-secondary">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
-                </svg>
-              </span>
-              <span className="text-[0.74rem] font-bold text-text-main uppercase">{isAdmin ? 'Admin' : 'Lecturer'}</span>
+
+            <div className="mt-4 flex bg-[#F5F7F8] p-1 rounded-lg border border-border-medium shadow-inner">
+              <button
+                type="button"
+                onClick={() => i18n.changeLanguage('vi')}
+                className={`flex-1 py-1.5 rounded-[6px] text-[0.75rem] font-bold transition-all border-none cursor-pointer ${i18n.language === 'vi' ? 'bg-[#0052CC] text-white shadow-[0_2px_4px_rgba(0,0,0,0.1)]' : 'bg-transparent text-text-muted hover:text-text-main'}`}
+              >
+                VI
+              </button>
+              <button
+                type="button"
+                onClick={() => i18n.changeLanguage('en')}
+                className={`flex-1 py-1.5 rounded-[6px] text-[0.75rem] font-bold transition-all border-none cursor-pointer ${i18n.language === 'en' ? 'bg-[#0052CC] text-white shadow-[0_2px_4px_rgba(0,0,0,0.1)]' : 'bg-transparent text-text-muted hover:text-text-main'}`}
+              >
+                EN
+              </button>
             </div>
           </div>
-          <nav className="p-2.5 flex flex-col gap-1.5 overflow-y-auto">
+          <nav className="p-3 flex flex-col gap-1.5 overflow-y-auto">
             {roleMenuItems.map((item) => {
               const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
               return (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`group px-3 py-2.5 rounded-xl no-underline text-[0.9rem] font-semibold transition-all flex items-center gap-2.5 ${
-                    active
-                      ? 'bg-[linear-gradient(135deg,rgba(0,86,210,0.16),rgba(99,102,241,0.14))] text-primary-600 border border-[rgba(0,86,210,0.26)] shadow-[0_4px_12px_rgba(0,86,210,0.12)]'
-                      : 'text-text-secondary hover:bg-white hover:text-text-main border border-transparent hover:border-border-subtle'
-                  }`}
+                  className={`group px-3 py-2.5 rounded-xl no-underline text-[0.9rem] font-semibold transition-all flex items-center gap-2.5 ${active
+                    ? 'bg-[rgba(0,86,210,0.06)] text-[#0052CC] border border-[rgba(0,86,210,0.15)] shadow-sm'
+                    : 'text-text-secondary hover:bg-[#F5F7F8] hover:text-text-main border border-transparent'
+                    }`}
                 >
-                  <span className={`w-7 h-7 rounded-lg grid place-items-center text-[0.95rem] transition-all ${active ? 'bg-white/80' : 'bg-bg-deep group-hover:bg-white'}`}>
-                    {item.icon}
-                  </span>
-                  {item.label}
+                  {/* Replaced item.icon with empty gap to match Image 1's no-icon minimalist list, OR just keep text alignment */}
+                  <span className="opacity-90">{item.label}</span>
                 </Link>
               )
             })}
           </nav>
-          <div className="mt-auto p-3">
-            <div className="rounded-xl border border-border-subtle bg-white px-3 py-2.5 text-[0.78rem] text-text-muted">
-              <strong className="text-text-main">{roleLabel}</strong>
-              <div>Menu nhanh cho {isAdmin ? 'quản trị hệ thống' : 'giảng viên'}.</div>
-            </div>
+          <div className="mt-auto p-4 border-t border-border-subtle bg-white">
             <button
-              type="button"
-              onClick={toggleLang}
-              className="w-full mt-2 px-3 py-2 rounded-xl text-xs font-bold border border-border-medium bg-white cursor-pointer transition-all hover:bg-[#F5F7F8] hover:shadow-sm text-left"
-              title={i18n.language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+              onClick={handleLogout}
+              className="w-full py-2.5 rounded-[8px] border border-border-medium bg-white text-text-secondary text-[0.85rem] font-semibold cursor-pointer transition-colors hover:bg-gray-50 hover:text-red-500 flex justify-center items-center gap-2"
             >
-              🌐 Language: {i18n.language === 'vi' ? 'EN' : 'VI'}
+              Log out
             </button>
           </div>
         </aside>

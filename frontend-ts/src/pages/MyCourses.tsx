@@ -164,7 +164,7 @@ function LearnerMyCoursesView() {
                       [courseId]: Number(d?.percent ?? d?.progress ?? 0),
                     }));
                 })
-                .catch(() => {});
+                .catch(() => { });
             }
           });
         }
@@ -192,16 +192,16 @@ function LearnerMyCoursesView() {
     <div className="min-h-screen bg-bg-page text-text-main flex flex-col">
       <Header />
       {/* Hero */}
-      <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_40%,#4338ca_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
-        <div className="w-full max-w-[1320px] mx-auto">
-          <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">{t('learnerCourses.title')}</h1>
-          <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">
+      <div className="bg-[linear-gradient(135deg,#1e1b4b_0%,#312e81_40%,#4338ca_100%)] px-6 py-8 text-white">
+        <div className="w-full mx-auto">
+          <h1 className="m-0 text-2xl font-extrabold">{t('learnerCourses.title')}</h1>
+          <p className="mt-1 mb-0 text-white/70 text-sm">
             {t('learnerCourses.subtitle')}
           </p>
         </div>
       </div>
 
-      <main className="w-full mx-auto px-6 py-4 pb-16">
+      <main className="w-full mx-auto px-6 py-6 pb-16">
         {/* Tabs */}
         <div className="flex items-center gap-3 mb-6">
           <button
@@ -434,11 +434,11 @@ const MyCourses = () => {
     setForm(
       draft && draft.title
         ? {
-            ...EMPTY_FORM,
-            ...draft,
-            instructorId: draft.instructorId || user?.userId || "",
-            imageFile: null,
-          }
+          ...EMPTY_FORM,
+          ...draft,
+          instructorId: draft.instructorId || user?.userId || "",
+          imageFile: null,
+        }
         : { ...EMPTY_FORM, instructorId: user?.userId || "" },
     );
     setFormError("");
@@ -614,23 +614,23 @@ const MyCourses = () => {
       <Header />
       {/* Banner */}
       {canView && (
-        <div className="bg-[linear-gradient(135deg,#312e81_0%,#4338ca_50%,#6366f1_100%)] px-6 py-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
-          <div className="w-full max-w-[1320px] mx-auto flex items-center justify-between gap-6">
+        <div className="bg-[linear-gradient(135deg,#312e81_0%,#4338ca_50%,#6366f1_100%)] px-6 py-8 text-white">
+          <div className="w-full mx-auto flex items-center justify-between gap-6">
             <div>
-              <h1 className="m-0 text-[1.42rem] font-extrabold tracking-tight">
+              <h1 className="m-0 text-2xl font-extrabold">
                 {t("myCourses.instructorDashboard")}
               </h1>
-              <p className="mt-1 mb-0 text-white/80 text-[0.88rem]">
+              <p className="mt-1 mb-0 text-white/70 text-sm">
                 {t("myCourses.dashboardDesc")}
               </p>
             </div>
-            <div className="flex gap-6">
+            <div className="flex gap-8">
               {[
                 { v: courses.length, l: "Courses" },
                 { v: totalChapters, l: "Chapters" },
               ].map((s) => (
                 <div key={s.l} className="flex flex-col items-center">
-                  <span className="text-2xl font-extrabold leading-tight">{s.v}</span>
+                  <span className="text-3xl font-extrabold">{s.v}</span>
                   <span className="text-[0.75rem] text-white/60 uppercase tracking-wider">
                     {s.l}
                   </span>
@@ -641,7 +641,7 @@ const MyCourses = () => {
         </div>
       )}
 
-      <main className="w-full mx-auto px-6 py-4 pb-16">
+      <main className="w-full mx-auto px-6 py-6 pb-16">
         <div className="flex items-end justify-between gap-4 mb-5 flex-wrap">
           <div />
           <div className="flex gap-3 flex-wrap">
@@ -782,10 +782,10 @@ const MyCourses = () => {
                 {(form.price === "" ||
                   form.price === 0 ||
                   form.price === "0") && (
-                  <span className="text-[0.82rem] text-green-600 font-bold mt-0.5">
-                    {t("common.free")}
-                  </span>
-                )}
+                    <span className="text-[0.82rem] text-green-600 font-bold mt-0.5">
+                      {t("common.free")}
+                    </span>
+                  )}
               </label>
               <label className="flex flex-col gap-1 text-sm font-semibold">
                 {t("myCourses.imageLabel")}{" "}
@@ -928,23 +928,35 @@ const MyCourses = () => {
             </div>
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 mt-6">
+              <div className="flex items-center justify-center gap-3 mt-8 pb-4">
                 <button
                   type="button"
-                  className={btnGhost}
+                  className="px-4 py-2 border border-border-medium rounded-lg text-sm font-semibold bg-white text-[#0052CC] hover:bg-primary-50 active:bg-primary-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
                   disabled={currentPage === 0}
                   onClick={() => setCurrentPage(currentPage - 1)}>
                   {t("myCourses.paginationPrev")}
                 </button>
-                <span className="text-[0.88rem] text-text-secondary">
-                  {t("myCourses.paginationPage", {
-                    current: currentPage + 1,
-                    total: totalPages,
-                  })}
-                </span>
+                
+                <div className="flex items-center gap-1.5 mx-2">
+                  {Array.from({ length: totalPages }).map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className={`min-w-[38px] h-[38px] flex items-center justify-center rounded-lg text-[0.95rem] font-bold cursor-pointer transition-all border ${
+                        currentPage === idx 
+                          ? 'bg-[#0052CC] text-white border-[#0052CC] shadow-md hover:bg-[#0047b3]' 
+                          : 'bg-transparent text-text-main border-transparent hover:bg-gray-100'
+                      }`}
+                      onClick={() => setCurrentPage(idx)}
+                    >
+                      {idx + 1}
+                    </button>
+                  ))}
+                </div>
+
                 <button
                   type="button"
-                  className={btnGhost}
+                  className="px-4 py-2 border border-border-medium rounded-lg text-sm font-semibold bg-white text-[#0052CC] hover:bg-primary-50 active:bg-primary-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
                   disabled={currentPage + 1 >= totalPages}
                   onClick={() => setCurrentPage(currentPage + 1)}>
                   {t("myCourses.paginationNext")}

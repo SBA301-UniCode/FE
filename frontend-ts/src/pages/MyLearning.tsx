@@ -4,6 +4,7 @@ import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import { enrollmentApi, processApi, chapterApi, certificateApi, userApi, feedbackApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
+import { courseSlugOrId } from '../utils/slug'
 import FeedbackModal from '../components/feedback/FeedbackModal'
 import { useTranslation } from 'react-i18next'
 
@@ -75,7 +76,7 @@ const MyLearning = () => {
     }; run(); return () => { cancelled = true }
   }, [])
 
-  const handleContinueLearning = (en: AnyObj) => { const cid = getCourseId(en); const eid = en?.enrollmentId as string; if (cid && eid) navigate(`/learning/${cid}?enrollmentId=${encodeURIComponent(eid)}`) }
+  const handleContinueLearning = (en: AnyObj) => { const cid = getCourseId(en); const cr = (en?.courseResponse || en?.course || {}) as AnyObj; const title = (cr.title || cr.courseName || '') as string; if (cid) navigate(`/learning/${courseSlugOrId(cid, title)}`) }
   const handleIssueCertificate = async (courseId: string) => {
     if (!learnerId || !courseId) return; setIssuingCourseId(courseId); setIssueMessage('')
     try { await certificateApi.create({ learnerId, courseId }); setIssueMessage(t('myLearning.certSuccess')); setCertifiedCourseIds((p) => new Set([...p, courseId])) }
@@ -185,7 +186,7 @@ const MyLearning = () => {
                   <div className="flex flex-col gap-2 mt-2">
                     {canFeedbackByCourse[courseId] && <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => setActiveCommentCourseId(courseId)}>{t('myLearning.comment')}</button>}
                     <button type="button" className="px-4 py-2.5 rounded-xl font-bold border-none bg-primary-500 text-white cursor-pointer shadow-[0_4px_12px_rgba(0,86,210,0.25)] transition-all hover:-translate-y-px hover:bg-primary-600" onClick={() => handleContinueLearning(e)}>{t('myLearning.continueBtn')}</button>
-                    <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => navigate(`/learning/${courseId}/mindmap`)}>{t('myLearning.mindMap')}</button>
+                    <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px" onClick={() => navigate(`/learning/${courseSlugOrId(courseId, course.title as string)}/mindmap`)}>{t('myLearning.mindMap')}</button>
                     {percent >= 99.99 && <button type="button" className="px-4 py-2.5 rounded-xl font-bold border border-border-medium bg-white text-text-main cursor-pointer transition-all hover:-translate-y-px disabled:opacity-60 disabled:cursor-not-allowed" onClick={() => handleIssueCertificate(courseId)} disabled={!learnerId || issuingCourseId === courseId || certifiedCourseIds.has(courseId)}>{certifiedCourseIds.has(courseId) ? t('myLearning.hasCert') : issuingCourseId === courseId ? t('myLearning.issuingCert') : t('myLearning.getCert')}</button>}
                   </div>
                 </article>

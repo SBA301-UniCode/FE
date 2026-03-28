@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/layout/Header'
+import Footer from '../components/layout/Footer'
 import { courseApi } from '../api'
 import { useAuth } from '../contexts/useAuth'
 import './MyCourses.css'
-
-const getMyCoursesEndpoint = () =>
-  import.meta.env.VITE_MY_COURSES_ENDPOINT || import.meta.env.VITE_COURSES_ENDPOINT || '/api/v1/courses'
 
 const extractList = (payload) => {
   if (Array.isArray(payload)) return payload
@@ -20,6 +18,7 @@ const extractList = (payload) => {
 const getCourseKey = (c) => c?.courseId || c?.id || c?._id || c?.courseCode || c?.slug || c?.title
 const getCourseTitle = (c) => c?.title || c?.name || c?.courseName || 'Untitled course'
 const getCourseDesc = (c) => c?.description || c?.summary || ''
+const getCourseImage = (c) => c?.image || c?.imageUrl || c?.thumbnail || c?.coverImage || c?.cover || ''
 const formatPrice = (price) => {
   if (price === null || price === undefined || price === '') return ''
   const num = Number(price)
@@ -27,80 +26,257 @@ const formatPrice = (price) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
 }
 
+const EMPTY_FORM = { title: '', description: '', price: 0, instructorId: '', sylabusId: '', imageFile: null }
+
 const MyCourses = () => {
   const { user } = useAuth()
   const roleCode = user?.roles?.[0]?.roleCode
   const canView = roleCode === 'INSTRUCTOR' || roleCode === 'ADMIN'
 
-  const endpoint = useMemo(() => getMyCoursesEndpoint(), [])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [courses, setCourses] = useState([])
 
-  useEffect(() => {
-    let cancelled = false
+  const [showForm, setShowForm] = useState(false)
+  const [editingCourse, setEditingCourse] = useState(null)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [imagePreview, setImagePreview] = useState('')
+  const [isObjectPreview, setIsObjectPreview] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
 
-    const run = async () => {
-      if (!canView) {
-        setLoading(false)
+  const fetchCourses = async () => {
+    if (!canView) { setLoading(false); setCourses([]); return }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await courseApi.getMyCourses()
+      const payload = res.data?.data ?? res.data
+      setCourses(extractList(payload))
+    } catch (e) {
+      const status = e.response?.status
+      if (status === 400 || status === 404) {
         setCourses([])
-        return
+      } else {
+        setError(e.response?.data?.message || e.message || 'Không thể tải danh sách khóa học.')
       }
-
-      setLoading(true)
-      setError('')
-      try {
-        const res = await courseApi.getMyCourses()
-        const payload = res.data?.data ?? res.data
-        const list = extractList(payload)
-        if (!cancelled) {
-          setCourses(list)
-        }
-      } catch (e) {
-        if (!cancelled) {
-          const status = e.response?.status
-          // 400/404 = backend chưa có API hoặc endpoint khác → coi như chưa có khóa học, không báo lỗi đỏ
-          if (status === 400 || status === 404) {
-            setCourses([])
-            setError('')
-          } else {
-            const msg =
-              e.response?.data?.message ||
-              e.response?.data?.errorCode ||
-              e.message ||
-              'Không thể tải danh sách khóa học.'
-            setError(msg)
-          }
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+    } finally {
+      setLoading(false)
     }
+  }
 
-    run()
+  useEffect(() => { fetchCourses() }, [canView])
+
+  useEffect(() => {
     return () => {
-      cancelled = true
+      if (isObjectPreview && imagePreview) {
+        URL.revokeObjectURL(imagePreview)
+      }
     }
-  }, [canView])
+  }, [isObjectPreview, imagePreview])
+
+  const resetImagePreview = () => {
+    if (isObjectPreview && imagePreview) {
+      URL.revokeObjectURL(imagePreview)
+    }
+    setImagePreview('')
+    setIsObjectPreview(false)
+  }
+
+  const openCreate = () => {
+    setEditingCourse(null)
+    resetImagePreview()
+    setForm({ ...EMPTY_FORM, instructorId: user?.userId || '' })
+    setFormError('')
+    setShowForm(true)
+  }
+
+  const openEdit = (c) => {
+    setEditingCourse(c)
+    resetImagePreview()
+    const existingImage = getCourseImage(c)
+    if (existingImage) {
+      setImagePreview(existingImage)
+      setIsObjectPreview(false)
+    }
+    setForm({
+      title: getCourseTitle(c),
+      description: getCourseDesc(c),
+      price: c.price ?? 0,
+      instructorId: c.instructorId || user?.userId || '',
+      sylabusId: c.sylabusId || '',
+      imageFile: null,
+    })
+    setFormError('')
+    setShowForm(true)
+  }
+
+  const closeForm = () => {
+    resetImagePreview()
+    setShowForm(false)
+  }
+
+  const handleImageChange = (file) => {
+    resetImagePreview()
+    if (!file) {
+      setForm((prev) => ({ ...prev, imageFile: null }))
+      return
+    }
+    const previewUrl = URL.createObjectURL(file)
+    setForm((prev) => ({ ...prev, imageFile: file }))
+    setImagePreview(previewUrl)
+    setIsObjectPreview(true)
+  }
+
+  const handleDelete = async (c) => {
+    const id = getCourseKey(c)
+    if (!window.confirm(`Xóa khóa học "${getCourseTitle(c)}"?`)) return
+    try {
+      await courseApi.delete(id)
+      setCourses((prev) => prev.filter((x) => getCourseKey(x) !== id))
+    } catch (e) {
+      alert(e.response?.data?.message || 'Xóa thất bại')
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.title.trim()) { setFormError('Tên khóa học không được trống'); return }
+    if (!editingCourse && !form.imageFile) {
+      setFormError('Vui lòng chọn ảnh khóa học trước khi tạo mới.')
+      return
+    }
+    setSaving(true)
+    setFormError('')
+    try {
+      const requestPayload = {
+        title: form.title,
+        description: form.description,
+        price: Number(form.price) || 0,
+      }
+
+      if (editingCourse) {
+        const courseId = getCourseKey(editingCourse)
+        await courseApi.update(courseId, requestPayload)
+        if (form.imageFile) {
+          const imageFormData = new FormData()
+          imageFormData.append('file', form.imageFile)
+          await courseApi.updateImage(courseId, imageFormData)
+        }
+      } else {
+        const createPayload = {
+          ...requestPayload,
+          instructorId: form.instructorId || user?.userId,
+          sylabusId: form.sylabusId || undefined,
+        }
+        const formData = new FormData()
+        formData.append('request', new Blob([JSON.stringify(createPayload)], { type: 'application/json' }))
+        formData.append('file', form.imageFile)
+        await courseApi.create(formData)
+      }
+      closeForm()
+      fetchCourses()
+    } catch (err) {
+      setFormError(err.response?.data?.message || err.message || 'Lưu thất bại')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const totalChapters = useMemo(() => courses.reduce((s, c) => s + (Number(c?.chapterCount) || 0), 0), [courses])
 
   return (
     <div className="mycourses">
       <Header />
-      <main className="mycourses-main">
-        <div className="mycourses-header">
-          <div>
-            <h1>My Courses</h1>
-            <p>Danh sách khóa học bạn đang sở hữu/quản lý.</p>
-          </div>
-          <div className="mycourses-actions">
-            <Link to="/dashboard" className="mycourses-btn mycourses-btn-ghost">
-              ← Dashboard
-            </Link>
-            <button type="button" className="mycourses-btn mycourses-btn-primary" disabled>
-              + Create Course
-            </button>
+
+      {/* ═══ INSTRUCTOR DASHBOARD BANNER ═══ */}
+      {canView && (
+        <div className="mc-dashboard">
+          <div className="mc-dashboard-inner">
+            <div className="mc-dashboard-left">
+              <h1 className="mc-dashboard-title">Instructor Dashboard</h1>
+              <p className="mc-dashboard-sub">Quản lý và phát triển các khóa học của bạn.</p>
+            </div>
+            <div className="mc-dashboard-stats">
+              <div className="mc-dashboard-stat">
+                <span className="mc-dashboard-stat-value">{courses.length}</span>
+                <span className="mc-dashboard-stat-label">Courses</span>
+              </div>
+              <div className="mc-dashboard-stat">
+                <span className="mc-dashboard-stat-value">{totalChapters}</span>
+                <span className="mc-dashboard-stat-label">Chapters</span>
+              </div>
+            </div>
           </div>
         </div>
+      )}
+
+      <main className="mycourses-main">
+        <div className="mycourses-header">
+          <div />
+          <div className="mycourses-actions">
+            <Link to="/" className="mycourses-btn mycourses-btn-ghost">← Trang chủ</Link>
+            {canView && (
+              <button type="button" className="mycourses-btn mycourses-btn-primary" onClick={openCreate}>+ Tạo khóa học</button>
+            )}
+          </div>
+        </div>
+
+        {showForm && (
+          <div className="mycourses-modal-overlay" onClick={closeForm}>
+            <form className="mycourses-modal" onClick={(ev) => ev.stopPropagation()} onSubmit={handleSubmit}>
+              <h2>{editingCourse ? 'Chỉnh sửa khóa học' : 'Tạo khóa học mới'}</h2>
+              {formError && <div className="mycourses-form-error">{formError}</div>}
+              <label>
+                Tên khóa học *
+                <input
+                  value={form.title}
+                  onChange={(ev) => setForm({ ...form, title: ev.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                Mô tả
+                <textarea
+                  rows={3}
+                  value={form.description}
+                  onChange={(ev) => setForm({ ...form, description: ev.target.value })}
+                />
+              </label>
+              <label>
+                Giá (VND)
+                <input
+                  type="number"
+                  min={0}
+                  value={form.price}
+                  onChange={(ev) => setForm({ ...form, price: ev.target.value })}
+                />
+              </label>
+              <label>
+                Ảnh khóa học {editingCourse ? '(tùy chọn)' : '*'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(ev) => handleImageChange(ev.target.files?.[0])}
+                  required={!editingCourse}
+                />
+              </label>
+              {imagePreview && (
+                <div className="mycourses-image-preview-wrap">
+                  <img src={imagePreview} alt="Xem trước ảnh khóa học" className="mycourses-image-preview" />
+                </div>
+              )}
+              <div className="mycourses-form-actions">
+                <button type="button" className="mycourses-btn mycourses-btn-ghost" onClick={closeForm}>
+                  Hủy
+                </button>
+                <button type="submit" className="mycourses-btn mycourses-btn-primary" disabled={saving}>
+                  {saving ? 'Đang lưu...' : editingCourse ? 'Cập nhật' : 'Tạo mới'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {!canView && (
           <div className="mycourses-empty">
@@ -114,17 +290,12 @@ const MyCourses = () => {
           <div className="mycourses-error">
             <strong>Lỗi tải My Courses</strong>
             <div>{error}</div>
-            <div className="mycourses-error-hint">
-              Endpoint đang gọi: <code>{endpoint}</code>
-              <br />
-              Nếu backend của bạn dùng endpoint khác, set <code>VITE_MY_COURSES_ENDPOINT</code> trong file <code>frontend/.env</code>.
-            </div>
           </div>
         )}
 
         {canView && !loading && !error && courses.length === 0 && (
           <div className="mycourses-empty">
-            Chưa có khóa học nào. Bạn có thể tạo khóa học mới ở backend hoặc bổ sung UI tạo course sau.
+            Chưa có khóa học nào. Nhấn <strong>"+ Tạo khóa học"</strong> để tạo mới.
           </div>
         )}
 
@@ -132,6 +303,11 @@ const MyCourses = () => {
           <div className="mycourses-grid">
             {courses.map((c) => (
               <article key={getCourseKey(c)} className="mycourses-card">
+                {getCourseImage(c) && (
+                  <div className="mc-card-thumb">
+                    <img src={getCourseImage(c)} alt="" className="mc-card-thumb-img" />
+                  </div>
+                )}
                 <div className="mycourses-card-top">
                   <div className="mycourses-card-title">{getCourseTitle(c)}</div>
                   {c?.status && <span className="mycourses-pill">{String(c.status)}</span>}
@@ -148,14 +324,36 @@ const MyCourses = () => {
                     <span className="mycourses-chapters">{c.chapterCount} chương</span>
                   )}
                 </div>
+                <div className="mycourses-card-actions">
+                  <Link
+                    to={`/my-courses/${getCourseKey(c)}/videos`}
+                    className="mycourses-btn mycourses-btn-ghost mycourses-card-link"
+                  >
+                    Quản lý nội dung
+                  </Link>
+                  <button
+                    type="button"
+                    className="mycourses-btn mycourses-btn-ghost"
+                    onClick={() => openEdit(c)}
+                  >
+                    Sửa
+                  </button>
+                  <button
+                    type="button"
+                    className="mycourses-btn mycourses-btn-danger"
+                    onClick={() => handleDelete(c)}
+                  >
+                    Xóa
+                  </button>
+                </div>
               </article>
             ))}
           </div>
         )}
       </main>
+      <Footer />
     </div>
   )
 }
 
 export default MyCourses
-

@@ -1,0 +1,327 @@
+.syllabus-page {
+  min-height: 100vh;
+  background: var(--bg-page);
+  color: var(--text-main);
+}
+
+.syllabus-main {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+/* ═══ SYLLABUS DASHBOARD BANNER ═══ */
+.syl-dashboard {
+  background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+  padding: 1.5rem 1.5rem 1.75rem;
+  color: #fff;
+}
+
+.syl-dashboard-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.syl-dashboard-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  margin-bottom: 0.5rem;
+  color: rgba(255,255,255,0.7);
+}
+
+.syl-dashboard-breadcrumb a {
+  color: rgba(255,255,255,0.85);
+  text-decoration: none;
+}
+
+.syl-dashboard-breadcrumb a:hover { text-decoration: underline; }
+
+.syl-dashboard-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.syl-dashboard-sub {
+  margin: 0.25rem 0 0;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.92rem;
+}
+
+
+.syllabus-main h1 {
+  margin: 0 0 0.25rem;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.syllabus-main > p {
+  margin: 0 0 1.25rem;
+  color: var(--text-secondary);
+}
+
+.syllabus-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.syllabus-header-info h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.syllabus-header-info p {
+  margin: 0.25rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.syllabus-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.syllabus-section {
+  background: #fff;
+  border: 1px solid var(--border-medium);
+  border-radius: 18px;
+  padding: 1.25rem 1.1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.syllabus-table-wrap {
+  overflow-x: auto;
+}
+
+.syllabus-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.syllabus-table th,
+.syllabus-table td {
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.syllabus-table th {
+  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.syllabus-table th:nth-child(1),
+.syllabus-table td:nth-child(1) { width: 24%; }
+.syllabus-table th:nth-child(2),
+.syllabus-table td:nth-child(2) { width: 33%; }
+.syllabus-table th:nth-child(3),
+.syllabus-table td:nth-child(3) { width: 18%; }
+.syllabus-table th:nth-child(4),
+.syllabus-table td:nth-child(4) { width: 17%; }
+.syllabus-table th:nth-child(5),
+.syllabus-table td:nth-child(5) { width: 8%; }
+
+.syllabus-table tr:hover td {
+  background: #F5F7F8;
+}
+
+.syllabus-cell-course,
+.syllabus-cell-method {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.syllabus-cell-content,
+.syllabus-cell-reference {
+  color: var(--text-secondary);
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.35;
+}
+
+.syllabus-cell-actions {
+  white-space: nowrap;
+}
+
+.syllabus-btn {
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.syllabus-btn-primary {
+  background: var(--primary-500);
+  color: #fff;
+}
+
+.syllabus-btn-primary:hover {
+  background: var(--primary-600);
+}
+
+.syllabus-btn-ghost {
+  background: #F5F7F8;
+  color: var(--text-main);
+  border: 1px solid var(--border-medium);
+}
+
+.syllabus-btn-danger {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
+
+.syllabus-btn-sm {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+.syllabus-actions-cell {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.syllabus-loading,
+.syllabus-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.syllabus-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.syllabus-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+}
+
+.syllabus-modal {
+  background: #fff;
+  border: 1px solid var(--border-medium);
+  border-radius: 18px;
+  padding: 1.5rem 1.75rem;
+  width: 95%;
+  max-width: 550px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.syllabus-modal h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.syllabus-modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.syllabus-modal input,
+.syllabus-modal textarea,
+.syllabus-modal select {
+  background: #F5F7F8;
+  border: 1px solid var(--border-medium);
+  border-radius: 10px;
+  padding: 0.5rem 0.7rem;
+  color: var(--text-main);
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.syllabus-modal input:focus,
+.syllabus-modal textarea:focus,
+.syllabus-modal select:focus {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(0, 86, 210, 0.1);
+}
+
+.syllabus-modal select option {
+  background: #fff;
+  color: var(--text-main);
+}
+
+.syllabus-form-error {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 10px;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  color: #dc2626;
+}
+
+.syllabus-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 992px) {
+  .syllabus-main,
+  .syl-dashboard-inner {
+    max-width: 100%;
+  }
+
+  .syllabus-main {
+    padding: 1rem 1rem 3rem;
+  }
+
+  .syllabus-section {
+    padding: 1rem 0.85rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .syllabus-header {
+    align-items: stretch;
+  }
+
+  .syllabus-header-actions {
+    width: 100%;
+  }
+
+  .syllabus-header-actions .syllabus-btn {
+    flex: 1;
+    justify-content: center;
+    text-align: center;
+  }
+}

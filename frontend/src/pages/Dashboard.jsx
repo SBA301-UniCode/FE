@@ -1,6 +1,7 @@
 import { useAuth } from '../contexts/useAuth'
 import { Link, useNavigate } from 'react-router-dom'
 import Header from '../components/layout/Header'
+import Footer from '../components/layout/Footer'
 import './Dashboard.css'
 
 const Dashboard = () => {
@@ -40,11 +41,19 @@ const Dashboard = () => {
               </Link>
             </div>
           )}
+          {!isInstructor && (
+            <div className="dashboard-links">
+              <Link to="/my-learning" className="dashboard-link-btn">
+                Vào My Learning
+              </Link>
+            </div>
+          )}
           <button onClick={handleLogout} className="dashboard-logout">
             Đăng xuất
           </button>
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

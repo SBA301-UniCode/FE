@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/useAuth'
 import './Login.css'
 
@@ -8,7 +8,7 @@ const Login = () => {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const { login, isAuthenticated } = useAuth()
-  const returnTo = location.state?.returnTo || '/dashboard'
+  const returnTo = location.state?.returnTo || '/'
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -99,11 +99,44 @@ const Login = () => {
 
   return (
     <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <h1 className="logo">UniCode</h1>
-          <p className="subtitle">Chào mừng trở lại!</p>
+      <div className="login-split">
+        <div className="login-branding">
+          <div className="login-branding-content">
+            <div className="login-branding-logo">
+              <span className="login-branding-logo-icon">&lt;/&gt;</span>
+              <span className="login-branding-logo-text">UniCode</span>
+            </div>
+            <h1 className="login-branding-title">Learn to Code.<br />Build Your Future.</h1>
+            <p className="login-branding-desc">
+              Master programming with interactive courses, real-world projects, and guidance from industry experts.
+            </p>
+            <div className="login-branding-stats">
+              <div className="login-branding-stat">
+                <span className="login-branding-stat-value">500K+</span>
+                <span className="login-branding-stat-label">Active Learners</span>
+              </div>
+              <div className="login-branding-stat">
+                <span className="login-branding-stat-value">850+</span>
+                <span className="login-branding-stat-label">Courses</span>
+              </div>
+              <div className="login-branding-stat">
+                <span className="login-branding-stat-value">98%</span>
+                <span className="login-branding-stat-label">Success Rate</span>
+              </div>
+            </div>
+            <div className="login-branding-techs">
+              <span>☕ Java</span>
+              <span>🐍 Python</span>
+              <span>⚛️ React</span>
+              <span>🟢 Node.js</span>
+            </div>
+          </div>
         </div>
+        <div className="login-card">
+          <div className="login-header">
+            <h1 className="logo">UniCode</h1>
+            <p className="subtitle">Chào mừng trở lại!</p>
+          </div>
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
@@ -215,8 +248,9 @@ const Login = () => {
         </form>
 
         <div className="login-footer">
-          <p>Chưa có tài khoản? <a href="#" className="signup-link" onClick={(e) => e.preventDefault()}>Đăng ký ngay</a></p>
+          <p>Chưa có tài khoản? <Link to="/register" className="signup-link">Đăng ký ngay</Link></p>
         </div>
+      </div>
       </div>
     </div>
   )
